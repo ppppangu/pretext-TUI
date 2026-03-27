@@ -99,6 +99,8 @@ macOS uses SF Pro Text (small sizes) and SF Pro Display (large sizes). Canvas an
 
 **Fix: use a named font** (Helvetica Neue, Inter, Arial, etc.). With named fonts, canvas and DOM agree perfectly (0.00px diff).
 
+Later review conclusion: this is a measurement-model mismatch, not a line-breaking bug. If we ever decide to support `system-ui` properly, the believable path is a narrow prepare-time DOM prefix-measurement fallback for detected bad `system-ui` tuples. Pure canvas fixes like lookup tables, naive scaling, or inferred resolved-font substitution may mitigate, but they do not look trustworthy enough as the main fix. Until there is stronger demand, keep `system-ui` documented as unsafe and prefer named fonts.
+
 ## Discovery: word-by-word sum accuracy
 
 Tested whether `measureText("word1") + measureText(" ") + measureText("word2")` equals `measureText("word1 word2")` in canvas:

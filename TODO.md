@@ -33,6 +33,7 @@ Still-open design questions:
 
 - Whether line-fit tolerance should stay as a browser shim or move toward runtime calibration.
 - Whether explicit hard breaks / paragraph-aware layout should become first-class.
+- If there is strong real-world demand for `system-ui`, whether to add a narrow prepare-time DOM prefix fallback for detected bad tuples instead of trying to force a pure-canvas fix.
 - Whether server canvas support should become an explicit supported backend.
 - Whether the rich path eventually wants a fuller bidi metadata helper for custom rendering or selection-like work, without changing the hot-path layout architecture.
 - Whether automatic hyphenation beyond manual soft hyphen is in scope, and if so whether it should stay entirely preprocess-driven or expose any language or pattern hooks.
