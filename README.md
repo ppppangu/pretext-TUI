@@ -8,11 +8,13 @@ The product goal is not browser text measurement. The active package must not de
 
 ## Status
 
-This repository is in the contract-freeze phase of the TUI migration.
+The package surface is terminal-first:
 
-The current implementation still contains upstream browser-oriented code and documents from the source project. Those artifacts are migration context only. The publishable package target is terminal-first and host-neutral.
+- package root exports the terminal API
+- `./terminal` is an alias for the same API
+- browser/demo/rich-inline subpaths are not exported
 
-Do not treat the current package surface as final until the terminal API, package exports, and TUI validation stack land.
+The package is still `0.0.0` while broader validation, rich metadata, and large-text primitives are added.
 
 ## Target Architecture
 
@@ -52,7 +54,7 @@ import {
   measureTerminalLineStats,
   prepareTerminal,
   walkTerminalLineRanges,
-} from 'pretext-tui' // planned package name; finalized with package exports
+} from 'pretext-tui'
 
 const prepared = prepareTerminal('hello 世界 🚀', {
   whiteSpace: 'pre-wrap',
@@ -68,7 +70,7 @@ const stats = layoutTerminal(prepared, {
 console.log(stats.rows)
 ```
 
-The exact package name and exports are finalized later in the migration plan.
+The `pretext-tui` package name and terminal exports are the active package surface.
 
 ## Terminal Semantics
 

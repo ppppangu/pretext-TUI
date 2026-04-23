@@ -8,6 +8,7 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Browser product surface has been removed from active package exports, scripts, workflow, and status docs.
 - Initial terminal width backend and measurement boundary have landed.
 - Initial terminal-first API facade and TUI core tests have landed.
+- Package exports and smoke tests now target the terminal API surface.
 
 ## 1. Add TUI Validation
 
@@ -15,7 +16,6 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Add terminal width goldens.
 - Add whitespace, tab, hard-break, CJK, emoji, combining-mark, and source-offset tests.
 - Add deterministic corpus/fuzz/benchmark scripts.
-- Add package smoke tests for terminal exports.
 
 ## 2. Add Vertical Slice Demo
 

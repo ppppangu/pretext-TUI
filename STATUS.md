@@ -4,9 +4,9 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 4 has added the terminal-first public API facade, replaced the active browser-shaped test suite with TUI core tests, and kept the compatibility export private until package exports are retargeted.
+Task 5 has retargeted the package root and `./terminal` exports to the terminal facade, removed private migration mode, and hardened package smoke tests around the terminal API surface.
 
-Task 5 owns retargeting package exports and hardening package smoke tests around the terminal surface.
+Task 6 owns terminal rich inline metadata.
 
 ## Target Package Status
 
@@ -18,7 +18,8 @@ Task 5 owns retargeting package exports and hardening package smoke tests around
 | Terminal API | Initial facade landed |
 | Terminal width backend | Initial backend landed |
 | TUI validation stack | Core tests landed; broader stack pending |
-| Package export surface | Private migration mode; final exports pending |
+| Package export surface | Terminal root and `./terminal` exports landed |
+| Package smoke test | Terminal API and tarball surface covered |
 | TUI demo | Pending |
 | Publishable tarball hygiene | Pending |
 

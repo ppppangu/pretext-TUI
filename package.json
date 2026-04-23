@@ -1,7 +1,6 @@
 {
   "name": "pretext-tui",
   "version": "0.0.0",
-  "private": true,
   "description": "Terminal-cell text layout primitives for TUI applications",
   "keywords": [
     "tui",
@@ -21,13 +20,18 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "./dist/layout.js",
-  "types": "./dist/layout.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/layout.d.ts",
-      "import": "./dist/layout.js",
-      "default": "./dist/layout.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./terminal": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
