@@ -1,44 +1,46 @@
-# Current Status
+# Migration Status
 
-This file is the compact "where do I look right now?" map.
+This repository is being migrated into `pretext-TUI`, a pure terminal-cell text layout package.
 
-Use [RESEARCH.md](RESEARCH.md) for why the numbers moved and what was tried.
-Use [corpora/STATUS.md](corpora/STATUS.md) for the long-form corpus canaries.
+## Current Phase
 
-## Main Dashboard
+Task 1 has frozen the initial package contracts and rewritten the active documentation.
 
-- [status/dashboard.json](status/dashboard.json) — machine-readable summary of the current browser accuracy, benchmark, and corpus inputs
+The current source tree still contains upstream browser-oriented implementation and tooling. Those files are not the final product surface.
 
-## Browser Accuracy
+## Target Package Status
 
-- [accuracy/chrome.json](accuracy/chrome.json)
-- [accuracy/safari.json](accuracy/safari.json)
-- [accuracy/firefox.json](accuracy/firefox.json)
-- [accuracy/letter-spacing.json](accuracy/letter-spacing.json)
+| Area | Status |
+| --- | --- |
+| Terminal contract | Initial contract landed |
+| Host boundary | Initial boundary landed |
+| Terminal API | Pending |
+| Terminal width backend | Pending |
+| TUI validation stack | Pending |
+| Package export surface | Pending |
+| TUI demo | Pending |
+| Publishable tarball hygiene | Pending |
 
-Notes:
-- This is the checked-in `4 fonts x 8 sizes x 8 widths x 30 texts` browser sweep.
-- The public accuracy page is basically a regression gate now, not the main steering metric.
-- The letter-spacing snapshot is a compact Chrome + Safari oracle, not part of the full sweep matrix.
+## Current Sources Of Truth
 
-## Benchmark Snapshots
+- [README.md](README.md)
+- [TODO.md](TODO.md)
+- [DEVELOPMENT.md](DEVELOPMENT.md)
+- [docs/contracts/terminal-contract.md](docs/contracts/terminal-contract.md)
+- [docs/contracts/host-app-boundary.md](docs/contracts/host-app-boundary.md)
+- [docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md](docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md)
 
-- [benchmarks/chrome.json](benchmarks/chrome.json)
-- [benchmarks/safari.json](benchmarks/safari.json)
+## Future TUI Dashboards
 
-Notes:
-- Chrome is still the main maintained performance baseline.
-- Safari numbers are useful, but noisier and warm up less predictably.
-- The checked-in JSON snapshots are cold checker runs. Ad hoc page numbers can differ after warmup.
-- Refresh these when benchmark methodology or the hot path changes: `src/analysis.ts`, `src/measurement.ts`, `src/line-break.ts`, `src/layout.ts`, `src/bidi.ts`, or `pages/benchmark.ts`.
+The implementation plan reserves these future status files:
 
-## Long-Form Corpus Status
+- `status/tui-dashboard.json`
+- `accuracy/tui-reference.json`
+- `benchmarks/tui.json`
+- `corpora/tui-step10.json`
 
-- [corpora/STATUS.md](corpora/STATUS.md)
-- [corpora/dashboard.json](corpora/dashboard.json)
-- [corpora/chrome-step10.json](corpora/chrome-step10.json)
-- [corpora/safari-step10.json](corpora/safari-step10.json)
+They do not exist yet as active release gates.
 
-## Historical Log
+## Archived Source Context
 
-- [RESEARCH.md](RESEARCH.md)
+Existing source-project browser snapshots and reports may remain in the tree until removal tasks land, but they are no longer the active product-health signal for this package.
