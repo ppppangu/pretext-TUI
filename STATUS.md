@@ -4,9 +4,9 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 3 has replaced the active measurement boundary with deterministic terminal cell-width measurement and expanded the TUI typecheck boundary over the migrated runtime.
+Task 4 has added the terminal-first public API facade, replaced the active browser-shaped test suite with TUI core tests, and kept the compatibility export private until package exports are retargeted.
 
-The public API names are still the compatibility `prepare/layout` surface. Task 4 owns adding terminal-first API names and cursor/range source mapping.
+Task 5 owns retargeting package exports and hardening package smoke tests around the terminal surface.
 
 ## Target Package Status
 
@@ -15,9 +15,9 @@ The public API names are still the compatibility `prepare/layout` surface. Task 
 | Terminal contract | Initial contract landed |
 | Host boundary | Initial boundary landed |
 | Browser product surface | Removed from active package/scripts/workflows |
-| Terminal API | Pending |
+| Terminal API | Initial facade landed |
 | Terminal width backend | Initial backend landed |
-| TUI validation stack | Pending |
+| TUI validation stack | Core tests landed; broader stack pending |
 | Package export surface | Private migration mode; final exports pending |
 | TUI demo | Pending |
 | Publishable tarball hygiene | Pending |

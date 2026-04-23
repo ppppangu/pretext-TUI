@@ -11,10 +11,12 @@
     "src/analysis.ts",
     "src/bidi.ts",
     "src/generated/bidi-data.ts",
+    "src/index.ts",
     "src/layout.ts",
     "src/line-break.ts",
     "src/line-text.ts",
     "src/measurement.ts",
+    "src/terminal.ts",
     "src/terminal-string-width.ts",
     "src/terminal-types.ts",
     "src/terminal-width-profile.ts"

@@ -34,6 +34,7 @@ import {
 } from './measurement.js'
 import {
   normalizeTerminalTabSize,
+  type TerminalWidthProfile,
   type TerminalWidthProfileInput,
 } from './terminal-width-profile.js'
 import {
@@ -75,6 +76,7 @@ type PreparedCore = {
   discretionaryHyphenWidth: number // Visible width added when a soft hyphen is chosen as the break
   tabStopAdvance: number // Absolute advance between tab stops for pre-wrap tab segments
   chunks: PreparedLineChunk[] // Precompiled hard-break chunks for line walking
+  widthProfile: TerminalWidthProfile
 }
 
 // Keep the main prepared handle opaque so the public API does not accidentally
@@ -89,6 +91,9 @@ type InternalPreparedText = PreparedText & PreparedCore
 // Treat this as the unstable escape hatch for experiments and custom rendering.
 export type PreparedTextWithSegments = InternalPreparedText & {
   segments: string[] // Segment text aligned with the parallel arrays, e.g. ['hello', ' ', 'world']
+  sourceText: string
+  sourceStarts: number[]
+  widthProfile: TerminalWidthProfile
 }
 
 export type LayoutCursor = {
@@ -159,6 +164,9 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
       tabStopAdvance: 0,
       chunks: [],
       segments: [],
+      sourceText: '',
+      sourceStarts: [],
+      widthProfile: undefined as unknown as TerminalWidthProfile,
     } as unknown as PreparedTextWithSegments
   }
   return {
@@ -174,6 +182,7 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
     discretionaryHyphenWidth: 0,
     tabStopAdvance: 0,
     chunks: [],
+    widthProfile: undefined as unknown as TerminalWidthProfile,
   } as unknown as InternalPreparedText
 }
 
@@ -537,7 +546,10 @@ function measureAnalysis(
       discretionaryHyphenWidth,
       tabStopAdvance,
       chunks,
+      widthProfile: profile,
       segments,
+      sourceText: analysis.normalized,
+      sourceStarts: segStarts ?? [],
     } as unknown as PreparedTextWithSegments
   }
   return {
@@ -553,6 +565,7 @@ function measureAnalysis(
     discretionaryHyphenWidth,
     tabStopAdvance,
     chunks,
+    widthProfile: profile,
   } as unknown as InternalPreparedText
 }
 
