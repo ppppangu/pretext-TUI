@@ -103,7 +103,6 @@ git commit -m "docs: freeze terminal contract and host boundary"
 - Modify: `tsconfig.json`
 - Modify: `tsconfig.build.json`
 - Create: `tsconfig.tui.json`
-- Create: `tsconfig.browser-archive.json`
 - Modify: `.github/workflows/pages.yml`
 
 **Step 1: Make the browser removal policy explicit**
@@ -122,7 +121,6 @@ This plan chooses:
 
 Create:
 - `tsconfig.tui.json` for active TUI runtime/build/test coverage
-- `tsconfig.browser-archive.json` for archived browser sources if they must continue to typecheck separately
 
 Do **not** remove DOM from the primary config until the terminal measurement/profile split is in place.
 
@@ -141,23 +139,23 @@ Ensure active package/docs/workflows no longer expose:
 - browser accuracy/benchmark scripts as active commands
 - browser snapshot dashboards as active package status
 
+Delete browser product files rather than adding an in-repo browser archive track. Git history is the archive.
+
 **Step 5: Validate**
 
 Run:
 
 ```bash
-bunx tsc --noEmit -p tsconfig.json
 bunx tsc --noEmit -p tsconfig.tui.json
 ```
 
 Expected:
-- current repo still typechecks
 - a dedicated TUI config exists and can be used in later tasks
 
 **Step 6: Sync docs and commit**
 
 ```bash
-git add package.json tsconfig.json tsconfig.build.json tsconfig.tui.json tsconfig.browser-archive.json .github/workflows/pages.yml
+git add package.json tsconfig.json tsconfig.build.json tsconfig.tui.json .github/workflows/pages.yml
 git commit -m "build: remove browser product surface and split tui config"
 ```
 

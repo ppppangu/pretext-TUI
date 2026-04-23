@@ -4,9 +4,9 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 1 has frozen the initial package contracts and rewritten the active documentation.
+Task 2 has removed the active browser product surface, added the first TUI typecheck boundary, and kept the package private while the runtime is migrated.
 
-The current source tree still contains upstream browser-oriented implementation and tooling. Those files are not the final product surface.
+The current exported runtime still uses the source-project measurement path. Task 3 owns replacing that path with deterministic terminal width measurement.
 
 ## Target Package Status
 
@@ -14,10 +14,11 @@ The current source tree still contains upstream browser-oriented implementation 
 | --- | --- |
 | Terminal contract | Initial contract landed |
 | Host boundary | Initial boundary landed |
+| Browser product surface | Removed from active package/scripts/workflows |
 | Terminal API | Pending |
-| Terminal width backend | Pending |
+| Terminal width backend | Next |
 | TUI validation stack | Pending |
-| Package export surface | Pending |
+| Package export surface | Private migration mode; final exports pending |
 | TUI demo | Pending |
 | Publishable tarball hygiene | Pending |
 
@@ -41,6 +42,6 @@ The implementation plan reserves these future status files:
 
 They do not exist yet as active release gates.
 
-## Archived Source Context
+## Removed Product Surface
 
-Existing source-project browser snapshots and reports may remain in the tree until removal tasks land, but they are no longer the active product-health signal for this package.
+Browser pages, demo workflow, browser check scripts, and browser snapshot dashboards are no longer part of the active product surface. Git history remains the archive for removed source-project product material.

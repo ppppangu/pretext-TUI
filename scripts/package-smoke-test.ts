@@ -1,8 +1,12 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const root = process.cwd()
+const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')) as {
+  name: string
+}
+const packageName = packageJson.name
 const keepTemp = process.argv.includes('--keep-temp')
 const tempRoot = await mkdtemp(path.join(tmpdir(), 'pretext-package-smoke-'))
 let succeeded = false
@@ -52,7 +56,7 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
   await writeFile(
     path.join(projectDir, 'index.js'),
     [
-      "import * as pretext from '@chenglou/pretext'",
+      `import * as pretext from '${packageName}'`,
       "if (typeof pretext.prepare !== 'function') throw new Error('prepare export missing')",
       "if (typeof pretext.layout !== 'function') throw new Error('layout export missing')",
       "console.log('js-esm ok')",
@@ -94,7 +98,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   await writeFile(
     path.join(projectDir, 'index.ts'),
     [
-      "import { layout, prepare } from '@chenglou/pretext'",
+      `import { layout, prepare } from '${packageName}'`,
       "const prepared = prepare('hello', '16px Inter')",
       "const keepAllPrepared = prepare('안녕하세요 세계', '16px Inter', { wordBreak: 'keep-all' })",
       'const result = layout(prepared, 100, 20)',
@@ -105,7 +109,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
     ].join('\n'),
   )
 
-  run([path.join(root, 'node_modules', '.bin', tscBinaryName()), '-p', 'tsconfig.json'], {
+  run(['bunx', 'tsc', '-p', 'tsconfig.json'], {
     cwd: projectDir,
     stdout: 'inherit',
     stderr: 'inherit',
@@ -114,7 +118,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   await writeFile(
     path.join(projectDir, 'index.ts'),
     [
-      "import { layout, prepare } from '@chenglou/pretext'",
+      `import { layout, prepare } from '${packageName}'`,
       "const prepared = prepare('hello', '16px Inter')",
       "const width = '100'",
       'layout(prepared, width, 20)',
@@ -123,7 +127,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   )
 
   const badCompile = run(
-    [path.join(root, 'node_modules', '.bin', tscBinaryName()), '-p', 'tsconfig.json'],
+    ['bunx', 'tsc', '-p', 'tsconfig.json'],
     {
       cwd: projectDir,
       stdout: 'pipe',
@@ -158,10 +162,6 @@ async function installTarball(projectDir: string, tarballPath: string): Promise<
     stdout: 'inherit',
     stderr: 'inherit',
   })
-}
-
-function tscBinaryName(): string {
-  return process.platform === 'win32' ? 'tsc.cmd' : 'tsc'
 }
 
 function run(

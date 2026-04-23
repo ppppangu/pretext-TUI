@@ -2,35 +2,26 @@
 
 Current priorities for turning `pretext-TUI` into a publishable terminal-cell layout package.
 
-## 1. Freeze Package Contracts
+## Completed
 
-- Keep [docs/contracts/terminal-contract.md](docs/contracts/terminal-contract.md) current.
-- Keep [docs/contracts/host-app-boundary.md](docs/contracts/host-app-boundary.md) current.
-- Remove host-specific language from active package docs.
-- Keep one public package story: terminal cells, rows, ranges, materialization.
+- Initial package contracts are frozen.
+- Browser product surface has been removed from active package exports, scripts, workflow, and status docs.
 
-## 2. Remove Browser Product Surface
-
-- Remove web demo exports from the package surface.
-- Remove browser scripts from default command paths.
-- Remove web pages from publishable package files.
-- Replace source-project status dashboards with TUI status data.
-
-## 3. Replace Measurement Boundary
+## 1. Replace Measurement Boundary
 
 - Split analysis policy from terminal width policy.
-- Replace browser measurement with deterministic terminal cell width.
+- Replace source-project measurement with deterministic terminal cell width.
 - Add explicit width profiles.
 - Preserve fast prepare/layout separation.
 
-## 4. Expose Terminal APIs
+## 2. Expose Terminal APIs
 
 - Add `prepareTerminal()`.
 - Add `layoutTerminal()`.
 - Add line stats, line range walking, next-line range, and materialization APIs.
 - Freeze cursor/range/source-offset semantics before adding paging.
 
-## 5. Add TUI Validation
+## 3. Add TUI Validation
 
 - Add no-browser static gate.
 - Add terminal width goldens.
@@ -38,14 +29,14 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Add deterministic corpus/fuzz/benchmark scripts.
 - Add package smoke tests for terminal exports.
 
-## 6. Add Vertical Slice Demo
+## 4. Add Vertical Slice Demo
 
 - Add a mixed terminal session fixture.
 - Show row-count precomputation.
 - Show resize reflow.
 - Show visible-window materialization.
 
-## 7. Add Optional Rich And Large-Text Primitives
+## 5. Add Optional Rich And Large-Text Primitives
 
 - Add terminal rich metadata for SGR and OSC8.
 - Add source-mapped spans for style/link/copy semantics.

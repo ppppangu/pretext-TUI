@@ -8,6 +8,15 @@
     "outDir": "./dist",
     "declaration": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/layout.test.ts", "src/test-data.ts"]
+  "include": [
+    "src/analysis.ts",
+    "src/bidi.ts",
+    "src/generated/**/*.ts",
+    "src/layout.ts",
+    "src/line-break.ts",
+    "src/line-text.ts",
+    "src/measurement.ts",
+    "src/text-modules.d.ts"
+  ],
+  "exclude": ["src/**/*.test.ts", "src/test-data.ts"]
 }
