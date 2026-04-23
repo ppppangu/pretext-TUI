@@ -39,6 +39,11 @@ export type AnalysisProfile = {
   breakKeepAllAfterPunctuation: boolean
 }
 
+export const DEFAULT_TERMINAL_ANALYSIS_PROFILE: AnalysisProfile = {
+  carryCJKAfterClosingQuote: false,
+  breakKeepAllAfterPunctuation: true,
+}
+
 const collapsibleWhitespaceRunRe = /[ \t\n\r\f]+/g
 const needsWhitespaceNormalizationRe = /[\t\n\r\f]| {2,}|^ | $/
 

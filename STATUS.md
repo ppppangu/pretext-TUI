@@ -4,9 +4,9 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 2 has removed the active browser product surface, added the first TUI typecheck boundary, and kept the package private while the runtime is migrated.
+Task 3 has replaced the active measurement boundary with deterministic terminal cell-width measurement and expanded the TUI typecheck boundary over the migrated runtime.
 
-The current exported runtime still uses the source-project measurement path. Task 3 owns replacing that path with deterministic terminal width measurement.
+The public API names are still the compatibility `prepare/layout` surface. Task 4 owns adding terminal-first API names and cursor/range source mapping.
 
 ## Target Package Status
 
@@ -16,7 +16,7 @@ The current exported runtime still uses the source-project measurement path. Tas
 | Host boundary | Initial boundary landed |
 | Browser product surface | Removed from active package/scripts/workflows |
 | Terminal API | Pending |
-| Terminal width backend | Next |
+| Terminal width backend | Initial backend landed |
 | TUI validation stack | Pending |
 | Package export surface | Private migration mode; final exports pending |
 | TUI demo | Pending |

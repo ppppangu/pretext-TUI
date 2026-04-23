@@ -1,5 +1,4 @@
 import type { SegmentBreakKind } from './analysis.js'
-import { getEngineProfile } from './measurement.js'
 
 export type LineBreakCursor = {
   segmentIndex: number
@@ -162,7 +161,6 @@ function fitSoftHyphenBreak(
   graphemeFitAdvances: number[],
   initialWidth: number,
   maxWidth: number,
-  lineFitEpsilon: number,
   discretionaryHyphenWidth: number,
   letterSpacing: number,
 ): { fitCount: number, fittedWidth: number } {
@@ -174,7 +172,7 @@ function fitSoftHyphenBreak(
     const nextLineWidth = fitCount + 1 < graphemeFitAdvances.length
       ? nextWidth + discretionaryHyphenWidth
       : nextWidth
-    if (nextLineWidth > maxWidth + lineFitEpsilon) break
+    if (nextLineWidth > maxWidth) break
     fittedWidth = nextWidth
     fitCount++
   }
@@ -280,9 +278,7 @@ function walkPreparedLinesSimple(
   const { widths, kinds, breakableFitAdvances } = prepared
   if (widths.length === 0) return 0
 
-  const engineProfile = getEngineProfile()
-  const lineFitEpsilon = engineProfile.lineFitEpsilon
-  const fitLimit = maxWidth + lineFitEpsilon
+  const fitLimit = maxWidth
 
   let lineCount = 0
   let lineW = 0
@@ -456,9 +452,7 @@ export function walkPreparedLinesRaw(
   } = prepared
   if (widths.length === 0 || chunks.length === 0) return 0
 
-  const engineProfile = getEngineProfile()
-  const lineFitEpsilon = engineProfile.lineFitEpsilon
-  const fitLimit = maxWidth + lineFitEpsilon
+  const fitLimit = maxWidth
 
   let lineCount = 0
   let lineW = 0
@@ -578,7 +572,6 @@ export function walkPreparedLinesRaw(
       fitWidths,
       lineW,
       maxWidth,
-      lineFitEpsilon,
       discretionaryHyphenWidth,
       prepared.letterSpacing,
     )
@@ -671,15 +664,6 @@ export function walkPreparedLinesRaw(
           lineW + getBreakOpportunityFitContribution(prepared, kind, i, leadingSpacing)
         const currentBreakPaintWidth =
           lineW + getLineEndPaintContribution(prepared, kind, i, leadingSpacing, w)
-
-        if (
-          pendingBreakKind === 'soft-hyphen' &&
-          engineProfile.preferEarlySoftHyphenBreak &&
-          pendingBreakFitWidth <= fitLimit
-        ) {
-          emitCurrentLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth)
-          continue
-        }
 
         if (pendingBreakKind === 'soft-hyphen' && continueSoftHyphenBreakableSegment(i)) {
           i++
@@ -776,9 +760,7 @@ function stepPreparedChunkLineGeometry(
     breakableFitAdvances,
     discretionaryHyphenWidth,
   } = prepared
-  const engineProfile = getEngineProfile()
-  const lineFitEpsilon = engineProfile.lineFitEpsilon
-  const fitLimit = maxWidth + lineFitEpsilon
+  const fitLimit = maxWidth
 
   let lineW = 0
   let hasContent = false
@@ -885,7 +867,6 @@ function stepPreparedChunkLineGeometry(
         fitWidths,
         lineW,
         maxWidth,
-        lineFitEpsilon,
         discretionaryHyphenWidth,
         prepared.letterSpacing,
       )
@@ -958,14 +939,6 @@ function stepPreparedChunkLineGeometry(
       const currentBreakPaintWidth =
         lineW + getLineEndPaintContribution(prepared, kind, i, leadingSpacing, w)
 
-      if (
-        pendingBreakKind === 'soft-hyphen' &&
-        engineProfile.preferEarlySoftHyphenBreak &&
-        pendingBreakFitWidth <= fitLimit
-      ) {
-        return finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth)
-      }
-
       const softBreakLine = maybeFinishAtSoftHyphen(i)
       if (softBreakLine !== null) return softBreakLine
 
@@ -1011,9 +984,7 @@ function stepPreparedSimpleLineGeometry(
   maxWidth: number,
 ): number | null {
   const { widths, kinds, breakableFitAdvances } = prepared
-  const engineProfile = getEngineProfile()
-  const lineFitEpsilon = engineProfile.lineFitEpsilon
-  const fitLimit = maxWidth + lineFitEpsilon
+  const fitLimit = maxWidth
 
   let lineW = 0
   let hasContent = false

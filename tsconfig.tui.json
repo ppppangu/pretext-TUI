@@ -10,7 +10,14 @@
   "files": [
     "src/analysis.ts",
     "src/bidi.ts",
-    "src/generated/bidi-data.ts"
+    "src/generated/bidi-data.ts",
+    "src/layout.ts",
+    "src/line-break.ts",
+    "src/line-text.ts",
+    "src/measurement.ts",
+    "src/terminal-string-width.ts",
+    "src/terminal-types.ts",
+    "src/terminal-width-profile.ts"
   ],
   "include": [
     "src/index.ts",
@@ -25,10 +32,6 @@
     "shared",
     "src/**/*.test.ts",
     "src/test-data.ts",
-    "src/layout.ts",
-    "src/line-break.ts",
-    "src/line-text.ts",
-    "src/measurement.ts",
     "src/rich-inline.ts"
   ]
 }

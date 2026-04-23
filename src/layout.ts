@@ -1,42 +1,15 @@
-// Text measurement for browser environments using canvas measureText.
-//
-// Problem: DOM-based text measurement (getBoundingClientRect, offsetHeight)
-// forces synchronous layout reflow. When components independently measure text,
-// each measurement triggers a reflow of the entire document. This creates
-// read/write interleaving that can cost 30ms+ per frame for 500 text blocks.
-//
-// Solution: two-phase measurement centered around canvas measureText.
-//   prepare(text, font) — segments text via Intl.Segmenter, measures each word
-//     via canvas, caches widths, and does one cached DOM calibration read per
-//     font when emoji correction is needed. Call once when text first appears.
-//   layout(prepared, maxWidth, lineHeight) — walks cached word widths with pure
-//     arithmetic to count lines and compute height. Call on every resize.
-//     ~0.0002ms per text.
-//
-// i18n: Intl.Segmenter handles CJK (per-character breaking), Thai, Arabic, etc.
-//   Bidi: simplified rich-path metadata for mixed LTR/RTL custom rendering.
-//   Punctuation merging: "better." measured as one unit (matches CSS behavior).
-//   Trailing whitespace: hangs past line edge without triggering breaks (CSS behavior).
-//   overflow-wrap: pre-measured grapheme widths enable character-level word breaking.
-//
-// Emoji correction: Chrome/Firefox canvas measures emoji wider than DOM at font
-//   sizes <24px on macOS (Apple Color Emoji). The inflation is constant per emoji
-//   grapheme at a given size, font-independent. Auto-detected by comparing canvas
-//   vs actual DOM emoji width (one cached DOM read per font). Safari canvas and
-//   DOM agree (both wider than fontSize), so correction = 0 there.
-//
-// Limitations:
-//   - system-ui font: canvas resolves to different optical variants than DOM on macOS.
-//     Use named fonts (Helvetica, Inter, etc.) for guaranteed accuracy.
-//     See RESEARCH.md "Discovery: system-ui font resolution mismatch".
-//
-// Based on Sebastian Markbage's text-layout research (github.com/chenglou/text-layout).
+// Terminal-cell text layout built around a two-phase model:
+//   prepare() analyzes visible text and caches terminal cell widths.
+//   layout() walks cached widths with arithmetic only.
+// The current public API is kept temporarily for migration compatibility;
+// Task 4 introduces terminal-first names.
 
 import { computeSegmentLevels } from './bidi.js'
 import {
   analyzeText,
   canContinueKeepAllTextRun,
   clearAnalysisCaches,
+  DEFAULT_TERMINAL_ANALYSIS_PROFILE,
   endsWithClosingQuote,
   isCJK,
   isNumericRunSegment,
@@ -44,6 +17,7 @@ import {
   kinsokuStart,
   leftStickyPunctuation,
   setAnalysisLocale,
+  type AnalysisProfile,
   type AnalysisChunk,
   type SegmentBreakKind,
   type TextAnalysis,
@@ -55,11 +29,13 @@ import {
   clearMeasurementCaches,
   getCorrectedSegmentWidth,
   getSegmentBreakableFitAdvances,
-  getEngineProfile,
-  getFontMeasurementState,
   getSegmentMetrics,
-  textMayContainEmoji,
+  getTerminalMeasurementState,
 } from './measurement.js'
+import {
+  normalizeTerminalTabSize,
+  type TerminalWidthProfileInput,
+} from './terminal-width-profile.js'
 import {
   countPreparedLines,
   measurePreparedLineGeometry,
@@ -153,6 +129,8 @@ export type PrepareOptions = {
   whiteSpace?: WhiteSpaceMode
   wordBreak?: WordBreakMode
   letterSpacing?: number
+  widthProfile?: TerminalWidthProfileInput
+  tabSize?: number
 }
 
 // Internal hard-break chunk hint for the line walker. Not public because
@@ -206,7 +184,7 @@ type MeasuredTextUnit = {
 
 function buildBaseCjkUnits(
   segText: string,
-  engineProfile: ReturnType<typeof getEngineProfile>,
+  analysisProfile: AnalysisProfile,
 ): MeasuredTextUnit[] {
   const units: MeasuredTextUnit[] = []
   let unitParts: string[] = []
@@ -260,7 +238,7 @@ function buildBaseCjkUnits(
       unitIsSingleKinsokuEnd ||
       kinsokuStart.has(grapheme) ||
       leftStickyPunctuation.has(grapheme) ||
-      (engineProfile.carryCJKAfterClosingQuote &&
+      (analysisProfile.carryCJKAfterClosingQuote &&
         graphemeContainsCJK &&
         unitEndsWithClosingQuote)
     ) {
@@ -361,21 +339,18 @@ function addInternalLetterSpacing(width: number, graphemeCount: number, letterSp
 
 function measureAnalysis(
   analysis: TextAnalysis,
-  font: string,
+  analysisProfile: AnalysisProfile,
+  widthProfile: TerminalWidthProfileInput,
+  tabSize: number | undefined,
   includeSegments: boolean,
   wordBreak: WordBreakMode,
   letterSpacing: number,
 ): InternalPreparedText | PreparedTextWithSegments {
-  const engineProfile = getEngineProfile()
-  const { cache, emojiCorrection } = getFontMeasurementState(
-    font,
-    textMayContainEmoji(analysis.normalized),
-  )
+  const { cache, emojiCorrection, profile } = getTerminalMeasurementState(widthProfile)
   const discretionaryHyphenWidth =
     getCorrectedSegmentWidth('-', getSegmentMetrics('-', cache), emojiCorrection) +
     (letterSpacing === 0 ? 0 : letterSpacing)
-  const spaceWidth = getCorrectedSegmentWidth(' ', getSegmentMetrics(' ', cache), emojiCorrection)
-  const tabStopAdvance = spaceWidth * 8
+  const tabStopAdvance = normalizeTerminalTabSize(tabSize, profile)
   const hasLetterSpacing = letterSpacing !== 0
 
   if (analysis.len === 0) return createEmptyPrepared(includeSegments)
@@ -449,8 +424,6 @@ function measureAnalysis(
         fitMode = 'segment-prefixes'
       } else if (isNumericRunSegment(text)) {
         fitMode = 'pair-context'
-      } else if (engineProfile.preferPrefixWidthsForBreakableRuns) {
-        fitMode = 'segment-prefixes'
       }
       const fitAdvances = getSegmentBreakableFitAdvances(
         text,
@@ -527,9 +500,9 @@ function measureAnalysis(
     const segMetrics = getSegmentMetrics(segText, cache)
 
     if (segKind === 'text' && segMetrics.containsCJK) {
-      const baseUnits = buildBaseCjkUnits(segText, engineProfile)
+      const baseUnits = buildBaseCjkUnits(segText, analysisProfile)
       const measuredUnits = wordBreak === 'keep-all'
-        ? mergeKeepAllTextUnits(segText, baseUnits, engineProfile.breakKeepAllAfterPunctuation)
+        ? mergeKeepAllTextUnits(segText, baseUnits, analysisProfile.breakKeepAllAfterPunctuation)
         : baseUnits
 
       for (let i = 0; i < measuredUnits.length; i++) {
@@ -615,17 +588,26 @@ function mapAnalysisChunksToPreparedChunks(
 
 function prepareInternal(
   text: string,
-  font: string,
+  _font: string,
   includeSegments: boolean,
   options?: PrepareOptions,
 ): InternalPreparedText | PreparedTextWithSegments {
   const wordBreak = options?.wordBreak ?? 'normal'
   const letterSpacing = options?.letterSpacing ?? 0
-  const analysis = analyzeText(text, getEngineProfile(), options?.whiteSpace, wordBreak)
-  return measureAnalysis(analysis, font, includeSegments, wordBreak, letterSpacing)
+  const analysisProfile = DEFAULT_TERMINAL_ANALYSIS_PROFILE
+  const analysis = analyzeText(text, analysisProfile, options?.whiteSpace, wordBreak)
+  return measureAnalysis(
+    analysis,
+    analysisProfile,
+    options?.widthProfile,
+    options?.tabSize,
+    includeSegments,
+    wordBreak,
+    letterSpacing,
+  )
 }
 
-// Prepare text for layout. Segments the text, measures each segment via canvas,
+// Prepare text for layout. Segments the text, measures each segment in terminal cells,
 // and stores the widths for fast relayout at any width. Call once per text block
 // (e.g. when a comment first appears). The result is width-independent — the
 // same PreparedText can be laid out at any maxWidth and lineHeight via layout().
@@ -635,10 +617,9 @@ function prepareInternal(
 //   2. Segment via Intl.Segmenter (handles CJK, Thai, etc.)
 //   3. Merge punctuation into preceding word ("better." as one unit)
 //   4. Split CJK words into individual graphemes (per-character line breaks)
-//   5. Measure each segment via canvas measureText, cache by (segment, font)
+//   5. Measure each segment via terminal cell width, cache by segment/profile
 //   6. Pre-measure graphemes of long words (for overflow-wrap: break-word)
-//   7. Correct emoji canvas inflation (auto-detected per font size)
-//   8. Optionally compute rich-path bidi metadata for custom renderers
+//   7. Optionally compute rich-path bidi metadata for custom renderers
 export function prepare(text: string, font: string, options?: PrepareOptions): PreparedText {
   return prepareInternal(text, font, false, options) as PreparedText
 }
@@ -654,7 +635,7 @@ function getInternalPrepared(prepared: PreparedText): InternalPreparedText {
 }
 
 // Layout prepared text at a given max width and caller-provided lineHeight.
-// Pure arithmetic on cached widths — no canvas calls, no DOM reads, no string
+// Pure arithmetic on cached widths — no measurement calls, no runtime I/O, no string
 // operations, no allocations.
 // ~0.0002ms per text block. Call on every resize.
 //

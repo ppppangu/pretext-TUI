@@ -6,22 +6,16 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 
 - Initial package contracts are frozen.
 - Browser product surface has been removed from active package exports, scripts, workflow, and status docs.
+- Initial terminal width backend and measurement boundary have landed.
 
-## 1. Replace Measurement Boundary
-
-- Split analysis policy from terminal width policy.
-- Replace source-project measurement with deterministic terminal cell width.
-- Add explicit width profiles.
-- Preserve fast prepare/layout separation.
-
-## 2. Expose Terminal APIs
+## 1. Expose Terminal APIs
 
 - Add `prepareTerminal()`.
 - Add `layoutTerminal()`.
 - Add line stats, line range walking, next-line range, and materialization APIs.
 - Freeze cursor/range/source-offset semantics before adding paging.
 
-## 3. Add TUI Validation
+## 2. Add TUI Validation
 
 - Add no-browser static gate.
 - Add terminal width goldens.
@@ -29,14 +23,14 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Add deterministic corpus/fuzz/benchmark scripts.
 - Add package smoke tests for terminal exports.
 
-## 4. Add Vertical Slice Demo
+## 3. Add Vertical Slice Demo
 
 - Add a mixed terminal session fixture.
 - Show row-count precomputation.
 - Show resize reflow.
 - Show visible-window materialization.
 
-## 5. Add Optional Rich And Large-Text Primitives
+## 4. Add Optional Rich And Large-Text Primitives
 
 - Add terminal rich metadata for SGR and OSC8.
 - Add source-mapped spans for style/link/copy semantics.

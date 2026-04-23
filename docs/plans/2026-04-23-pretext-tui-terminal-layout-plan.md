@@ -166,6 +166,7 @@ git commit -m "build: remove browser product surface and split tui config"
 - Modify: `src/line-break.ts`
 - Modify: `src/measurement.ts`
 - Modify: `src/layout.ts`
+- Modify: `tsconfig.tui.json`
 - Create: `src/terminal-width-profile.ts`
 - Create: `src/terminal-string-width.ts`
 - Create: `src/terminal-types.ts`
