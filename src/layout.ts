@@ -780,6 +780,21 @@ export function layoutNextLine(
   const normalizedStart = normalizeLineStart(internal, start)
   if (normalizedStart === null) return null
 
+  if (
+    normalizedStart.segmentIndex === internal.widths.length &&
+    start.segmentIndex < internal.widths.length
+  ) {
+    return createLayoutLine(
+      prepared,
+      getLineTextCache(prepared),
+      0,
+      normalizedStart.segmentIndex,
+      normalizedStart.graphemeIndex,
+      normalizedStart.segmentIndex,
+      normalizedStart.graphemeIndex,
+    )
+  }
+
   const end = {
     segmentIndex: normalizedStart.segmentIndex,
     graphemeIndex: normalizedStart.graphemeIndex,
@@ -806,6 +821,19 @@ export function layoutNextLineRange(
   const internal = getInternalPrepared(prepared)
   const normalizedStart = normalizeLineStart(internal, start)
   if (normalizedStart === null) return null
+
+  if (
+    normalizedStart.segmentIndex === internal.widths.length &&
+    start.segmentIndex < internal.widths.length
+  ) {
+    return createLayoutLineRange(
+      0,
+      normalizedStart.segmentIndex,
+      normalizedStart.graphemeIndex,
+      normalizedStart.segmentIndex,
+      normalizedStart.graphemeIndex,
+    )
+  }
 
   const end = {
     segmentIndex: normalizedStart.segmentIndex,

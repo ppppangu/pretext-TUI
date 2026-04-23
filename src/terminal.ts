@@ -73,6 +73,17 @@ export const TERMINAL_START_CURSOR: TerminalCursor = Object.freeze({
   graphemeIndex: 0,
 })
 
+function assertPlainTerminalInput(text: string): void {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i)
+    const ch = text[i]!
+    const allowedWhitespace = ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f'
+    if ((code <= 0x1f || (code >= 0x7f && code <= 0x9f)) && !allowedWhitespace) {
+      throw new Error(`Plain terminal text cannot contain control character U+${code.toString(16).toUpperCase()}`)
+    }
+  }
+}
+
 function validateColumns(columns: number): number {
   if (!Number.isInteger(columns) || columns <= 0) {
     throw new Error(`Terminal columns must be a positive integer, got ${columns}`)
@@ -158,6 +169,9 @@ function visibleSourceEndForRange(
   prepared: PreparedTerminalText,
   range: LayoutLineRange,
 ): number {
+  if (range.end.graphemeIndex > 0) {
+    return sourceOffsetForCursor(prepared, range.end)
+  }
   const previousIndex = range.end.segmentIndex - 1
   const previousKind = prepared.kinds[previousIndex]
   if (
@@ -177,6 +191,7 @@ function terminalWidthForRange(
   prepared: PreparedTerminalText,
   range: LayoutLineRange,
   startColumn: number,
+  visibleSoftHyphenOffset: number | null,
 ): number {
   let width = 0
   const lastSegmentIndex = range.end.graphemeIndex > 0
@@ -194,7 +209,15 @@ function terminalWidthForRange(
       : graphemes.length
 
     if (kind === 'soft-hyphen') {
-      if (range.end.segmentIndex > i || range.end.graphemeIndex > 0) width += 1
+      const segmentStart = prepared.sourceStarts[i] ?? 0
+      const segmentEnd = segmentStart + segment.length
+      if (
+        visibleSoftHyphenOffset !== null &&
+        visibleSoftHyphenOffset >= segmentStart &&
+        visibleSoftHyphenOffset < segmentEnd
+      ) {
+        width += 1
+      }
       continue
     }
     if (kind === 'tab') {
@@ -207,7 +230,7 @@ function terminalWidthForRange(
   }
 
   const previousIndex = range.end.segmentIndex - 1
-  if (prepared.kinds[previousIndex] === 'space') {
+  if (range.end.graphemeIndex === 0 && prepared.kinds[previousIndex] === 'space') {
     width = Math.max(0, width - terminalGraphemeWidth(' ', prepared.widthProfile))
   }
   return width
@@ -222,7 +245,12 @@ function toTerminalRange(
   const startColumn = normalizeStartColumn(options.startColumn)
   const sourceStart = sourceOffsetForCursor(prepared, range.start)
   const sourceEnd = visibleSourceEndForRange(prepared, range)
-  const width = terminalWidthForRange(prepared, range, startColumn)
+  const breakInfo = breakForRange(prepared, range, sourceStart, sourceEnd)
+  const visibleSoftHyphenOffset =
+    breakInfo.kind === 'soft-hyphen'
+      ? sourceStart + prepared.sourceText.slice(sourceStart, sourceEnd).lastIndexOf('\u00AD')
+      : null
+  const width = terminalWidthForRange(prepared, range, startColumn, visibleSoftHyphenOffset)
   const occupiedWidth = startColumn + width
   return {
     kind: 'terminal-line-range@1',
@@ -233,7 +261,7 @@ function toTerminalRange(
     width,
     columns,
     startColumn,
-    break: breakForRange(prepared, range, sourceStart, sourceEnd),
+    break: breakInfo,
     overflow: occupiedWidth > columns ? { width: occupiedWidth, columns } : null,
   }
 }
@@ -271,6 +299,7 @@ export function prepareTerminal(
   text: string,
   options: TerminalPrepareOptions = {},
 ): PreparedTerminalText {
+  assertPlainTerminalInput(text)
   const prepareOptions: PrepareOptions = {}
   if (options.whiteSpace !== undefined) prepareOptions.whiteSpace = options.whiteSpace
   if (options.wordBreak !== undefined) prepareOptions.wordBreak = options.wordBreak

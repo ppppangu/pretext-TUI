@@ -98,6 +98,13 @@ describe('terminal core api', () => {
     expect(lines[0] && materializeTerminalLineRange(prepared, lines[0]).sourceText).toBe('a')
   })
 
+  test('zero-width-only pre-wrap chunks still emit empty rows', () => {
+    const prepared = prepareTerminal('\u200B\n\u200B\n\u200B', { whiteSpace: 'pre-wrap' })
+    const lines = collectWalked(prepared, { columns: 5 })
+    expect(layoutTerminal(prepared, { columns: 5 }).rows).toBe(3)
+    expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).toEqual(['', '', ''])
+  })
+
   test('startColumn reduces first-row capacity and is reflected in overflow', () => {
     const prepared = prepareTerminal('abcdef', { whiteSpace: 'pre-wrap' })
     const lines = collectWalked(prepared, { columns: 6, startColumn: 2 })
@@ -155,11 +162,35 @@ describe('terminal core api', () => {
     expect(first && materializeTerminalLineRange(prepared, first).sourceText).toBe('hello')
   })
 
+  test('consumed break segments do not corrupt source offsets on later wraps', () => {
+    const prepared = prepareTerminal('A BB', { whiteSpace: 'normal' })
+    const lines = collectWalked(prepared, { columns: 1 })
+    expect(lines[1]?.sourceStart).toBe(2)
+    expect(lines[1]?.sourceEnd).toBe(3)
+    expect(lines[1] && materializeTerminalLineRange(prepared, lines[1]).text).toBe('B')
+    expect(lines[1]?.width).toBe(1)
+  })
+
   test('soft hyphen materializes only on the selected break line', () => {
     const prepared = prepareTerminal('trans\u00ADatlantic', { whiteSpace: 'normal' })
     const lines = collectWalked(prepared, { columns: 6 })
     expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).not.toContain('-atlant')
     expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).toEqual(['trans-', 'atlant', 'ic'])
+  })
+
+  test('non-selected trailing soft hyphen does not add visible width', () => {
+    const prepared = prepareTerminal('B \u00AD\u200B', { whiteSpace: 'normal' })
+    const [line] = collectWalked(prepared, { columns: 10 })
+    const materialized = line && materializeTerminalLineRange(prepared, line)
+    expect(line?.width).toBe(2)
+    expect(materialized?.text).toBe('B ')
+  })
+
+  test('grouped soft hyphen segment still counts the selected hyphen width', () => {
+    const prepared = prepareTerminal('B\u00AD\u00ADB', { whiteSpace: 'normal' })
+    const [line] = collectWalked(prepared, { columns: 1 })
+    expect(line?.width).toBe(2)
+    expect(line && materializeTerminalLineRange(prepared, line).text).toBe('B-')
   })
 
   test('keeps real leading hyphens', () => {
@@ -194,6 +225,14 @@ describe('terminal core api', () => {
     const [first] = collectWalked(prepared, { columns: 1 })
     expect(first?.overflow).toEqual({ width: 2, columns: 1 })
     expect(first && materializeTerminalLineRange(prepared, first).text).toBe('😀')
+  })
+
+  test('plain core rejects raw ANSI/control input even if width profile is overridden', () => {
+    expect(() =>
+      prepareTerminal('\x1b[31mred\x1b[0m', {
+        widthProfile: { controlChars: 'zero-width' },
+      }),
+    ).toThrow()
   })
 
   test('mixed canary pipelines agree across widths', () => {

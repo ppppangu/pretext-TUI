@@ -9,6 +9,7 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Initial terminal width backend and measurement boundary have landed.
 - Initial terminal-first API facade and TUI core tests have landed.
 - Package exports and smoke tests now target the terminal API surface.
+- Initial terminal rich metadata sidecar has landed.
 
 ## 1. Add TUI Validation
 
@@ -26,7 +27,6 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 
 ## 3. Add Optional Rich And Large-Text Primitives
 
-- Add terminal rich metadata for SGR and OSC8.
 - Add source-mapped spans for style/link/copy semantics.
 - Add sparse anchors for large text.
 - Add page caches only after the core API is stable.

@@ -213,6 +213,11 @@ function normalizeLineStartInChunk(
 
   if (segmentIndex < chunk.startSegmentIndex) segmentIndex = chunk.startSegmentIndex
   segmentIndex = normalizeLineStartSegmentIndex(prepared, segmentIndex, chunk.endSegmentIndex)
+  if (segmentIndex >= chunk.endSegmentIndex) {
+    cursor.segmentIndex = chunk.endSegmentIndex
+    cursor.graphemeIndex = 0
+    return chunkIndex
+  }
   if (segmentIndex < chunk.endSegmentIndex) {
     cursor.segmentIndex = segmentIndex
     cursor.graphemeIndex = 0
@@ -605,7 +610,10 @@ export function walkPreparedLinesRaw(
 
   for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
     const chunk = chunks[chunkIndex]!
-    if (chunk.startSegmentIndex === chunk.endSegmentIndex) {
+    if (
+      chunk.startSegmentIndex === chunk.endSegmentIndex ||
+      normalizeLineStartSegmentIndex(prepared, chunk.startSegmentIndex, chunk.endSegmentIndex) >= chunk.endSegmentIndex
+    ) {
       emitEmptyChunk(chunk)
       continue
     }
@@ -748,7 +756,7 @@ function stepPreparedChunkLineGeometry(
   maxWidth: number,
 ): number | null {
   const chunk = prepared.chunks[chunkIndex]!
-  if (chunk.startSegmentIndex === chunk.endSegmentIndex) {
+  if (chunk.startSegmentIndex === chunk.endSegmentIndex || cursor.segmentIndex >= chunk.endSegmentIndex) {
     cursor.segmentIndex = chunk.consumedEndSegmentIndex
     cursor.graphemeIndex = 0
     return 0
@@ -1115,6 +1123,13 @@ export function stepPreparedLineGeometry(
 ): number | null {
   const chunkIndex = normalizeLineStartChunkIndex(prepared, cursor)
   if (chunkIndex < 0) return null
+
+  const chunk = prepared.chunks[chunkIndex]!
+  if (cursor.segmentIndex >= chunk.endSegmentIndex) {
+    cursor.segmentIndex = chunk.consumedEndSegmentIndex
+    cursor.graphemeIndex = 0
+    return 0
+  }
 
   if (prepared.simpleLineWalkFastPath) {
     return stepPreparedSimpleLineGeometry(prepared, cursor, maxWidth)

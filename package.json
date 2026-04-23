@@ -33,6 +33,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./terminal-rich-inline": {
+      "types": "./dist/terminal-rich-inline.d.ts",
+      "import": "./dist/terminal-rich-inline.js",
+      "default": "./dist/terminal-rich-inline.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -47,6 +52,8 @@
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",
     "package-smoke-test": "bun run scripts/package-smoke-test.ts",
     "prepack": "bun run build:package",
+    "prepublishOnly": "bun run check && bun run test:tui && bun run package-smoke-test",
+    "test:tui": "bun test src/terminal-core.test.ts src/terminal-rich-inline.test.ts src/terminal-string-width.test.ts",
     "typecheck:tui": "bunx tsc --noEmit -p tsconfig.tui.json"
   },
   "devDependencies": {

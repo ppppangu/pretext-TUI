@@ -65,11 +65,14 @@ For JSON snapshot files, use a top-level metadata field instead of invalid JSON 
 
 Before marking a migration task done, run the task's specific validation commands from the plan.
 
-Before release, the active TUI gate should include:
+Current package publish gate should include:
 
 - TUI typecheck
 - TUI tests
 - package smoke test
+
+The broader TUI release gate lands in later migration tasks and should eventually include:
+
 - no-browser static gate
 - deterministic TUI oracle
 - TUI corpus check

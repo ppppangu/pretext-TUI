@@ -41,10 +41,11 @@ function validatePackageMetadata(): void {
   const exports = packageJson.exports as {
     '.'?: { types?: string; import?: string; default?: string }
     './terminal'?: { types?: string; import?: string; default?: string }
+    './terminal-rich-inline'?: { types?: string; import?: string; default?: string }
     './package.json'?: string
   }
   const exportKeys = Object.keys(exports).sort()
-  const expectedExportKeys = ['.', './package.json', './terminal']
+  const expectedExportKeys = ['.', './package.json', './terminal', './terminal-rich-inline']
   if (JSON.stringify(exportKeys) !== JSON.stringify(expectedExportKeys)) {
     throw new Error(`Unexpected export keys: ${JSON.stringify(exportKeys)}`)
   }
@@ -66,6 +67,18 @@ function validatePackageMetadata(): void {
 
   if (exports['./package.json'] !== './package.json') {
     throw new Error('package.json subpath export must be preserved')
+  }
+  const rich = exports['./terminal-rich-inline']
+  const richConditionKeys = Object.keys(rich ?? {}).sort()
+  if (JSON.stringify(richConditionKeys) !== JSON.stringify(['default', 'import', 'types'])) {
+    throw new Error(`Unexpected export conditions for ./terminal-rich-inline: ${JSON.stringify(richConditionKeys)}`)
+  }
+  if (
+    rich?.types !== './dist/terminal-rich-inline.d.ts' ||
+    rich.import !== './dist/terminal-rich-inline.js' ||
+    rich.default !== './dist/terminal-rich-inline.js'
+  ) {
+    throw new Error(`Unexpected export for ./terminal-rich-inline: ${JSON.stringify(rich)}`)
   }
 }
 
@@ -109,6 +122,10 @@ function verifyTarballSurface(tarballPath: string): void {
     'dist/index.d.ts',
     'dist/terminal.js',
     'dist/terminal.d.ts',
+    'dist/terminal-rich-inline.js',
+    'dist/terminal-rich-inline.d.ts',
+    'dist/ansi-tokenize.js',
+    'dist/ansi-tokenize.d.ts',
   ]) {
     if (!files.has(required)) throw new Error(`Tarball missing required file: ${required}`)
   }
@@ -121,7 +138,8 @@ function verifyTarballSurface(tarballPath: string): void {
       file.startsWith('corpora/') ||
       file.startsWith('site/') ||
       file.startsWith('pages/') ||
-      file.includes('rich-inline') ||
+      file === 'dist/rich-inline.js' ||
+      file === 'dist/rich-inline.d.ts' ||
       file.includes('assets') ||
       file.includes('demos')
     ) {
@@ -144,10 +162,18 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
     [
       `import * as root from '${packageName}'`,
       `import * as terminal from '${packageName}/terminal'`,
+      `import * as rich from '${packageName}/terminal-rich-inline'`,
       "const required = ['TERMINAL_START_CURSOR', 'prepareTerminal', 'layoutTerminal', 'measureTerminalLineStats', 'walkTerminalLineRanges', 'layoutNextTerminalLineRange', 'materializeTerminalLineRange']",
       "for (const key of required) {",
       "  if (!(key in root)) throw new Error(`root export missing ${key}`)",
       "  if (!(key in terminal)) throw new Error(`terminal export missing ${key}`)",
+      '}',
+      "for (const forbidden of ['prepareTerminalRichInline', 'layoutNextTerminalRichLineRange', 'walkTerminalRichLineRanges', 'materializeTerminalRichLineRange']) {",
+      "  if (forbidden in root) throw new Error(`root unexpectedly exports ${forbidden}`)",
+      "  if (forbidden in terminal) throw new Error(`terminal unexpectedly exports ${forbidden}`)",
+      '}',
+      "for (const key of ['prepareTerminalRichInline', 'layoutNextTerminalRichLineRange', 'walkTerminalRichLineRanges', 'materializeTerminalRichLineRange']) {",
+      "  if (!(key in rich)) throw new Error(`rich export missing ${key}`)",
       '}',
       "const prepared = root.prepareTerminal('x\\t世界\\nz', { whiteSpace: 'pre-wrap', tabSize: 4, widthProfile: { ambiguousWidth: 'wide' } })",
       'const result = root.layoutTerminal(prepared, { columns: 8, startColumn: 2 })',
@@ -161,7 +187,11 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
       "if (next === null) throw new Error('bad next line')",
       'const materialized = root.materializeTerminalLineRange(prepared, next)',
       "if (typeof materialized.text !== 'string') throw new Error('bad materialization')",
-      "for (const bad of ['demos', 'assets', 'rich-inline', 'layout', 'dist/layout.js', 'src/index.ts', 'browser']) {",
+      "const richPrepared = rich.prepareTerminalRichInline('\\x1b[31mred\\x1b[0m')",
+      "const richLine = rich.layoutNextTerminalRichLineRange(richPrepared, root.TERMINAL_START_CURSOR, { columns: 10 })",
+      "if (richLine === null) throw new Error('bad rich next line')",
+      "if (!rich.materializeTerminalRichLineRange(richPrepared, richLine).ansiText.includes('\\x1b[31m')) throw new Error('bad rich ansi output')",
+      "for (const bad of ['demos', 'assets', 'rich-inline', 'layout', 'dist/layout.js', 'dist/ansi-tokenize.js', 'src/index.ts', 'browser', 'ansi-tokenize']) {",
       '  try {',
       '    await import(`${process.env.PACKAGE_NAME}/${bad}`)',
       '    throw new Error(`unexpected import success for ${bad}`)',
@@ -212,6 +242,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
     [
       `import { layoutTerminal, prepareTerminal, walkTerminalLineRanges, type TerminalLineRange } from '${packageName}'`,
       `import { layoutNextTerminalLineRange, layoutTerminal as layoutFromSubpath, materializeTerminalLineRange, prepareTerminal as prepareFromSubpath } from '${packageName}/terminal'`,
+      `import { prepareTerminalRichInline, layoutNextTerminalRichLineRange, materializeTerminalRichLineRange } from '${packageName}/terminal-rich-inline'`,
       "const prepared = prepareTerminal('hello 世界', { whiteSpace: 'pre-wrap', tabSize: 4 })",
       'const result = layoutTerminal(prepared, { columns: 8 })',
       'result.rows satisfies number',
@@ -221,6 +252,9 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
       'layoutFromSubpath(prepared2, { columns: 80 }).rows satisfies number',
       'const first = layoutNextTerminalLineRange(prepared2, { kind: "terminal-cursor@1", segmentIndex: 0, graphemeIndex: 0 }, { columns: 80 })',
       'if (first) materializeTerminalLineRange(prepared2, first).text satisfies string',
+      "const richPrepared = prepareTerminalRichInline('\\x1b[31mred\\x1b[0m')",
+      'const richFirst = layoutNextTerminalRichLineRange(richPrepared, { kind: "terminal-cursor@1", segmentIndex: 0, graphemeIndex: 0 }, { columns: 80 })',
+      'if (richFirst) materializeTerminalRichLineRange(richPrepared, richFirst).ansiText satisfies string',
       '',
     ].join('\n'),
   )
@@ -243,6 +277,18 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   expectBadTypeScript(projectDir, "Type 'string' is not assignable to type 'number'.")
 
   for (const badExport of ['prepare', 'layout', 'prepareWithSegments', 'layoutWithLines']) {
+    await writeFile(
+      path.join(projectDir, 'index.ts'),
+      [
+        `import { ${badExport} } from '${packageName}'`,
+        `void ${badExport}`,
+        '',
+      ].join('\n'),
+    )
+    expectBadTypeScript(projectDir, "has no exported member")
+  }
+
+  for (const badExport of ['prepareTerminalRichInline', 'layoutNextTerminalRichLineRange', 'materializeTerminalRichLineRange']) {
     await writeFile(
       path.join(projectDir, 'index.ts'),
       [

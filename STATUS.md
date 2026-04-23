@@ -6,7 +6,7 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 Task 5 has retargeted the package root and `./terminal` exports to the terminal facade, removed private migration mode, and hardened package smoke tests around the terminal API surface.
 
-Task 6 owns terminal rich inline metadata.
+Task 6 has landed the terminal rich metadata sidecar under `./terminal-rich-inline`.
 
 ## Target Package Status
 
@@ -20,8 +20,9 @@ Task 6 owns terminal rich inline metadata.
 | TUI validation stack | Core tests landed; broader stack pending |
 | Package export surface | Terminal root and `./terminal` exports landed |
 | Package smoke test | Terminal API and tarball surface covered |
+| Terminal rich sidecar | Initial `./terminal-rich-inline` landed |
 | TUI demo | Pending |
-| Publishable tarball hygiene | Pending |
+| Publishable tarball hygiene | Core package surface landed; broader release gate pending |
 
 ## Current Sources Of Truth
 

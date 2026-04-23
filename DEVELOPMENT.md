@@ -12,9 +12,19 @@ Install dependencies once in a fresh worktree:
 bun install
 ```
 
-## Planned TUI Command Surface
+## Current Package Gate
 
-Current commands still reflect the source project until later tasks update `package.json`. The migration plan introduces the following TUI command surface:
+The currently enforced package gate is:
+
+```sh
+bun run check
+bun run test:tui
+bun run package-smoke-test
+```
+
+## Later TUI Validation Surface
+
+Later migration tasks add the broader TUI validation surface:
 
 ```sh
 bun run typecheck:tui
@@ -25,10 +35,19 @@ bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run package-smoke-test
+bun run test:tui
 bun run terminal-demo --columns=52 --fixture=mixed-terminal-session
 ```
 
-Until those scripts exist, use the execution plan as the source of truth for the current task.
+Current package publish gate:
+
+```sh
+bun run check
+bun run test:tui
+bun run package-smoke-test
+```
+
+Broader TUI release gates such as the static no-browser sweep, oracle/corpus/fuzz checks, and benchmark checks land in later tasks of the migration plan.
 
 ## Packaging Target
 
@@ -65,6 +84,4 @@ Use these documents while the migration is in progress:
 
 ## Archived Source Material
 
-The repository still contains source-project material that mentions browser measurement and web demos. Treat it as migration context until the removal tasks land.
-
-Do not use those files as active correctness or product-health signals for the TUI package.
+Use git history as the archive for removed source-project browser/demo material. Do not use old browser-era claims as active product-health signals for the TUI package.

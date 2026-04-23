@@ -12,7 +12,8 @@ The package surface is terminal-first:
 
 - package root exports the terminal API
 - `./terminal` is an alias for the same API
-- browser/demo/rich-inline subpaths are not exported
+- `./terminal-rich-inline` is the opt-in rich metadata/ANSI sidecar
+- browser/demo/legacy `rich-inline` subpaths are not exported
 
 The package is still `0.0.0` while broader validation, rich metadata, and large-text primitives are added.
 
@@ -41,6 +42,27 @@ The important constraints are:
 - materialization happens only for requested lines or ranges.
 - source mapping uses UTF-16 offsets over sanitized visible text.
 - rich metadata is data-only and host-neutral.
+
+## Rich Metadata Sidecar
+
+For inline `SGR`/`OSC8` metadata, use the dedicated sidecar subpath:
+
+```ts
+import {
+  layoutNextTerminalRichLineRange,
+  materializeTerminalRichLineRange,
+  prepareTerminalRichInline,
+} from 'pretext-tui/terminal-rich-inline'
+
+const prepared = prepareTerminalRichInline('\x1b[31mred\x1b[0m and \x1b]8;;https://e.test\x1b\\link\x1b]8;;\x1b\\')
+const line = layoutNextTerminalRichLineRange(prepared, { kind: 'terminal-cursor@1', segmentIndex: 0, graphemeIndex: 0 }, { columns: 80 })
+if (line) {
+  const rich = materializeTerminalRichLineRange(prepared, line)
+  console.log(rich.ansiText)
+}
+```
+
+The plain terminal core continues to reject raw ANSI input. The rich sidecar is the only package surface that tokenizes inline `SGR` and `OSC8`.
 
 ## Target API Shape
 
@@ -74,7 +96,9 @@ The `pretext-tui` package name and terminal exports are the active package surfa
 
 ## Terminal Semantics
 
-The active TUI contract is defined in [docs/contracts/terminal-contract.md](docs/contracts/terminal-contract.md).
+The active TUI contract is defined in the repository at:
+
+- <https://github.com/ppppangu/pretext-TUI/blob/main/docs/contracts/terminal-contract.md>
 
 Summary:
 
@@ -89,7 +113,9 @@ Summary:
 
 ## Host App Boundary
 
-The host boundary is defined in [docs/contracts/host-app-boundary.md](docs/contracts/host-app-boundary.md).
+The host boundary is defined in the repository at:
+
+- <https://github.com/ppppangu/pretext-TUI/blob/main/docs/contracts/host-app-boundary.md>
 
 `pretext-TUI` owns text preparation, wrapping, ranges, materialization, and metadata.
 
@@ -97,11 +123,11 @@ Host applications own rendering, input, panes, focus, scrolling, persistence, fi
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the active migration commands and future TUI validation surface.
+Repository documentation lives on GitHub:
 
-See [TODO.md](TODO.md) for the current migration order.
-
-See [STATUS.md](STATUS.md) for what has and has not landed yet.
+- Development notes: <https://github.com/ppppangu/pretext-TUI/blob/main/DEVELOPMENT.md>
+- Current priorities: <https://github.com/ppppangu/pretext-TUI/blob/main/TODO.md>
+- Migration status: <https://github.com/ppppangu/pretext-TUI/blob/main/STATUS.md>
 
 ## Credits
 
