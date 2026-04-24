@@ -12,5 +12,6 @@ Initial terminal-package migration release.
 - Adds TUI-only validation gates covering static checks, goldens, corpus invariants, fuzzing, benchmarks, CI, and package smoke.
 - Adds a deterministic terminal demo that shows prepare, resize reflow, and visible-window materialization over a mixed terminal transcript.
 - Adds runtime-opaque sparse-anchor virtual text primitives for fixed-column page caching, source-offset lookup, and append invalidation metadata.
+- Ships a clean publishable tarball with only public root `dist/` wrappers and implementation modules internalized under `dist/internal/`.
 
-This version is intentionally pre-1.0 while final tarball hygiene continues to harden.
+This version is intentionally pre-1.0 while the terminal API continues to mature.

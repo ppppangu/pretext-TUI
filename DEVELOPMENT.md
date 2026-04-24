@@ -57,6 +57,7 @@ The final package smoke test must verify:
 - supported terminal exports load from the packed tarball
 - removed demo/assets subpaths fail
 - package files do not ship obsolete browser product surfaces
+- root `dist/` contains only public wrappers; implementation modules ship only under `dist/internal/`
 - type declarations match the terminal API surface
 - validation scripts stay typed and terminal-only
 

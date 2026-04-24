@@ -4,7 +4,7 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 9 has landed sparse-anchor virtual text primitives. The package now has typed validation scripts, static no-browser gating, reference goldens, corpus invariants, deterministic fuzzing, benchmark guardrails, tarball smoke verification, a deterministic terminal demo, and fixed-column helpers for large text seek/page/source/append workflows with runtime-opaque handles.
+Task 10 has landed the final publishable tarball hygiene pass. The package now has typed validation scripts, static no-browser gating, reference goldens, corpus invariants, deterministic fuzzing, benchmark guardrails, tarball smoke verification, a deterministic terminal demo, fixed-column helpers for large text seek/page/source/append workflows with runtime-opaque handles, and a root `dist/` surface limited to public entry wrappers.
 
 ## Target Package Status
 
@@ -21,7 +21,7 @@ Task 9 has landed sparse-anchor virtual text primitives. The package now has typ
 | Terminal rich sidecar | Initial `./terminal-rich-inline` landed |
 | TUI demo | Mixed transcript fixture and terminal-demo script landed |
 | Virtual text primitives | Opaque sparse line index, page cache, source lookup, and append invalidation landed |
-| Publishable tarball hygiene | Release gate landed; internal legacy-shaped dist modules still need final Task 10 cleanup |
+| Publishable tarball hygiene | Complete; implementation modules are internalized under `dist/internal/` and root `dist/` only exposes public wrappers |
 
 ## Current Sources Of Truth
 

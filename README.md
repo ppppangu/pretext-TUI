@@ -15,7 +15,7 @@ The package surface is terminal-first:
 - `./terminal-rich-inline` is the opt-in rich metadata/ANSI sidecar
 - browser/demo/legacy `rich-inline` subpaths are not exported
 
-The package is still `0.0.0` while the final release hygiene pass hardens the packed tarball surface.
+The package is still `0.0.0`, but the current tarball surface is terminal-first and publishable.
 
 ## Target Architecture
 

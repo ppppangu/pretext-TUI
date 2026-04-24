@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Task 9 已包含 virtual text primitives、terminal demo gate 与 package smoke gate。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Task 10 已包含 internalized tarball layout、virtual text primitives、terminal demo gate 与 package smoke gate。",
     "schema": "pretext-tui-status@1"
   },
   "gate": {
@@ -18,6 +18,7 @@
   "scope": {
     "browserProductSurface": "removed from active validation",
     "hostAppIntegration": "out of scope",
+    "tarballRootDist": "public wrappers only; implementation modules are under dist/internal",
     "virtualTextPrimitives": "Task 9 sparse index, page cache, source lookup, and append invalidation landed"
   }
 }

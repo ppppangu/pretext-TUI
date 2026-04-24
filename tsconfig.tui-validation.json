@@ -1,4 +1,4 @@
-// 补建说明：该配置为后续补建，用于 typecheck TUI validation scripts/tests；当前进度：Task 9 覆盖 terminal-demo、package smoke、scripts/tui-*.ts 与 tests/tui/**/*.ts，不引入 DOM lib。
+// 补建说明：该配置为后续补建，用于 typecheck TUI validation scripts/tests；当前进度：Task 10 覆盖 package build/smoke、terminal-demo、scripts/tui-*.ts 与 tests/tui/**/*.ts，不引入 DOM lib。
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -8,6 +8,7 @@
     "noEmit": true
   },
   "include": [
+    "scripts/build-package.ts",
     "scripts/package-smoke-test.ts",
     "scripts/terminal-demo.ts",
     "scripts/terminal-demo-check.ts",

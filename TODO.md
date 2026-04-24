@@ -13,12 +13,7 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - TUI-only validation stack and CI have landed.
 - Terminal vertical slice demo has landed with a mixed transcript fixture, row-count precomputation, resize reflow, and visible-window materialization.
 - Sparse-anchor virtual text primitives have landed with opaque handles, source-offset lookup, fixed-column page caching, append invalidation metadata, and benchmark counters.
-
-## 1. Holistic Release Pass
-
-- Remove or internalize any remaining legacy public-looking internals from the tarball.
-- Re-run the full validation gate.
-- Verify docs, package exports, and tarball contents tell one terminal-first story.
+- Holistic release pass has internalized legacy public-looking dist modules under `dist/internal/`, hardened package smoke, and verified docs/package exports/tarball contents tell one terminal-first story.
 
 ## Not Worth Doing Now
 
@@ -30,11 +25,8 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Do not expose many knobs before the terminal profile model is stable.
 - Do not keep duplicate public docs for old and new products.
 
-## Open Questions
-
-- Should internal layout modules be split before publish so `dist/layout.js` no longer contains legacy-shaped helper exports?
-
 ## Fixed Decisions
 
 - The default width profile is `terminal-unicode-narrow@1`.
 - Rich materialization should expose structured metadata and may also emit ANSI text for consumers that need terminal strings.
+- Root-level `dist/` is reserved for public wrappers; implementation modules ship only under `dist/internal/` for declaration/runtime resolution.

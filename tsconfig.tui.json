@@ -1,4 +1,4 @@
-// 补建说明：该配置为后续补建，用于建立纯 TUI TypeScript 边界；当前进度：Task 9 覆盖终端 API、rich sidecar、virtual text primitives 与构建入口，不引入 DOM/Canvas lib。
+// 补建说明：该配置为后续补建，用于建立纯 TUI TypeScript 边界；当前进度：Task 10 覆盖终端 API、rich sidecar 与 virtual text primitives，不引入 DOM/Canvas lib。
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {

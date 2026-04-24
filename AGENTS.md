@@ -28,6 +28,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `tsconfig.tui.json` — active TUI runtime typecheck boundary.
 - `tsconfig.tui-validation.json` — validation scripts/tests typecheck boundary.
 - `tsconfig.build.json` — publish-time emit config for `dist/`.
+- `scripts/build-package.ts` — publish build orchestrator that emits internals under `dist/internal/` and public wrappers at root `dist/`.
 - `scripts/package-smoke-test.ts` — tarball-level JS/TS consumer verification.
 - `fixtures/` — deterministic package-level terminal demo fixtures.
 - `src/analysis.ts` — normalization, segmentation, glue rules, and text-analysis phase.
@@ -89,5 +90,6 @@ Current package publish gate should include:
 - TUI benchmark check
 - terminal demo smoke
 - package smoke test
+- tarball inventory check that keeps root `dist/` limited to public wrappers
 
 If a task cannot pass because the active source tree still carries source-project behavior, either complete the planned migration step or explicitly move that behavior out of the active TUI surface. Do not paper over failures with shims.

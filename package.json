@@ -29,9 +29,9 @@
       "default": "./dist/index.js"
     },
     "./terminal": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/terminal.d.ts",
+      "import": "./dist/terminal.js",
+      "default": "./dist/terminal.js"
     },
     "./terminal-rich-inline": {
       "types": "./dist/terminal-rich-inline.d.ts",
@@ -44,10 +44,16 @@
     "CHANGELOG.md",
     "README.md",
     "LICENSE",
-    "dist"
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/terminal.js",
+    "dist/terminal.d.ts",
+    "dist/terminal-rich-inline.js",
+    "dist/terminal-rich-inline.d.ts",
+    "dist/internal"
   ],
   "scripts": {
-    "build:package": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "build:package": "bun run scripts/build-package.ts",
     "benchmark-check:tui": "bun run scripts/tui-benchmark-check.ts",
     "check": "bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && oxlint --type-aware src",
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",
