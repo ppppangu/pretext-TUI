@@ -1,5 +1,6 @@
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
+import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
 
 let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 let sharedLineTextCaches = new WeakMap<PreparedTextWithSegments, Map<number, string[]>>()
@@ -20,6 +21,7 @@ function getSegmentGraphemes(
   if (graphemes !== undefined) return graphemes
 
   graphemes = []
+  recordTerminalPerformanceCounter('lineTextGraphemeSegmentations')
   const graphemeSegmenter = getSharedGraphemeSegmenter()
   for (const gs of graphemeSegmenter.segment(segments[segmentIndex]!)) {
     graphemes.push(gs.segment)

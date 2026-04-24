@@ -11,6 +11,8 @@ import {
   walkTerminalLineRanges,
   layoutNextTerminalLineRange,
 } from './terminal.js'
+import type { PreparedTextWithSegments } from './layout.js'
+import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
 import {
   terminalStringWidth,
   terminalTabAdvance,
@@ -18,19 +20,34 @@ import {
 import {
   tokenizeTerminalInlineAnsi,
   type PreparedRichMetadata,
-  type TerminalRichDiagnostic,
   type TerminalRichSpan,
   type TerminalRichStyle,
 } from './ansi-tokenize.js'
+import {
+  createTerminalRichRawSummary,
+  resolveTerminalRichPolicy,
+  summarizeTerminalRichPolicy,
+  type TerminalRichAnsiReemitPolicy,
+  type TerminalRichCompleteness,
+  type TerminalRichDiagnostic,
+  type TerminalRichPolicySummary,
+  type TerminalRichRawSummary,
+  type TerminalRichSecurityPolicyInput,
+} from './terminal-rich-policy.js'
+import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
+
+export type TerminalRichPrepareOptions = TerminalPrepareOptions & TerminalRichSecurityPolicyInput
 
 export type PreparedTerminalRichInline = {
   kind: 'prepared-terminal-rich-inline@1'
-  rawText: string
   visibleText: string
   prepared: PreparedTerminalText
   spans: readonly TerminalRichSpan[]
   diagnostics: readonly TerminalRichDiagnostic[]
   rawVisibleMap: readonly { rawStart: number; rawEnd: number; sourceStart: number; sourceEnd: number }[]
+  raw?: TerminalRichRawSummary
+  policy: TerminalRichPolicySummary
+  completeness: TerminalRichCompleteness
 }
 
 export type TerminalRichFragment = {
@@ -46,18 +63,23 @@ export type TerminalRichFragment = {
 
 export type MaterializedTerminalRichLine = MaterializedTerminalLine & {
   fragments: TerminalRichFragment[]
-  ansiText: string
+  ansiText?: string
 }
+
+export type TerminalRichMaterializeOptions = Readonly<{
+  ansiText?: TerminalRichAnsiReemitPolicy
+}>
 
 function materializeFragmentVisibleText(
   sourceText: string,
   columnStart: number,
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   visibleSoftHyphenIndex: number | null = null,
 ): { text: string; width: number } {
   let rendered = ''
   let column = columnStart
   let sourceOffset = 0
+  recordTerminalPerformanceCounter('richFragmentGraphemeSegmentations')
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
   for (const { segment } of segmenter.segment(sourceText)) {
     if (segment === '\t') {
@@ -124,6 +146,7 @@ function sourceBoundaries(spans: readonly TerminalRichSpan[], start: number, end
 function graphemeBoundaryOffsets(text: string): number[] {
   const boundaries = [0]
   let offset = 0
+  recordTerminalPerformanceCounter('richBoundaryGraphemeSegmentations')
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
   for (const { segment } of segmenter.segment(text)) {
     offset += segment.length
@@ -166,14 +189,37 @@ function currentLink(spans: readonly TerminalRichSpan[], start: number, end: num
   return linkSpan?.kind === 'link' ? linkSpan.uri : null
 }
 
+function effectiveAnsiTextMode(
+  prepared: PreparedTerminalRichInline,
+  options: TerminalRichMaterializeOptions,
+): TerminalRichAnsiReemitPolicy {
+  const requested = options.ansiText ?? 'none'
+  if (requested === 'none' || prepared.policy.ansiReemit === 'none') return 'none'
+  if (prepared.policy.ansiReemit === 'sgr') return 'sgr'
+  return requested
+}
+
+function appendAnsiText(
+  current: string | undefined,
+  piece: string,
+  prepared: PreparedTerminalRichInline,
+): string | undefined {
+  if (current === undefined || piece.length === 0) return current
+  if (current.length + piece.length > prepared.policy.maxAnsiOutputCodeUnits) {
+    throw new Error('Materialized terminal rich ANSI text exceeds maxAnsiOutputCodeUnits')
+  }
+  return current + piece
+}
+
 export function prepareTerminalRichInline(
   rawText: string,
-  options: TerminalPrepareOptions & { unsupportedControlMode?: 'sanitize' | 'reject' } = {},
+  options: TerminalRichPrepareOptions = {},
 ): PreparedTerminalRichInline {
+  const policy = resolveTerminalRichPolicy(options)
   const tokenized: PreparedRichMetadata = tokenizeTerminalInlineAnsi(
     rawText,
     options.whiteSpace,
-    options.unsupportedControlMode,
+    policy,
   )
   const spans = tokenized.spans.map(span =>
     span.kind === 'style'
@@ -182,15 +228,19 @@ export function prepareTerminalRichInline(
   )
   const diagnostics = tokenized.diagnostics.map(diagnostic => Object.freeze({ ...diagnostic }))
   const rawVisibleMap = tokenized.rawVisibleMap.map(entry => Object.freeze({ ...entry }))
-  return Object.freeze({
+  const prepared: PreparedTerminalRichInline = {
     kind: 'prepared-terminal-rich-inline@1',
-    rawText,
     visibleText: tokenized.visibleText,
     prepared: prepareTerminal(tokenized.visibleText, options),
     spans: Object.freeze(spans),
     diagnostics: Object.freeze(diagnostics),
     rawVisibleMap: Object.freeze(rawVisibleMap),
-  })
+    policy: summarizeTerminalRichPolicy(policy),
+    completeness: tokenized.completeness,
+  }
+  const raw = createTerminalRichRawSummary(rawText, policy)
+  if (raw !== undefined) prepared.raw = raw
+  return Object.freeze(prepared)
 }
 
 export function walkTerminalRichLineRanges(
@@ -212,7 +262,9 @@ export function layoutNextTerminalRichLineRange(
 export function materializeTerminalRichLineRange(
   prepared: PreparedTerminalRichInline,
   line: TerminalLineRange,
+  options: TerminalRichMaterializeOptions = {},
 ): MaterializedTerminalRichLine {
+  const internal = getInternalPreparedTerminalText(prepared.prepared)
   const base = materializeTerminalLineRange(prepared.prepared, line)
   const spans = overlappingSpans(prepared.spans, line.sourceStart, line.sourceEnd)
   const localBoundaries = graphemeBoundaryOffsets(base.sourceText)
@@ -222,7 +274,8 @@ export function materializeTerminalRichLineRange(
   )
   const fragments: TerminalRichFragment[] = []
   let currentColumn = line.startColumn
-  let ansiText = ''
+  const ansiTextMode = effectiveAnsiTextMode(prepared, options)
+  let ansiText = ansiTextMode === 'none' ? undefined : ''
   let renderedOffset = 0
   const lastSoftHyphenOffset =
     line.break.kind === 'soft-hyphen'
@@ -243,7 +296,7 @@ export function materializeTerminalRichLineRange(
     const materialized = materializeFragmentVisibleText(
       sourceText,
       currentColumn,
-      prepared.prepared,
+      internal,
       visibleSoftHyphenIndex,
     )
     let fragmentText = materialized.text
@@ -251,7 +304,8 @@ export function materializeTerminalRichLineRange(
     while (fragmentText.length > 0 && !remainingBaseText.startsWith(fragmentText)) {
       fragmentText = fragmentText.slice(0, -1)
     }
-    const fragmentWidth = terminalStringWidth(fragmentText, prepared.prepared.widthProfile)
+    recordTerminalPerformanceCounter('richFragmentWidthMeasurements')
+    const fragmentWidth = terminalStringWidth(fragmentText, internal.widthProfile)
     const style = currentStyle(spans, sourceStart, sourceEnd)
     const link = currentLink(spans, sourceStart, sourceEnd)
     const fragment: TerminalRichFragment = {
@@ -269,16 +323,21 @@ export function materializeTerminalRichLineRange(
     renderedOffset += fragment.text.length
     fragments.push(fragment)
 
-    if (link) ansiText += `\x1b]8;;${link}\x1b\\`
-    if (style) ansiText += styleToSgr(style)
-    ansiText += fragment.text
-    if (style) ansiText += '\x1b[0m'
-    if (link) ansiText += '\x1b]8;;\x1b\\'
+    if (ansiTextMode === 'sgr-osc8' && link) {
+      ansiText = appendAnsiText(ansiText, `\x1b]8;;${link}\x1b\\`, prepared)
+    }
+    if (style) ansiText = appendAnsiText(ansiText, styleToSgr(style), prepared)
+    ansiText = appendAnsiText(ansiText, fragment.text, prepared)
+    if (style) ansiText = appendAnsiText(ansiText, '\x1b[0m', prepared)
+    if (ansiTextMode === 'sgr-osc8' && link) {
+      ansiText = appendAnsiText(ansiText, '\x1b]8;;\x1b\\', prepared)
+    }
   }
 
-  return {
+  const materialized: MaterializedTerminalRichLine = {
     ...base,
     fragments,
-    ansiText,
   }
+  if (ansiText !== undefined) materialized.ansiText = ansiText
+  return materialized
 }

@@ -1,8 +1,8 @@
 # Development
 
-This repository is migrating toward a publishable pure TUI text layout package.
+This repository has a publishable terminal-cell text layout package baseline and is now hardening the host-neutral API, security posture, benchmark evidence, performance profile, and future chunked append storage.
 
-The active development target is terminal-cell layout. Browser-oriented scripts and pages from the source project are migration context only until they are removed from the active package surface.
+The active development target is terminal-cell layout. Browser-oriented source material remains out of the active package surface.
 
 ## Setup
 
@@ -24,6 +24,7 @@ bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run terminal-demo-check
+bun run api-snapshot-check
 bun run package-smoke-test
 ```
 
@@ -41,12 +42,23 @@ bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run terminal-demo-check
+bun run api-snapshot-check
 bun run package-smoke-test
 ```
 
 `terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
 
-The benchmark thresholds are intentionally conservative because the harness also runs invariants. Task 9 adds virtual text counters for page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages.
+The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work; these counters are release-regression telemetry, not public benchmark evidence.
+
+## Competitive Benchmark
+
+Run the optional local competitive benchmark manually when comparing `pretext-TUI` against mainstream text wrapping primitives:
+
+```sh
+bun run benchmark:competitive:tui
+```
+
+This command is intentionally not part of `prepublishOnly`. It depends on dev-only comparison packages such as `wrap-ansi`, `string-width`, and `strip-ansi`, measures local wall-clock time, and compares text-layout primitives rather than complete application renderers or event loops.
 
 ## Packaging Target
 
@@ -59,17 +71,21 @@ The final package smoke test must verify:
 - package files do not ship obsolete browser product surfaces
 - root `dist/` contains only public wrappers; implementation modules ship only under `dist/internal/`
 - type declarations match the terminal API surface
+- rich sidecar declarations do not expose full raw terminal input, unsafe `sequence` fields, or implicit `ansiText`
 - validation scripts stay typed and terminal-only
 
 ## Source Of Truth
 
-Use these documents while the migration is in progress:
+Use these documents while post-publishability hardening is in progress:
 
 - [README.md](README.md) — public package story
 - [STATUS.md](STATUS.md) — current migration state
 - [TODO.md](TODO.md) — current task order
 - [docs/contracts/terminal-contract.md](docs/contracts/terminal-contract.md) — terminal semantics
 - [docs/contracts/host-app-boundary.md](docs/contracts/host-app-boundary.md) — host boundary
+- [docs/contracts/public-api-boundary.md](docs/contracts/public-api-boundary.md) — public/private API boundary
+- [docs/contracts/terminal-security-profile.md](docs/contracts/terminal-security-profile.md) — rich sidecar security profile
+- [docs/production/README.md](docs/production/README.md) — production-readiness notes
 - [docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md](docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md) — detailed implementation plan
 
 ## Active Engineering Rules
@@ -81,8 +97,9 @@ Use these documents while the migration is in progress:
 - Keep line/range APIs non-materializing by default.
 - Keep virtual text caches fixed-column and range-only; materialize only requested rows.
 - Keep virtual text handles opaque at runtime; anchor/page/source storage must stay behind capability boundaries.
+- Keep rich metadata fragment-first; ANSI reconstruction must stay explicit and policy-bound.
 - Do not monkey-patch web globals to pass tests.
-- Do not add host-specific adapters to this package.
+- Do not add named-host integration layers to this package.
 - Do not keep parallel browser and terminal public stories.
 
 ## Archived Source Material

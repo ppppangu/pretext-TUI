@@ -7,9 +7,10 @@ import {
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
 } from '../../src/terminal-rich-inline.js'
+import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
 import {
+  assertNoUnsafeTerminalOutput,
   assert,
-  hasUnsafeControls,
 } from './validation-helpers.js'
 
 describe('tui rich inline validation', () => {
@@ -17,7 +18,7 @@ describe('tui rich inline validation', () => {
     expect(() => prepareTerminal('\x1b[31mred\x1b[0m')).toThrow()
     const prepared = prepareTerminalRichInline('\x1b[31mred\x1b[0m')
     expect(prepared.visibleText).toBe('red')
-    expect(prepared.prepared.sourceText).toBe('red')
+    expect(getInternalPreparedTerminalText(prepared.prepared).sourceText).toBe('red')
     expect(prepared.spans.map(span => span.kind)).toEqual(['style'])
   })
 
@@ -28,18 +29,21 @@ describe('tui rich inline validation', () => {
     const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 20 })
     assert(line !== null, 'expected rich line')
     const materialized = materializeTerminalRichLineRange(prepared, line)
+    const ansiMaterialized = materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr-osc8' })
     expect(prepared.visibleText).toBe('abcd')
     expect(prepared.diagnostics.length).toBeGreaterThanOrEqual(3)
     expect(materialized.text).toBe('abcd')
-    expect(materialized.ansiText).toBe('abcd')
-    expect(hasUnsafeControls(materialized.text)).toBe(false)
+    expect(materialized.ansiText).toBeUndefined()
+    expect(ansiMaterialized.ansiText).toBe('abcd')
+    assertNoUnsafeTerminalOutput(materialized.text)
   })
 
   test('OSC8 URIs cannot inject controls in sanitize or reject mode', () => {
     const unsafeUri = '\x1b]8;;bad\x1b[31m\x1b\\x'
     const sanitized = prepareTerminalRichInline(unsafeUri)
     expect(sanitized.visibleText).toBe('x')
-    expect(sanitized.diagnostics.some(diagnostic => diagnostic.kind === 'malformed-sequence')).toBe(true)
+    expect(sanitized.diagnostics.some(diagnostic => diagnostic.code === 'osc8-uri-control')).toBe(true)
+    expect(sanitized.diagnostics.every(diagnostic => diagnostic.redacted)).toBe(true)
     expect(() =>
       prepareTerminalRichInline(unsafeUri, { unsupportedControlMode: 'reject' }),
     ).toThrow()
@@ -51,12 +55,14 @@ describe('tui rich inline validation', () => {
     })
     const lines: TerminalLineRange[] = []
     walkTerminalRichLineRanges(prepared, { columns: 3 }, line => lines.push(line))
-    const materialized = lines.map(line => materializeTerminalRichLineRange(prepared, line))
+    const materialized = lines.map(line => materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr-osc8' }))
     expect(materialized.map(line => line.text)).toEqual(['ABC', 'DEF', 'GH'])
     expect(materialized[1]?.ansiText).toContain('\x1b[31m')
     expect(materialized[1]?.ansiText).toContain('\x1b]8;;https://e.test\x1b\\')
     for (const line of materialized) {
-      const retokenized = prepareTerminalRichInline(line.ansiText, { whiteSpace: 'pre-wrap' })
+      const ansiText = line.ansiText
+      expect(ansiText).toBeDefined()
+      const retokenized = prepareTerminalRichInline(ansiText ?? '', { whiteSpace: 'pre-wrap' })
       expect(retokenized.visibleText).toBe(line.text)
       expect(retokenized.diagnostics).toHaveLength(0)
       expect(line.fragments.map(fragment => fragment.text).join('')).toBe(line.text)
@@ -69,6 +75,7 @@ describe('tui rich inline validation', () => {
     assert(line !== null, 'expected rich line')
     const materialized = materializeTerminalRichLineRange(prepared, line)
     expect(materialized.text).toBe('á 👩‍💻')
+    expect(materialized.ansiText).toBeUndefined()
     expect(materialized.fragments.map(fragment => fragment.text).join('')).toBe(materialized.text)
     for (let i = 1; i < materialized.fragments.length; i++) {
       expect(materialized.fragments[i]!.columnStart).toBe(materialized.fragments[i - 1]!.columnEnd)

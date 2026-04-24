@@ -8,10 +8,27 @@ import {
   type PreparedTextWithSegments,
 } from './layout.js'
 import {
+  createPreparedTerminalText,
+  getInternalPreparedTerminalGeometry,
+  getInternalPreparedTerminalText,
+  type PreparedTerminalText,
+} from './terminal-prepared-reader.js'
+import {
+  getTerminalCursorSourceOffset,
+  getTerminalSegmentGeometry,
+  getTerminalSegmentGrapheme,
+  getTerminalSegmentGraphemeCount,
+  getTerminalSegmentWidthAt,
+  getTerminalSegmentWidthRange,
+  type PreparedTerminalGeometry,
+} from './terminal-grapheme-geometry.js'
+import { isTerminalBidiFormatControlCodePoint } from './terminal-control-policy.js'
+import {
   terminalGraphemeWidth,
   terminalStringWidth,
   terminalTabAdvance,
 } from './terminal-string-width.js'
+import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
 import type { TerminalWidthProfileInput } from './terminal-types.js'
 
 export type TerminalPrepareOptions = {
@@ -26,7 +43,7 @@ export type TerminalLayoutOptions = {
   startColumn?: number
 }
 
-export type PreparedTerminalText = PreparedTextWithSegments
+export type { PreparedTerminalText } from './terminal-prepared-reader.js'
 
 export type TerminalLayoutResult = {
   rows: number
@@ -81,6 +98,9 @@ function assertPlainTerminalInput(text: string): void {
     if ((code <= 0x1f || (code >= 0x7f && code <= 0x9f)) && !allowedWhitespace) {
       throw new Error(`Plain terminal text cannot contain control character U+${code.toString(16).toUpperCase()}`)
     }
+    if (isTerminalBidiFormatControlCodePoint(code)) {
+      throw new Error(`Plain terminal text cannot contain bidi format control U+${code.toString(16).toUpperCase()}`)
+    }
   }
 }
 
@@ -114,45 +134,40 @@ function toTerminalCursor(cursor: LayoutCursor): TerminalCursor {
   }
 }
 
-function segmentGraphemeOffsets(segment: string): number[] {
-  const offsets = [0]
-  let offset = 0
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  for (const { segment: grapheme } of segmenter.segment(segment)) {
-    offset += grapheme.length
-    offsets.push(offset)
+function canonicalizeLayoutCursor(
+  geometry: PreparedTerminalGeometry,
+  cursor: LayoutCursor,
+): LayoutCursor {
+  const prepared = geometry.prepared
+  let segmentIndex = Math.max(0, cursor.segmentIndex)
+  let graphemeIndex = Math.max(0, cursor.graphemeIndex)
+  while (segmentIndex < prepared.segments.length) {
+    const graphemeCount = getTerminalSegmentGraphemeCount(geometry, segmentIndex)
+    if (graphemeIndex < graphemeCount) break
+    segmentIndex++
+    graphemeIndex = 0
   }
-  return offsets
+  return { segmentIndex, graphemeIndex }
 }
 
-function segmentGraphemes(segment: string): string[] {
-  const graphemes: string[] = []
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  for (const { segment: grapheme } of segmenter.segment(segment)) {
-    graphemes.push(grapheme)
-  }
-  return graphemes
-}
-
-function sourceOffsetForCursor(prepared: PreparedTerminalText, cursor: LayoutCursor): number {
-  if (cursor.segmentIndex >= prepared.segments.length) return prepared.sourceText.length
-  const segment = prepared.segments[cursor.segmentIndex] ?? ''
-  const segmentStart = prepared.sourceStarts[cursor.segmentIndex] ?? prepared.sourceText.length
-  if (cursor.graphemeIndex <= 0) return segmentStart
-  const offsets = segmentGraphemeOffsets(segment)
-  return segmentStart + (offsets[cursor.graphemeIndex] ?? segment.length)
+function sourceOffsetForCursor(
+  geometry: PreparedTerminalGeometry,
+  cursor: LayoutCursor,
+): number {
+  return getTerminalCursorSourceOffset(geometry, cursor)
 }
 
 function visibleSourceStartForRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
 ): number {
   const visibleStart = visibleStartCursorForRange(prepared, range)
-  return sourceOffsetForCursor(prepared, visibleStart)
+  return sourceOffsetForCursor(geometry, visibleStart)
 }
 
 function visibleStartCursorForRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   range: LayoutLineRange,
 ): LayoutCursor {
   if (range.start.graphemeIndex > 0) {
@@ -171,7 +186,7 @@ function visibleStartCursorForRange(
 }
 
 function breakForRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   range: LayoutLineRange,
   sourceStart: number,
   sourceEnd: number,
@@ -193,11 +208,12 @@ function breakForRange(
 }
 
 function visibleSourceEndForRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
 ): number {
   if (range.end.graphemeIndex > 0) {
-    return sourceOffsetForCursor(prepared, range.end)
+    return sourceOffsetForCursor(geometry, range.end)
   }
   const previousIndex = range.end.segmentIndex - 1
   const previousKind = prepared.kinds[previousIndex]
@@ -206,16 +222,17 @@ function visibleSourceEndForRange(
     previousKind === 'zero-width-break' ||
     previousKind === 'hard-break'
   ) {
-    return sourceOffsetForCursor(prepared, {
+    return sourceOffsetForCursor(geometry, {
       segmentIndex: previousIndex,
       graphemeIndex: 0,
     })
   }
-  return sourceOffsetForCursor(prepared, range.end)
+  return sourceOffsetForCursor(geometry, range.end)
 }
 
 function terminalWidthForRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
   startColumn: number,
   visibleSoftHyphenOffset: number | null,
@@ -231,7 +248,8 @@ function terminalWidthForRange(
     const kind = prepared.kinds[i]
     if (kind === 'hard-break' || kind === 'zero-width-break') continue
     const segment = prepared.segments[i] ?? ''
-    const graphemes = segmentGraphemes(segment)
+    const segmentGeometry = getTerminalSegmentGeometry(geometry, i)
+    const graphemes = segmentGeometry.graphemes
     const start = i === visibleStart.segmentIndex ? visibleStart.graphemeIndex : 0
     const end = i === range.end.segmentIndex && range.end.graphemeIndex > 0
       ? range.end.graphemeIndex
@@ -253,8 +271,13 @@ function terminalWidthForRange(
       width += terminalTabAdvance(startColumn + width, prepared.tabStopAdvance)
       continue
     }
-    for (let g = start; g < end; g++) {
-      width += terminalGraphemeWidth(graphemes[g]!, prepared.widthProfile)
+    const rangeWidth = getTerminalSegmentWidthRange(geometry, i, start, end)
+    if (rangeWidth !== null) {
+      width += rangeWidth
+    } else {
+      for (let g = start; g < end; g++) {
+        width += terminalGraphemeWidth(graphemes[g]!, prepared.widthProfile)
+      }
     }
   }
 
@@ -282,14 +305,15 @@ function terminalWidthForRange(
 }
 
 function toTerminalRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
   options: TerminalLayoutOptions,
 ): TerminalLineRange {
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
-  const sourceStart = visibleSourceStartForRange(prepared, range)
-  const sourceEnd = Math.max(sourceStart, visibleSourceEndForRange(prepared, range))
+  const sourceStart = visibleSourceStartForRange(prepared, geometry, range)
+  const sourceEnd = Math.max(sourceStart, visibleSourceEndForRange(prepared, geometry, range))
   const breakInfo = breakForRange(prepared, range, sourceStart, sourceEnd)
   const visibleSoftHyphenOffset =
     breakInfo.kind === 'soft-hyphen'
@@ -297,6 +321,7 @@ function toTerminalRange(
       : null
   const width = terminalWidthForRange(
     prepared,
+    geometry,
     range,
     startColumn,
     visibleSoftHyphenOffset,
@@ -321,11 +346,12 @@ function materializeVisibleTerminalText(
   text: string,
   startColumn: number,
   tabSize: number,
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   stripLeadingSoftHyphenArtifact: boolean,
 ): { text: string; width: number } {
   let rendered = ''
   let column = startColumn
+  recordTerminalPerformanceCounter('terminalMaterializeGraphemeSegmentations')
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
   for (const { segment } of segmenter.segment(text)) {
     if (segment === '\t') {
@@ -350,7 +376,7 @@ function materializeVisibleTerminalText(
 }
 
 function shouldTrimMaterializedTrailingSpaces(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   range: TerminalLineRange,
   lineText: string,
 ): boolean {
@@ -389,19 +415,19 @@ function compareLayoutCursors(a: LayoutCursor, b: LayoutCursor): number {
 }
 
 function nextGraphemeCursor(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   cursor: LayoutCursor,
 ): LayoutCursor | null {
-  const segment = prepared.segments[cursor.segmentIndex]
-  if (segment === undefined) return null
-  const graphemes = segmentGraphemes(segment)
-  if (cursor.graphemeIndex >= graphemes.length) {
+  if (prepared.segments[cursor.segmentIndex] === undefined) return null
+  const graphemeCount = getTerminalSegmentGraphemeCount(geometry, cursor.segmentIndex)
+  if (cursor.graphemeIndex >= graphemeCount) {
     return {
       segmentIndex: cursor.segmentIndex + 1,
       graphemeIndex: 0,
     }
   }
-  if (cursor.graphemeIndex + 1 >= graphemes.length) {
+  if (cursor.graphemeIndex + 1 >= graphemeCount) {
     return {
       segmentIndex: cursor.segmentIndex + 1,
       graphemeIndex: 0,
@@ -414,7 +440,7 @@ function nextGraphemeCursor(
 }
 
 function normalizeTerminalLineStart(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   cursor: LayoutCursor,
 ): LayoutCursor | null {
   if (cursor.segmentIndex >= prepared.segments.length) return null
@@ -441,12 +467,13 @@ function createInternalTerminalRange(
 }
 
 function layoutNextTerminalInternalRange(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
+  geometry: PreparedTerminalGeometry,
   cursor: TerminalCursor,
   columns: number,
   startColumn: number,
 ): LayoutLineRange | null {
-  const rawStart = toLayoutCursor(cursor)
+  const rawStart = canonicalizeLayoutCursor(geometry, toLayoutCursor(cursor))
   const visibleStart = normalizeTerminalLineStart(prepared, rawStart)
   if (visibleStart === null) return null
   const rangeStart = visibleStart.segmentIndex >= prepared.segments.length &&
@@ -476,8 +503,7 @@ function layoutNextTerminalInternalRange(
 
   while (position.segmentIndex < prepared.segments.length) {
     const kind = prepared.kinds[position.segmentIndex]
-    const segment = prepared.segments[position.segmentIndex] ?? ''
-    const graphemes = segmentGraphemes(segment)
+    const graphemeCount = getTerminalSegmentGraphemeCount(geometry, position.segmentIndex)
 
     if (kind === 'hard-break') {
       return createInternalTerminalRange(
@@ -487,12 +513,12 @@ function layoutNextTerminalInternalRange(
       )
     }
 
-    if (position.graphemeIndex >= graphemes.length) {
+    if (position.graphemeIndex >= graphemeCount) {
       position = { segmentIndex: position.segmentIndex + 1, graphemeIndex: 0 }
       continue
     }
 
-    const next = nextGraphemeCursor(prepared, position)
+    const next = nextGraphemeCursor(prepared, geometry, position)
     if (next === null) break
 
     if (kind === 'zero-width-break') {
@@ -513,7 +539,15 @@ function layoutNextTerminalInternalRange(
     if (kind === 'tab') {
       advance = terminalTabAdvance(startColumn + width, prepared.tabStopAdvance)
     } else {
-      advance = terminalGraphemeWidth(graphemes[position.graphemeIndex]!, prepared.widthProfile)
+      const measured = getTerminalSegmentWidthAt(
+        geometry,
+        position.segmentIndex,
+        position.graphemeIndex,
+      )
+      advance = measured ?? terminalGraphemeWidth(
+        getTerminalSegmentGrapheme(geometry, position.segmentIndex, position.graphemeIndex),
+        prepared.widthProfile,
+      )
     }
 
     if (startColumn + width + advance > columns) {
@@ -552,7 +586,7 @@ export function prepareTerminal(
   if (options.wordBreak !== undefined) prepareOptions.wordBreak = options.wordBreak
   if (options.widthProfile !== undefined) prepareOptions.widthProfile = options.widthProfile
   if (options.tabSize !== undefined) prepareOptions.tabSize = options.tabSize
-  return prepareWithSegments(text, 'terminal', prepareOptions)
+  return createPreparedTerminalText(prepareWithSegments(text, 'terminal', prepareOptions))
 }
 
 export function layoutTerminal(
@@ -587,17 +621,23 @@ export function walkTerminalLineRanges(
   options: TerminalLayoutOptions,
   onLine: (line: TerminalLineRange) => void,
 ): number {
+  const internal = getInternalPreparedTerminalText(prepared)
+  const geometry = getInternalPreparedTerminalGeometry(prepared)
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
   let rows = 0
   let cursor = TERMINAL_START_CURSOR
   let currentStartColumn = startColumn
   while (true) {
-    const line = layoutNextTerminalLineRange(prepared, cursor, {
+    const internalLine = layoutNextTerminalInternalRange(
+      internal,
+      geometry,
+      cursor,
       columns,
-      startColumn: currentStartColumn,
-    })
-    if (line === null) break
+      currentStartColumn,
+    )
+    if (internalLine === null) break
+    const line = toTerminalRange(internal, geometry, internalLine, { columns, startColumn: currentStartColumn })
     rows++
     onLine(line)
     cursor = line.end
@@ -611,32 +651,35 @@ export function layoutNextTerminalLineRange(
   cursor: TerminalCursor,
   options: TerminalLayoutOptions,
 ): TerminalLineRange | null {
+  const internal = getInternalPreparedTerminalText(prepared)
+  const geometry = getInternalPreparedTerminalGeometry(prepared)
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
-  const line = layoutNextTerminalInternalRange(prepared, cursor, columns, startColumn)
-  return line === null ? null : toTerminalRange(prepared, line, { columns, startColumn })
+  const line = layoutNextTerminalInternalRange(internal, geometry, cursor, columns, startColumn)
+  return line === null ? null : toTerminalRange(internal, geometry, line, { columns, startColumn })
 }
 
 export function materializeTerminalLineRange(
   prepared: PreparedTerminalText,
   range: TerminalLineRange,
 ): MaterializedTerminalLine {
-  const visibleStart = visibleStartCursorForRange(prepared, range)
-  const line = materializeLineRange(prepared, {
+  const internal = getInternalPreparedTerminalText(prepared)
+  const visibleStart = visibleStartCursorForRange(internal, range)
+  const line = materializeLineRange(internal, {
     width: range.width,
     start: visibleStart,
     end: toLayoutCursor(range.end),
   })
-  const sourceText = prepared.sourceText.slice(range.sourceStart, range.sourceEnd)
-  const visibleText = shouldTrimMaterializedTrailingSpaces(prepared, range, line.text)
+  const sourceText = internal.sourceText.slice(range.sourceStart, range.sourceEnd)
+  const visibleText = shouldTrimMaterializedTrailingSpaces(internal, range, line.text)
     ? line.text.replace(/[ \u00AD\u200B\u2060\uFEFF]+$/g, '')
     : line.text
   const materialized = materializeVisibleTerminalText(
     visibleText,
     range.startColumn,
-    prepared.tabStopAdvance,
-    prepared,
-    prepared.sourceText[range.sourceStart - 1] === '\u00AD' &&
+    internal.tabStopAdvance,
+    internal,
+    internal.sourceText[range.sourceStart - 1] === '\u00AD' &&
       !sourceText.includes('\u00AD') &&
       !sourceText.startsWith('-'),
   )

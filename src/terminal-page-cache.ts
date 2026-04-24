@@ -3,7 +3,7 @@ import type { PreparedTerminalText, TerminalLineRange } from './terminal.js'
 import {
   assertTerminalLineIndexPrepared,
   getTerminalLineIndexIdentity,
-  getTerminalLineRangeAtRow,
+  getTerminalLineRangesAtRows,
   type TerminalLineIndex,
 } from './terminal-line-index.js'
 
@@ -127,12 +127,7 @@ export function getTerminalLinePage(
   }
 
   incrementPageMisses(internal)
-  const lines: TerminalLineRange[] = []
-  for (let offset = 0; offset < rowCount; offset++) {
-    const line = getTerminalLineRangeAtRow(prepared, index, startRow + offset)
-    if (line === null) break
-    lines.push(line)
-  }
+  const lines = getTerminalLineRangesAtRows(prepared, index, startRow, rowCount)
 
   const page = createImmutablePage({
     kind: 'terminal-line-page@1',

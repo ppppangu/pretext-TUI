@@ -4,6 +4,7 @@ import {
   layoutTerminal,
   prepareTerminal,
 } from '../../src/index.js'
+import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
 import {
   assertDeepEqual,
   assertTerminalInvariants,
@@ -51,6 +52,8 @@ describe('tui public layout validation', () => {
   test('plain terminal core rejects raw terminal controls', () => {
     expect(() => prepareTerminal('\x1b[31mred\x1b[0m')).toThrow()
     expect(() => prepareTerminal('ok\x07bad')).toThrow()
+    expect(() => prepareTerminal('safe\u202Eunsafe')).toThrow()
+    expect(() => prepareTerminal('safe\u200Eunsafe')).toThrow()
   })
 
   test('keep-all URL merging never swallows structural tab or soft-hyphen segments', () => {
@@ -59,8 +62,9 @@ describe('tui public layout validation', () => {
       wordBreak: 'keep-all',
       tabSize: 2,
     })
-    expect(prepared.kinds).toContain('tab')
-    expect(prepared.kinds).toContain('soft-hyphen')
+    const internal = getInternalPreparedTerminalText(prepared)
+    expect(internal.kinds).toContain('tab')
+    expect(internal.kinds).toContain('soft-hyphen')
     assertTerminalInvariants(prepared, { columns: 6 })
   })
 
@@ -85,8 +89,9 @@ describe('tui public layout validation', () => {
 
   test('break-kind splitting preserves keycap grapheme clusters', () => {
     const prepared = prepareTerminal('\u202F1️⃣。', { whiteSpace: 'normal' })
-    expect(prepared.segments.some(segment => segment.includes('1️⃣'))).toBe(true)
-    expect(prepared.segments.every(segment => !/^[\p{M}\uFE00-\uFE0F\u20E3]/u.test(segment))).toBe(true)
+    const internal = getInternalPreparedTerminalText(prepared)
+    expect(internal.segments.some(segment => segment.includes('1️⃣'))).toBe(true)
+    expect(internal.segments.every(segment => !/^[\p{M}\uFE00-\uFE0F\u20E3]/u.test(segment))).toBe(true)
     assertTerminalInvariants(prepared, { columns: 5 })
   })
 

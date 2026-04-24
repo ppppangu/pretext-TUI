@@ -26,6 +26,10 @@ import {
   walkTerminalRichLineRanges,
 } from '../src/terminal-rich-inline.js'
 import {
+  resetTerminalPerformanceCounters,
+  snapshotTerminalPerformanceCounters,
+} from '../src/terminal-performance-counters.js'
+import {
   assert,
   collectTerminalLines,
   stableHash,
@@ -71,9 +75,11 @@ for (const workload of config.workloads) {
   const input = await loadInput(workload)
   runWorkload(workload, input, 1)
   const iterations = workload.iterations ?? config.defaults.iterations
+  resetTerminalPerformanceCounters()
   const started = performance.now()
   const counters = runWorkload(workload, input, iterations)
   const elapsedMs = performance.now() - started
+  mergeCounters(counters, snapshotTerminalPerformanceCounters())
   const maxMilliseconds = workload.maxMilliseconds ?? config.defaults.maxMilliseconds
   assert(elapsedMs <= maxMilliseconds, `${workload.id} exceeded ${maxMilliseconds}ms: ${elapsedMs.toFixed(2)}ms`)
   assertCounterAssertions(workload, counters)
@@ -84,6 +90,12 @@ for (const workload of config.workloads) {
     counters,
     hash: stableHash(counters),
   })
+}
+
+function mergeCounters(target: Record<string, number>, source: Record<string, number>): void {
+  for (const [key, value] of Object.entries(source)) {
+    target[key] = (target[key] ?? 0) + value
+  }
 }
 
 console.log('TUI benchmark check passed')
@@ -122,10 +134,10 @@ function runWorkload(
       counters.richDiagnostics += prepared.diagnostics.length
       walkTerminalRichLineRanges(prepared, workload.layout, line => {
         counters.layoutPasses++
-        const materialized = materializeTerminalRichLineRange(prepared, line)
+        const materialized = materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr-osc8' })
         counters.materializedLines++
         counters.materializedCodeUnits += materialized.text.length
-        counters.ansiCodeUnits += materialized.ansiText.length
+        counters.ansiCodeUnits += materialized.ansiText?.length ?? 0
       })
       continue
     }
@@ -239,6 +251,7 @@ function runVirtualWorkload(
   const cacheStats = getTerminalPageCacheStats(cache)
   return {
     prepareCalls: workload.appendText === undefined ? 1 : 3,
+    // For virtual workloads this counts range-walker invocations, not renderer or page-build calls.
     layoutPasses: indexStats.rangeWalks + flowRangeWalks,
     materializedLines,
     materializedCodeUnits,

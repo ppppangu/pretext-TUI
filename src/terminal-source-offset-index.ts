@@ -1,5 +1,13 @@
 // 补建说明：该文件为后续补建，用于提供 Task 9 的 terminal source-offset/cursor lookup index；当前进度：运行时 handle 已改为 WeakMap-backed opaque 边界，索引严格绑定 prepared handle。
 import type { PreparedTerminalText, TerminalCursor } from './terminal.js'
+import {
+  getInternalPreparedTerminalGeometry,
+  getInternalPreparedTerminalText,
+} from './terminal-prepared-reader.js'
+import {
+  getTerminalCursorSourceOffset,
+  getTerminalSegmentGeometry,
+} from './terminal-grapheme-geometry.js'
 
 export type TerminalSourceOffsetBias = 'before' | 'after' | 'closest'
 
@@ -35,6 +43,8 @@ const sourceOffsetIndexStates = new WeakMap<TerminalSourceOffsetIndex, TerminalS
 export function createTerminalSourceOffsetIndex(
   prepared: PreparedTerminalText,
 ): TerminalSourceOffsetIndex {
+  const internal = getInternalPreparedTerminalText(prepared)
+  const geometry = getInternalPreparedTerminalGeometry(prepared)
   const boundaries: SourceBoundary[] = []
   const cursorOffsets = new Map<string, number>()
   const seenOffsets = new Set<string>()
@@ -48,19 +58,22 @@ export function createTerminalSourceOffsetIndex(
   }
 
   pushBoundary(createTerminalCursor(0, 0), 0)
-  for (let segmentIndex = 0; segmentIndex < prepared.segments.length; segmentIndex++) {
-    const segment = prepared.segments[segmentIndex] ?? ''
-    const segmentStart = prepared.sourceStarts[segmentIndex] ?? prepared.sourceText.length
+  for (let segmentIndex = 0; segmentIndex < internal.segments.length; segmentIndex++) {
+    const segmentStart = internal.sourceStarts[segmentIndex] ?? internal.sourceText.length
+    const segmentGeometry = getTerminalSegmentGeometry(geometry, segmentIndex)
     pushBoundary(createTerminalCursor(segmentIndex, 0), segmentStart)
-    let localOffset = 0
-    let graphemeIndex = 0
-    for (const { segment: grapheme } of graphemeSegmenter().segment(segment)) {
-      localOffset += grapheme.length
+    for (
+      let graphemeIndex = 1;
+      graphemeIndex < segmentGeometry.localSourceOffsets.length;
       graphemeIndex++
-      pushBoundary(createTerminalCursor(segmentIndex, graphemeIndex), segmentStart + localOffset)
+    ) {
+      pushBoundary(
+        createTerminalCursor(segmentIndex, graphemeIndex),
+        segmentStart + segmentGeometry.localSourceOffsets[graphemeIndex]!,
+      )
     }
   }
-  pushBoundary(createTerminalCursor(prepared.segments.length, 0), prepared.sourceText.length)
+  pushBoundary(createTerminalCursor(internal.segments.length, 0), internal.sourceText.length)
 
   boundaries.sort((a, b) => {
     if (a.sourceOffset !== b.sourceOffset) return a.sourceOffset - b.sourceOffset
@@ -97,19 +110,10 @@ export function getTerminalSourceOffsetForCursor(
     if (found !== undefined) return found
   }
 
-  if (cursor.segmentIndex >= prepared.segments.length) return prepared.sourceText.length
-  const segment = prepared.segments[cursor.segmentIndex] ?? ''
-  const segmentStart = prepared.sourceStarts[cursor.segmentIndex] ?? prepared.sourceText.length
-  if (cursor.graphemeIndex <= 0) return segmentStart
-
-  let localOffset = 0
-  let graphemeIndex = 0
-  for (const { segment: grapheme } of graphemeSegmenter().segment(segment)) {
-    if (graphemeIndex >= cursor.graphemeIndex) break
-    localOffset += grapheme.length
-    graphemeIndex++
-  }
-  return Math.min(prepared.sourceText.length, segmentStart + localOffset)
+  return getTerminalCursorSourceOffset(
+    getInternalPreparedTerminalGeometry(prepared),
+    cursor,
+  )
 }
 
 export function getTerminalCursorForSourceOffset(
@@ -122,8 +126,9 @@ export function getTerminalCursorForSourceOffset(
   if (!Number.isInteger(sourceOffset)) {
     throw new Error(`Terminal source offset must be an integer, got ${sourceOffset}`)
   }
+  const internal = getInternalPreparedTerminalText(prepared)
   const requestedSourceOffset = sourceOffset
-  const clamped = Math.max(0, Math.min(prepared.sourceText.length, sourceOffset))
+  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
   const boundaries = internalSourceIndex(index).boundaries
   const after = lowerBoundSourceOffset(boundaries, clamped)
   const exact = boundaries[after]?.sourceOffset === clamped
@@ -189,15 +194,6 @@ function lowerBoundSourceOffset(boundaries: readonly SourceBoundary[], sourceOff
     else hi = mid
   }
   return lo
-}
-
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
-
-function graphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
 }
 
 function createTerminalCursor(segmentIndex: number, graphemeIndex: number): TerminalCursor {

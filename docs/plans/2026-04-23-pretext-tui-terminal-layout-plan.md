@@ -1,7 +1,7 @@
 <!-- 补建说明：该文件为后续补建，用于把 pretext-TUI 从浏览器/Canvas 文本布局库迁移为纯 TUI 终端 cell 布局库的详细执行方案固化下来；当前进度：已根据多轮 5.4 xhigh swarms 审稿完成第二版详细执行计划。 -->
 # Pretext-TUI Terminal Layout Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use `executing-plans` to implement this plan task-by-task.
+> **For executor:** REQUIRED WORKFLOW: Use `executing-plans` to implement this plan task-by-task.
 
 **Goal:** Turn `pretext-TUI` into a pure TUI terminal-cell text layout package that preserves Pretext’s strong `prepare -> layout -> range -> materialize` architecture while removing browser/Canvas/DOM runtime assumptions.
 
@@ -9,7 +9,7 @@
 
 **Tech Stack:** Bun, TypeScript, `Intl.Segmenter`, deterministic terminal cell-width rules, typed-array-friendly prepared data, package smoke tests, TUI-only oracles, and host-neutral adapter-ready APIs with no first-party host-app integration in this project.
 
-**Execution CWD:** Run every command in this plan from `D:\Projects\claude-code-main\pretext-TUI`.
+**Execution CWD:** Run every command in this plan from the repository's `pretext-TUI` directory.
 
 **Repository Rules:**
 - Every new file must start with a `补建说明` header comment.

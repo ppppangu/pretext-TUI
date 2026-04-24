@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 pretext-TUI 与主流 text wrapping primitives 的横向 benchmark 场景；当前进度：首版覆盖 full wrap、prepared resize、rich SGR 与 large page seek，作为人工测评而非发布门禁。",
+    "schema": "pretext-tui-competitive-benchmark@1"
+  },
+  "defaults": {
+    "iterations": 20,
+    "samples": 5,
+    "minSamplesForP95": 5,
+    "warmupIterations": 2
+  },
+  "workloads": [
+    {
+      "id": "plain-full-wrap",
+      "description": "Full-document plain terminal wrapping with CJK, emoji, tabs, hard breaks, and terminal-session prose.",
+      "scenario": "full-document",
+      "corpusFile": "mixed-app-text.txt",
+      "repeat": 4,
+      "columns": [52],
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "iterations": 10
+    },
+    {
+      "id": "unicode-resize-relayout",
+      "description": "Repeated resize relayout over one prepared mixed-language buffer.",
+      "scenario": "prepared-resize",
+      "text": "A界é😀B 👩‍💻 こんにちは 世界 ΩΩΩ\\n日志行 status=ok path=/tmp/example tabs\\tindent\\n",
+      "repeat": 40,
+      "columns": [36, 52, 80, 100],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4,
+        "widthProfile": { "ambiguousWidth": "wide" }
+      },
+      "iterations": 10
+    },
+    {
+      "id": "rich-sgr-wrap",
+      "description": "ANSI SGR inline style wrapping with plain text materialization plus ANSI re-emission.",
+      "scenario": "rich-sgr",
+      "rawText": "\\u001b[31mERROR\\u001b[0m service=api message=\\u001b[1m世界 hello 😀\\u001b[0m latency=42ms path=/var/log/app repeated text for terminal wrapping\\n",
+      "repeat": 30,
+      "columns": [48],
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "iterations": 10
+    },
+    {
+      "id": "rich-osc8-wrap",
+      "description": "OSC8 hyperlink metadata wrapping with URI policy and explicit ANSI re-emission.",
+      "scenario": "rich-sgr",
+      "rawText": "docs=\\u001b]8;;https://example.test/docs\\u001b\\\\pretext\\u001b]8;;\\u001b\\\\ status=ok repeated terminal link text\\n",
+      "repeat": 20,
+      "columns": [48],
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "iterations": 8
+    },
+    {
+      "id": "large-page-seek",
+      "description": "Large fixed-column viewport page lookup, comparing range/page materialization against full-wrap-and-slice baselines.",
+      "scenario": "large-page-seek",
+      "corpusFile": "mixed-app-text.txt",
+      "repeat": 30,
+      "columns": [52],
+      "pageStarts": [0, 64, 128, 256, 64],
+      "pageSize": 16,
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "iterations": 3
+    }
+  ]
+}

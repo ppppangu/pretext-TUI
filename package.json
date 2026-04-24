@@ -1,7 +1,7 @@
 {
   "name": "pretext-tui",
   "version": "0.0.0",
-  "description": "Terminal-cell text layout primitives for TUI applications",
+  "description": "Host-neutral terminal-cell text layout primitives for TUIs, CLIs, logs, transcripts, and editor panes",
   "keywords": [
     "tui",
     "terminal",
@@ -9,6 +9,10 @@
     "terminal-layout",
     "line-breaking",
     "text-layout",
+    "cli",
+    "log-viewer",
+    "transcript",
+    "editor-pane",
     "unicode"
   ],
   "license": "MIT",
@@ -53,13 +57,17 @@
     "dist/internal"
   ],
   "scripts": {
+    "api-snapshot-check": "bun run build:package && bun run scripts/api-snapshot-check.ts",
     "build:package": "bun run scripts/build-package.ts",
     "benchmark-check:tui": "bun run scripts/tui-benchmark-check.ts",
+    "benchmark:competitive:tui": "bun run scripts/competitive-tui-benchmark.ts",
+    "benchmark:evidence:tui": "bun run scripts/competitive-tui-benchmark.ts --report-dir docs/evidence/benchmark-reports --package-script benchmark:evidence:tui",
+    "benchmark:evidence-summary:tui": "bun run scripts/tui-benchmark-evidence-summary.ts",
     "check": "bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && oxlint --type-aware src",
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",
     "package-smoke-test": "bun run scripts/package-smoke-test.ts",
     "prepack": "bun run build:package",
-    "prepublishOnly": "bun run check && bun run test:tui && bun run tui-oracle-check && bun run tui-corpus-check && bun run tui-fuzz --seed=ci --cases=2000 && bun run benchmark-check:tui && bun run terminal-demo-check && bun run package-smoke-test",
+    "prepublishOnly": "bun run check && bun run test:tui && bun run tui-oracle-check && bun run tui-corpus-check && bun run tui-fuzz --seed=ci --cases=2000 && bun run benchmark-check:tui && bun run terminal-demo-check && bun run api-snapshot-check && bun run package-smoke-test",
     "test:tui": "bun test src/terminal-core.test.ts src/terminal-rich-inline.test.ts src/terminal-string-width.test.ts tests/tui",
     "tui-corpus-check": "bun run scripts/tui-corpus-check.ts",
     "tui-fuzz": "bun run scripts/tui-fuzz.ts",
@@ -74,7 +82,10 @@
     "@types/bun": "latest",
     "oxlint": "^1.51.0",
     "oxlint-tsgolint": "^0.15.0",
+    "string-width": "^8.2.0",
+    "strip-ansi": "^7.2.0",
     "tsgolint": "^0.0.1",
-    "typescript": "6.0.2"
+    "typescript": "6.0.2",
+    "wrap-ansi": "^10.0.0"
   }
 }

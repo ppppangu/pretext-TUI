@@ -1,5 +1,5 @@
-// 补建说明：该文件为后续补建，用于生成 Task 10 的 publishable package dist 布局；当前进度：将 tsc 产物收拢到 dist/internal，并生成根层 public wrapper。
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+// 补建说明：该文件为后续补建，用于生成 publishable package dist 布局；当前进度：Task 2 review 修正，公共 .d.ts 改由 src/public-* TypeScript facade 生成，避免 build 脚本维护第二套 API 真相源。
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 
@@ -9,26 +9,57 @@ const distDir = path.join(root, 'dist')
 await rm(distDir, { recursive: true, force: true })
 run('tsc', ['-p', 'tsconfig.build.json'])
 
-await writePublicWrapper('index', 'index')
-await writePublicWrapper('terminal', 'index')
-await writePublicWrapper('terminal-rich-inline', 'terminal-rich-inline')
+await writePublicWrapper({
+  publicName: 'index',
+  internalName: 'public-index',
+})
+await writePublicAlias({
+  publicName: 'terminal',
+  targetPublicName: 'index',
+})
+await writePublicWrapper({
+  publicName: 'terminal-rich-inline',
+  internalName: 'public-terminal-rich-inline',
+  declarationTransform: declaration => declaration.replaceAll('./public-index.js', './index.js'),
+})
 
-async function writePublicWrapper(publicName: string, internalName: string): Promise<void> {
+type WrapperOptions = {
+  publicName: string
+  internalName: string
+  declarationTransform?: (declaration: string) => string
+}
+
+async function writePublicWrapper(options: WrapperOptions): Promise<void> {
   await mkdir(distDir, { recursive: true })
   await writeFile(
-    path.join(distDir, `${publicName}.js`),
+    path.join(distDir, `${options.publicName}.js`),
     [
-      `export * from './internal/${internalName}.js'`,
+      `export * from './internal/${options.internalName}.js'`,
+      '',
+    ].join('\n'),
+    'utf8',
+  )
+  const internalDeclarationPath = path.join(distDir, 'internal', `${options.internalName}.d.ts`)
+  const declaration = await readFile(internalDeclarationPath, 'utf8')
+  await writeFile(
+    path.join(distDir, `${options.publicName}.d.ts`),
+    options.declarationTransform?.(declaration) ?? declaration,
+    'utf8',
+  )
+}
+
+async function writePublicAlias(options: { publicName: string; targetPublicName: string }): Promise<void> {
+  await writeFile(
+    path.join(distDir, `${options.publicName}.js`),
+    [
+      `export * from './${options.targetPublicName}.js'`,
       '',
     ].join('\n'),
     'utf8',
   )
   await writeFile(
-    path.join(distDir, `${publicName}.d.ts`),
-    [
-      `export * from './internal/${internalName}.js'`,
-      '',
-    ].join('\n'),
+    path.join(distDir, `${options.publicName}.d.ts`),
+    `export * from './${options.targetPublicName}.js'\n`,
     'utf8',
   )
 }

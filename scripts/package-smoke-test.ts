@@ -242,10 +242,17 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
       "const richPrepared = rich.prepareTerminalRichInline('\\x1b[31mred\\x1b[0m')",
       "const richLine = rich.layoutNextTerminalRichLineRange(richPrepared, root.TERMINAL_START_CURSOR, { columns: 10 })",
       "if (richLine === null) throw new Error('bad rich next line')",
-      "if (!rich.materializeTerminalRichLineRange(richPrepared, richLine).ansiText.includes('\\x1b[31m')) throw new Error('bad rich ansi output')",
+      "if ('rawText' in richPrepared) throw new Error('rich prepared leaked rawText')",
+      "if (richPrepared.raw !== undefined) throw new Error('default rich profile retained raw')",
+      "if (rich.materializeTerminalRichLineRange(richPrepared, richLine).ansiText !== undefined) throw new Error('rich ansi output must be opt-in')",
+      "if (!rich.materializeTerminalRichLineRange(richPrepared, richLine, { ansiText: 'sgr' }).ansiText.includes('\\x1b[31m')) throw new Error('bad rich ansi output')",
+      "const richUnsafe = rich.prepareTerminalRichInline('\\x1b]8;;javascript:alert(1)\\x1b\\\\x')",
+      "if (!richUnsafe.diagnostics.some(diagnostic => diagnostic.redacted && !('sequence' in diagnostic))) throw new Error('bad rich diagnostic redaction')",
+      "if (richUnsafe.diagnostics.some(diagnostic => diagnostic.escapedSample !== undefined)) throw new Error('default diagnostics leaked escaped samples')",
+      "try { rich.prepareTerminalRichInline('x', { profile: 'named-host' }); throw new Error('bad profile accepted') } catch (error) { if (error.message === 'bad profile accepted') throw error }",
       "const packageJson = require(`${process.env.PACKAGE_NAME}/package.json`)",
       "if (packageJson.name !== process.env.PACKAGE_NAME) throw new Error('bad package.json export')",
-      "for (const bad of ['demos', 'assets', 'rich-inline', 'layout', 'analysis', 'line-break', 'measurement', 'terminal-line-index', 'terminal-page-cache', 'terminal-cell-flow', 'terminal-source-offset-index', 'terminal-string-width', 'bidi', 'generated/bidi-data', 'internal/index', 'internal/terminal', 'internal/terminal-rich-inline', 'dist/internal/index.js', 'dist/layout.js', 'dist/ansi-tokenize.js', 'src/index.ts', 'browser', 'ansi-tokenize']) {",
+      "for (const bad of ['demos', 'assets', 'rich-inline', 'layout', 'analysis', 'line-break', 'measurement', 'terminal-line-index', 'terminal-page-cache', 'terminal-cell-flow', 'terminal-source-offset-index', 'terminal-string-width', 'terminal-prepared-reader', 'terminal-grapheme-geometry', 'terminal-performance-counters', 'bidi', 'generated/bidi-data', 'internal/index', 'internal/terminal', 'internal/terminal-rich-inline', 'public-index', 'public-terminal-rich-inline', 'terminal-control-policy', 'dist/internal/index.js', 'dist/layout.js', 'dist/ansi-tokenize.js', 'src/index.ts', 'browser', 'ansi-tokenize', 'security', 'profiles', 'terminal-security', 'rich-policy', 'enterprise', 'interactive-cli', 'claude-code', 'codex', 'tmux', 'nvim', 'ink', 'blessed', 'react']) {",
       '  try {',
       '    await import(`${process.env.PACKAGE_NAME}/${bad}`)',
       '    throw new Error(`unexpected import success for ${bad}`)',
@@ -290,8 +297,102 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
         noEmit: true,
         skipLibCheck: false,
       },
-      include: ['index.ts'],
+      include: ['index.ts', 'recipes.ts'],
     }, null, 2) + '\n',
+  )
+  await writeFile(
+    path.join(projectDir, 'tsconfig.recipes-runtime.json'),
+    JSON.stringify({
+      compilerOptions: {
+        target: 'esnext',
+        module: 'nodenext',
+        moduleResolution: 'nodenext',
+        strict: true,
+        noEmit: false,
+        outDir: '.recipe-runtime',
+        skipLibCheck: false,
+      },
+      include: ['recipes.ts'],
+    }, null, 2) + '\n',
+  )
+
+  // Keep this intentionally smaller than docs/recipes: it is a package consumer gate,
+  // not a second prose source for the adoption recipes.
+  await writeFile(
+    path.join(projectDir, 'recipes.ts'),
+    [
+      `import { createTerminalLineIndex, createTerminalPageCache, createTerminalSourceOffsetIndex, getTerminalCursorForSourceOffset, getTerminalLinePage, getTerminalLineRangeAtRow, materializeTerminalLinePage, measureTerminalLineIndexRows, prepareTerminal, type MaterializedTerminalLine, type PreparedTerminalText, type TerminalLineIndex } from '${packageName}'`,
+      `import { materializeTerminalRichLineRange, prepareTerminalRichInline, type MaterializedTerminalRichLine } from '${packageName}/terminal-rich-inline'`,
+      '',
+      'type HostBlock = { id: string; text: string }',
+      'type BlockRange = { block: HostBlock; sourceStart: number; sourceEnd: number }',
+      '',
+      'function buildRecipeSource(blocks: readonly HostBlock[]): { source: string; ranges: readonly BlockRange[] } {',
+      "  let source = ''",
+      '  const ranges: BlockRange[] = []',
+      '  for (const block of blocks) {',
+      "    if (source.length > 0) source += '\\n'",
+      '    const sourceStart = source.length',
+      '    source += block.text',
+      '    ranges.push({ block, sourceStart, sourceEnd: source.length })',
+      '  }',
+      '  return { source, ranges }',
+      '}',
+      '',
+      'export function recipeTranscriptViewport(blocks: readonly HostBlock[], columns: number): readonly MaterializedTerminalLine[] {',
+      '  const { source } = buildRecipeSource(blocks)',
+      "  const prepared = prepareTerminal(source, { whiteSpace: 'pre-wrap' })",
+      '  const index = createTerminalLineIndex(prepared, { columns, anchorInterval: 64 })',
+      '  const cache = createTerminalPageCache(prepared, index, { pageSize: 64, maxPages: 4 })',
+      '  const page = getTerminalLinePage(prepared, cache, index, { startRow: 0, rowCount: 12 })',
+      '  return materializeTerminalLinePage(prepared, page)',
+      '}',
+      '',
+      'function rowForSourceOffset(prepared: PreparedTerminalText, index: TerminalLineIndex, sourceOffset: number): number {',
+      '  const rows = measureTerminalLineIndexRows(prepared, index)',
+      '  let low = 0',
+      '  let high = Math.max(0, rows - 1)',
+      '  while (low <= high) {',
+      '    const mid = Math.floor((low + high) / 2)',
+      '    const line = getTerminalLineRangeAtRow(prepared, index, mid)',
+      '    if (!line) break',
+      '    if (line.sourceEnd <= sourceOffset) low = mid + 1',
+      '    else high = mid - 1',
+      '  }',
+      '  return Math.min(low, Math.max(0, rows - 1))',
+      '}',
+      '',
+      'export function recipeResizeAnchor(text: string, previousColumns: number, nextColumns: number): number {',
+      "  const prepared = prepareTerminal(text, { whiteSpace: 'pre-wrap' })",
+      '  const previousIndex = createTerminalLineIndex(prepared, { columns: previousColumns })',
+      '  const topSourceOffset = getTerminalLineRangeAtRow(prepared, previousIndex, 0)?.sourceStart ?? 0',
+      '  const nextIndex = createTerminalLineIndex(prepared, { columns: nextColumns })',
+      '  return rowForSourceOffset(prepared, nextIndex, topSourceOffset)',
+      '}',
+      '',
+      'export function recipeSourceMapping(text: string, columns: number, sourceOffset: number): number {',
+      "  const prepared = prepareTerminal(text, { whiteSpace: 'pre-wrap' })",
+      '  const sourceIndex = createTerminalSourceOffsetIndex(prepared)',
+      '  const lookup = getTerminalCursorForSourceOffset(prepared, sourceIndex, sourceOffset, "closest")',
+      '  const index = createTerminalLineIndex(prepared, { columns })',
+      '  return rowForSourceOffset(prepared, index, lookup.sourceOffset)',
+      '}',
+      '',
+      'export function recipeRichLog(rawLog: string, columns: number): readonly MaterializedTerminalRichLine[] {',
+      "  const rich = prepareTerminalRichInline(rawLog, { whiteSpace: 'pre-wrap', profile: 'transcript', unsupportedControlMode: 'sanitize', rawRetention: 'fingerprint' })",
+      '  const index = createTerminalLineIndex(rich.prepared, { columns, anchorInterval: 64 })',
+      '  const cache = createTerminalPageCache(rich.prepared, index, { pageSize: 64, maxPages: 4 })',
+      '  const page = getTerminalLinePage(rich.prepared, cache, index, { startRow: 0, rowCount: 12 })',
+      '  return page.lines.map(line => materializeTerminalRichLineRange(rich, line))',
+      '}',
+      '',
+      "recipeTranscriptViewport([{ id: 'a', text: 'hello\\nworld' }], 12)[0]?.text satisfies string | undefined",
+      "recipeResizeAnchor('hello world', 8, 12) satisfies number",
+      "recipeSourceMapping('hello world', 8, 3) satisfies number",
+      "if (recipeSourceMapping('hello world', 6, 'hello world'.length) !== 1) throw new Error('recipe EOF source mapping should resolve to last row')",
+      "recipeRichLog('\\x1b[31mred\\x1b[0m', 12)[0]?.fragments[0]?.text satisfies string | undefined",
+      '',
+    ].join('\n'),
   )
 
   await writeFile(
@@ -299,7 +400,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
     [
       `import { TERMINAL_START_CURSOR, appendTerminalCellFlow, createTerminalLineIndex, createTerminalPageCache, createTerminalSourceOffsetIndex, getTerminalCellFlowGeneration, getTerminalCellFlowPrepared, getTerminalCursorForSourceOffset, getTerminalLineIndexMetadata, getTerminalLineIndexStats, getTerminalLinePage, getTerminalLineRangeAtRow, getTerminalPageCacheStats, getTerminalSourceOffsetForCursor, invalidateTerminalLineIndex, invalidateTerminalPageCache, layoutNextTerminalLineRange, materializeTerminalLinePage, materializeTerminalLineRange, materializeTerminalLineRanges, measureTerminalLineIndexRows, measureTerminalLineStats, layoutTerminal, prepareTerminal, prepareTerminalCellFlow, walkTerminalLineRanges, type PreparedTerminalCellFlow, type TerminalAppendInvalidation, type TerminalAppendOptions, type TerminalAppendResult, type TerminalAppendStrategy, type TerminalFixedLayoutOptions, type TerminalLineIndex, type TerminalLineIndexInvalidation, type TerminalLineIndexInvalidationResult, type TerminalLineIndexMetadata, type TerminalLineIndexStats, type TerminalLinePage, type TerminalLinePageRequest, type TerminalLineRange, type TerminalPageCache, type TerminalPageCacheOptions, type TerminalPageCacheStats, type TerminalSourceLookupResult, type TerminalSourceOffsetBias, type TerminalSourceOffsetIndex } from '${packageName}'`,
       `import { layoutNextTerminalLineRange as layoutNextFromSubpath, layoutTerminal as layoutFromSubpath, materializeTerminalLineRange as materializeFromSubpath, prepareTerminal as prepareFromSubpath } from '${packageName}/terminal'`,
-      `import { prepareTerminalRichInline, layoutNextTerminalRichLineRange, materializeTerminalRichLineRange, walkTerminalRichLineRanges } from '${packageName}/terminal-rich-inline'`,
+      `import { prepareTerminalRichInline, layoutNextTerminalRichLineRange, materializeTerminalRichLineRange, walkTerminalRichLineRanges, type TerminalRichDiagnostic, type TerminalRichMaterializeOptions, type TerminalRichPrepareOptions, type TerminalRichSecurityProfileName } from '${packageName}/terminal-rich-inline'`,
       "const prepared = prepareTerminal('hello 世界', { whiteSpace: 'pre-wrap', tabSize: 4 })",
       'const result = layoutTerminal(prepared, { columns: 8 })',
       'result.rows satisfies number',
@@ -349,20 +450,41 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
       "invalidateTerminalPageCache(createTerminalPageCache(getTerminalCellFlowPrepared(appended.flow), flowIndex), flowInvalidation)",
       'getTerminalPageCacheStats(cache) satisfies TerminalPageCacheStats',
       "const prepared2 = prepareFromSubpath('hello')",
+      'layoutTerminal(prepared2, { columns: 80 }).rows satisfies number',
+      'const preparedFromRootForSubpath = prepareTerminal("cross surface")',
+      'layoutFromSubpath(preparedFromRootForSubpath, { columns: 80 }).rows satisfies number',
       'layoutFromSubpath(prepared2, { columns: 80 }).rows satisfies number',
       'const first = layoutNextFromSubpath(prepared2, TERMINAL_START_CURSOR, { columns: 80 })',
       'if (first) materializeFromSubpath(prepared2, first).text satisfies string',
       "const richPrepared = prepareTerminalRichInline('\\x1b[31mred\\x1b[0m')",
+      "const richOptions: TerminalRichPrepareOptions = { profile: 'transcript', unsupportedControlMode: 'sanitize', rawRetention: 'fingerprint' }",
+      "const richPreparedWithOptions = prepareTerminalRichInline('\\x1b[31mred\\x1b[0m', richOptions)",
+      "richPreparedWithOptions.policy.profile satisfies TerminalRichSecurityProfileName",
+      "richPreparedWithOptions.raw?.fingerprint satisfies string | undefined",
+      'richPreparedWithOptions.completeness.spansTruncated satisfies boolean',
+      "richPreparedWithOptions.diagnostics[0] satisfies TerminalRichDiagnostic | undefined",
+      "const richMaterializeOptions: TerminalRichMaterializeOptions = { ansiText: 'sgr' }",
       'let richWalkCount = 0',
       'walkTerminalRichLineRanges(richPrepared, { columns: 80 }, () => { richWalkCount++ })',
       'richWalkCount satisfies number',
       'const richFirst = layoutNextTerminalRichLineRange(richPrepared, TERMINAL_START_CURSOR, { columns: 80 })',
-      'if (richFirst) materializeTerminalRichLineRange(richPrepared, richFirst).ansiText satisfies string',
+      'if (richFirst) materializeTerminalRichLineRange(richPrepared, richFirst).ansiText satisfies string | undefined',
+      'if (richFirst) materializeTerminalRichLineRange(richPrepared, richFirst, richMaterializeOptions).ansiText satisfies string | undefined',
       '',
     ].join('\n'),
   )
 
   run(['npx', '--no-install', 'tsc', '-p', 'tsconfig.json'], {
+    cwd: projectDir,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  run(['npx', '--no-install', 'tsc', '-p', 'tsconfig.recipes-runtime.json'], {
+    cwd: projectDir,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  run(['node', '.recipe-runtime/recipes.js'], {
     cwd: projectDir,
     stdout: 'inherit',
     stderr: 'inherit',
@@ -379,7 +501,64 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   )
   expectBadTypeScript(projectDir, "Type 'string' is not assignable to type 'number'.")
 
-  for (const badExport of ['prepare', 'layout', 'prepareWithSegments', 'layoutWithLines']) {
+  for (const badPreparedField of ['segments', 'sourceText', 'sourceStarts', 'kinds', 'widths', 'tabStopAdvance']) {
+    await writeFile(
+      path.join(projectDir, 'index.ts'),
+      [
+        `import { prepareTerminal } from '${packageName}'`,
+        "const prepared = prepareTerminal('hello')",
+        `void prepared.${badPreparedField}`,
+        '',
+      ].join('\n'),
+    )
+    expectBadTypeScript(projectDir, `Property '${badPreparedField}' does not exist`)
+  }
+
+  await writeFile(
+    path.join(projectDir, 'index.ts'),
+    [
+      `import { prepareTerminalRichInline } from '${packageName}/terminal-rich-inline'`,
+      "const richPrepared = prepareTerminalRichInline('hello')",
+      'void richPrepared.rawText',
+      '',
+    ].join('\n'),
+  )
+  expectBadTypeScript(projectDir, "Property 'rawText' does not exist")
+
+  await writeFile(
+    path.join(projectDir, 'index.ts'),
+    [
+      `import { prepareTerminalRichInline } from '${packageName}/terminal-rich-inline'`,
+      "const richPrepared = prepareTerminalRichInline('\\x07')",
+      'const diagnostic = richPrepared.diagnostics[0]',
+      'if (diagnostic) void diagnostic.sequence',
+      '',
+    ].join('\n'),
+  )
+  expectBadTypeScript(projectDir, "Property 'sequence' does not exist")
+
+  await writeFile(
+    path.join(projectDir, 'index.ts'),
+    [
+      `import { prepareTerminalRichInline } from '${packageName}/terminal-rich-inline'`,
+      "const richPrepared = prepareTerminalRichInline('hello', { rawRetention: 'fingerprint' })",
+      'if (richPrepared.raw) void richPrepared.raw.text',
+      '',
+    ].join('\n'),
+  )
+  expectBadTypeScript(projectDir, "Property 'text' does not exist")
+
+  await writeFile(
+    path.join(projectDir, 'index.ts'),
+    [
+      `import { prepareTerminalRichInline } from '${packageName}/terminal-rich-inline'`,
+      "prepareTerminalRichInline('hello', { rawRetention: 'full' })",
+      '',
+    ].join('\n'),
+  )
+  expectBadTypeScript(projectDir, "Type '\"full\"' is not assignable")
+
+  for (const badExport of ['prepare', 'layout', 'prepareWithSegments', 'layoutWithLines', 'PreparedTextWithSegments', 'TerminalRowAnchor', 'TerminalLineIndexIdentity', 'assertTerminalLineIndexPrepared', 'getTerminalLineIndexIdentity', 'isTerminalSourceOffsetIndexForPrepared']) {
     await writeFile(
       path.join(projectDir, 'index.ts'),
       [
@@ -403,7 +582,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
     expectBadTypeScript(projectDir, "has no exported member")
   }
 
-  for (const badSubpath of ['layout', 'analysis', 'terminal-line-index', 'internal/index', 'dist/internal/index.js', 'dist/layout.js']) {
+  for (const badSubpath of ['layout', 'analysis', 'line-break', 'measurement', 'terminal-line-index', 'terminal-page-cache', 'terminal-cell-flow', 'terminal-source-offset-index', 'terminal-string-width', 'terminal-prepared-reader', 'terminal-grapheme-geometry', 'terminal-performance-counters', 'bidi', 'generated/bidi-data', 'internal/index', 'internal/terminal', 'internal/terminal-rich-inline', 'public-index', 'public-terminal-rich-inline', 'terminal-control-policy', 'dist/internal/index.js', 'dist/layout.js', 'dist/ansi-tokenize.js', 'ansi-tokenize', 'security', 'profiles', 'terminal-security', 'rich-policy', 'enterprise', 'interactive-cli', 'claude-code', 'codex', 'tmux', 'nvim', 'ink', 'blessed', 'react', 'browser']) {
     await writeFile(
       path.join(projectDir, 'index.ts'),
       [

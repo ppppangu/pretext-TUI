@@ -86,6 +86,14 @@ describe('terminal string width', () => {
     expect(() => terminalStringWidth('\n')).toThrow()
     expect(() => terminalStringWidth('\t')).toThrow()
   })
+
+  test('rejects bidi format controls as unsafe visible text', () => {
+    expect(() => terminalStringWidth('\u061C')).toThrow()
+    expect(() => terminalStringWidth('\u200E')).toThrow()
+    expect(() => terminalStringWidth('\u200F')).toThrow()
+    expect(() => terminalStringWidth('\u202E')).toThrow()
+    expect(() => terminalStringWidth('a\u2066b')).toThrow()
+  })
 })
 
 describe('terminal tab advance', () => {

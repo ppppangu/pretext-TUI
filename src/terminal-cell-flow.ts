@@ -4,6 +4,11 @@ import {
   type PreparedTerminalText,
   type TerminalPrepareOptions,
 } from './terminal.js'
+import {
+  getInternalPreparedTerminalGeometry,
+  getInternalPreparedTerminalText,
+} from './terminal-prepared-reader.js'
+import { getTerminalSegmentGeometry } from './terminal-grapheme-geometry.js'
 
 export type TerminalAppendStrategy =
   | 'full-reprepare-bounded-invalidation'
@@ -73,15 +78,17 @@ export function appendTerminalCellFlow(
   )
   const previousState = internalCellFlow(flow)
   const previousPrepared = previousState.prepared
+  const previousInternal = getInternalPreparedTerminalText(previousPrepared)
   const nextFlow = createCellFlow(
     previousState.rawText + text,
     previousState.prepareOptions,
     previousState.generation + 1,
   )
   const nextPrepared = internalCellFlow(nextFlow).prepared
-  const rawStablePrefix = commonPrefixLength(previousPrepared.sourceText, nextPrepared.sourceText)
+  const nextInternal = getInternalPreparedTerminalText(nextPrepared)
+  const rawStablePrefix = commonPrefixLength(previousInternal.sourceText, nextInternal.sourceText)
   const stablePrefixCodeUnits = snapToPreviousSourceBoundary(previousPrepared, rawStablePrefix)
-  const rawWindowStart = Math.max(0, previousPrepared.sourceText.length - invalidationWindowCodeUnits)
+  const rawWindowStart = Math.max(0, previousInternal.sourceText.length - invalidationWindowCodeUnits)
   const windowStart = snapToPreviousSourceBoundary(previousPrepared, rawWindowStart)
   const firstInvalidSourceOffset = Math.min(stablePrefixCodeUnits, windowStart)
   const strategy = stablePrefixCodeUnits >= windowStart
@@ -97,8 +104,8 @@ export function appendTerminalCellFlow(
       appendedRawCodeUnits: text.length,
       stablePrefixCodeUnits,
       firstInvalidSourceOffset,
-      invalidatedSourceCodeUnits: Math.max(0, nextPrepared.sourceText.length - firstInvalidSourceOffset),
-      reprepareSourceCodeUnits: nextPrepared.sourceText.length,
+      invalidatedSourceCodeUnits: Math.max(0, nextInternal.sourceText.length - firstInvalidSourceOffset),
+      reprepareSourceCodeUnits: nextInternal.sourceText.length,
       strategy,
     },
   }
@@ -140,11 +147,13 @@ function commonPrefixLength(a: string, b: string): number {
 }
 
 function snapToPreviousSourceBoundary(prepared: PreparedTerminalText, sourceOffset: number): number {
-  const clamped = Math.max(0, Math.min(prepared.sourceText.length, sourceOffset))
+  const internal = getInternalPreparedTerminalText(prepared)
+  const geometry = getInternalPreparedTerminalGeometry(prepared)
+  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
   let best = 0
-  for (let segmentIndex = 0; segmentIndex < prepared.segments.length; segmentIndex++) {
-    const segment = prepared.segments[segmentIndex] ?? ''
-    const segmentStart = prepared.sourceStarts[segmentIndex] ?? prepared.sourceText.length
+  for (let segmentIndex = 0; segmentIndex < internal.segments.length; segmentIndex++) {
+    const segment = internal.segments[segmentIndex] ?? ''
+    const segmentStart = internal.sourceStarts[segmentIndex] ?? internal.sourceText.length
     const segmentEnd = segmentStart + segment.length
     if (clamped < segmentStart) return best
     if (clamped >= segmentEnd) {
@@ -152,25 +161,15 @@ function snapToPreviousSourceBoundary(prepared: PreparedTerminalText, sourceOffs
       continue
     }
 
-    let localOffset = 0
-    for (const { segment: grapheme } of graphemeSegmenter().segment(segment)) {
-      const nextOffset = localOffset + grapheme.length
-      if (segmentStart + nextOffset > clamped) return segmentStart + localOffset
-      localOffset = nextOffset
-      best = segmentStart + localOffset
+    const segmentGeometry = getTerminalSegmentGeometry(geometry, segmentIndex)
+    for (const localOffset of segmentGeometry.localSourceOffsets) {
+      const nextBoundary = segmentStart + localOffset
+      if (nextBoundary > clamped) return best
+      best = nextBoundary
     }
     return best
   }
   return best
-}
-
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
-
-function graphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
 }
 
 function normalizePositiveInteger(value: number, label: string): number {

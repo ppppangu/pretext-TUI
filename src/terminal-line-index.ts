@@ -7,6 +7,7 @@ import {
   type TerminalLayoutOptions,
   type TerminalLineRange,
 } from './terminal.js'
+import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
 import { getTerminalSourceOffsetForCursor } from './terminal-source-offset-index.js'
 
 export type TerminalFixedLayoutOptions = TerminalLayoutOptions & {
@@ -88,6 +89,7 @@ export function createTerminalLineIndex(
   prepared: PreparedTerminalText,
   options: TerminalFixedLayoutOptions,
 ): TerminalLineIndex {
+  const internal = getInternalPreparedTerminalText(prepared)
   const columns = normalizePositiveInteger(options.columns, 'Terminal line index columns')
   const startColumn = normalizeNonNegativeInteger(options.startColumn ?? 0, 'Terminal line index startColumn')
   const anchorInterval = normalizePositiveInteger(
@@ -103,12 +105,7 @@ export function createTerminalLineIndex(
     startColumn,
     anchorInterval,
     generation: options.generation ?? 0,
-    layoutKey: [
-      prepared.widthProfile.cacheKey,
-      `tab=${prepared.tabStopAdvance}`,
-      `columns=${columns}`,
-      `start=${startColumn}`,
-    ].join('|'),
+    layoutKey: createLineIndexLayoutKey(internal, columns, startColumn),
     prepared,
     anchors,
     rows: null,
@@ -127,6 +124,78 @@ export function getTerminalLineRangeAtRow(
   row: number,
 ): TerminalLineRange | null {
   const targetRow = normalizeNonNegativeInteger(row, 'Terminal row')
+  const seek = seekTerminalLineIndexToRow(prepared, index, targetRow)
+  if (seek === null) return null
+  const line = layoutNextTerminalLineRange(prepared, seek.cursor, {
+    columns: seek.internal.columns,
+    startColumn: seek.startColumn,
+  })
+  incrementRangeWalks(seek.internal)
+  if (line === null) {
+    seek.internal.rows = seek.currentRow
+    return null
+  }
+  return line
+}
+
+export function getTerminalLineRangesAtRows(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  row: number,
+  rowCount: number,
+): readonly TerminalLineRange[] {
+  const targetRow = normalizeNonNegativeInteger(row, 'Terminal row')
+  const requestedRows = normalizePositiveInteger(rowCount, 'Terminal row count')
+  const seek = seekTerminalLineIndexToRow(prepared, index, targetRow)
+  if (seek === null) return []
+  const internal = seek.internal
+  let cursor = seek.cursor
+  let startColumn = seek.startColumn
+  let currentRow = seek.currentRow
+
+  const lines: TerminalLineRange[] = []
+  while (lines.length < requestedRows) {
+    const line = layoutNextTerminalLineRange(prepared, cursor, {
+      columns: internal.columns,
+      startColumn,
+    })
+    incrementRangeWalks(internal)
+    if (line === null) {
+      internal.rows = currentRow
+      break
+    }
+
+    lines.push(line)
+    cursor = line.end
+    startColumn = 0
+    currentRow++
+    if (shouldStoreAnchor(internal, currentRow)) {
+      maybeStoreAnchor(internal, createAnchor(
+        currentRow,
+        cursor,
+        startColumn,
+        getTerminalSourceOffsetForCursor(prepared, cursor),
+      ))
+    }
+  }
+
+  return lines
+}
+
+type TerminalLineIndexSeekResult = {
+  currentRow: number
+  cursor: TerminalCursor
+  internal: InternalTerminalLineIndex
+  startColumn: number
+}
+
+function seekTerminalLineIndexToRow(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  targetRow: number,
+): TerminalLineIndexSeekResult | null {
+  // Replaying from a sparse anchor is intentionally stateful: it updates walk stats and stores
+  // anchors crossed before the requested row, while leaving the target row itself to the caller.
   const internal = internalLineIndex(index)
   assertPreparedMatchesLineIndex(prepared, internal)
   if (internal.rows !== null && targetRow >= internal.rows) return null
@@ -137,7 +206,7 @@ export function getTerminalLineRangeAtRow(
   let currentRow = anchor.row
   let replayRows = 0
 
-  while (currentRow <= targetRow) {
+  while (currentRow < targetRow) {
     const line = layoutNextTerminalLineRange(prepared, cursor, {
       columns: internal.columns,
       startColumn,
@@ -146,10 +215,6 @@ export function getTerminalLineRangeAtRow(
     if (line === null) {
       internal.rows = currentRow
       return null
-    }
-    if (currentRow === targetRow) {
-      recordReplayRows(internal, replayRows)
-      return line
     }
 
     cursor = line.end
@@ -166,7 +231,13 @@ export function getTerminalLineRangeAtRow(
     }
   }
 
-  return null
+  recordReplayRows(internal, replayRows)
+  return {
+    currentRow,
+    cursor,
+    internal,
+    startColumn,
+  }
 }
 
 export function measureTerminalLineIndexRows(
@@ -209,6 +280,11 @@ export function invalidateTerminalLineIndex(
   invalidation: TerminalLineIndexInvalidation,
 ): TerminalLineIndexInvalidationResult {
   const internal = internalLineIndex(index)
+  const nextPrepared = getInternalPreparedTerminalText(prepared)
+  const nextLayoutKey = createLineIndexLayoutKey(nextPrepared, internal.columns, internal.startColumn)
+  if (nextLayoutKey !== internal.layoutKey) {
+    throw new Error('Terminal line index cannot be invalidated with prepared text that has a different layout identity')
+  }
   const firstInvalidSourceOffset = invalidation.firstInvalidSourceOffset
   const firstInvalidRow = invalidation.firstInvalidRow ?? (
     firstInvalidSourceOffset === undefined
@@ -287,17 +363,40 @@ function createAnchor(
   }
 }
 
+function createLineIndexLayoutKey(
+  prepared: ReturnType<typeof getInternalPreparedTerminalText>,
+  columns: number,
+  startColumn: number,
+): string {
+  return [
+    prepared.widthProfile.cacheKey,
+    `tab=${prepared.tabStopAdvance}`,
+    `columns=${columns}`,
+    `start=${startColumn}`,
+  ].join('|')
+}
+
 function maybeStoreAnchor(index: InternalTerminalLineIndex, anchor: TerminalRowAnchor): void {
-  index.anchors.push(anchor)
-  index.anchors.sort((a, b) => a.row - b.row)
+  if (hasAnchorAtRow(index.anchors, anchor.row)) return
+  const last = index.anchors[index.anchors.length - 1]
+  if (last === undefined || last.row <= anchor.row) {
+    index.anchors.push(anchor)
+  } else {
+    index.anchors.splice(findAnchorRowUpperBound(index.anchors, anchor.row), 0, anchor)
+  }
   updateAnchorCount(index)
 }
 
 function shouldStoreAnchor(index: InternalTerminalLineIndex, row: number): boolean {
-  return row % index.anchorInterval === 0 && !index.anchors.some(item => item.row === row)
+  return row % index.anchorInterval === 0 && !hasAnchorAtRow(index.anchors, row)
 }
 
 function findNearestAnchorByRow(anchors: readonly TerminalRowAnchor[], row: number): TerminalRowAnchor {
+  const insertionIndex = findAnchorRowUpperBound(anchors, row)
+  return anchors[Math.max(0, insertionIndex - 1)]!
+}
+
+function findAnchorRowUpperBound(anchors: readonly TerminalRowAnchor[], row: number): number {
   let lo = 0
   let hi = anchors.length
   while (lo < hi) {
@@ -305,19 +404,34 @@ function findNearestAnchorByRow(anchors: readonly TerminalRowAnchor[], row: numb
     if (anchors[mid]!.row <= row) lo = mid + 1
     else hi = mid
   }
-  return anchors[Math.max(0, lo - 1)]!
+  return lo
+}
+
+function hasAnchorAtRow(anchors: readonly TerminalRowAnchor[], row: number): boolean {
+  let lo = 0
+  let hi = anchors.length
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (anchors[mid]!.row < row) lo = mid + 1
+    else hi = mid
+  }
+  return anchors[lo]?.row === row
 }
 
 function findNearestAnchorBySourceOffset(
   anchors: readonly TerminalRowAnchor[],
   sourceOffset: number,
 ): TerminalRowAnchor {
-  let candidate = anchors[0]!
-  for (const anchor of anchors) {
-    if (anchor.sourceOffset > sourceOffset) break
-    candidate = anchor
+  // Row anchors are row-sorted; their cursor-derived source offsets are monotonic for the
+  // current terminal layout model. Preserve the former linear scan semantics: last <= target.
+  let lo = 0
+  let hi = anchors.length
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (anchors[mid]!.sourceOffset <= sourceOffset) lo = mid + 1
+    else hi = mid
   }
-  return candidate
+  return anchors[Math.max(0, lo - 1)]!
 }
 
 function findFirstInvalidRowForSourceOffset(
@@ -325,7 +439,8 @@ function findFirstInvalidRowForSourceOffset(
   sourceOffset: number,
 ): number {
   const prepared = index.prepared
-  const clamped = Math.max(0, Math.min(prepared.sourceText.length, sourceOffset))
+  const internal = getInternalPreparedTerminalText(prepared)
+  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
   const anchor = findNearestAnchorBySourceOffset(index.anchors, clamped)
   let cursor = anchor.cursor
   let startColumn = anchor.startColumn
@@ -337,7 +452,8 @@ function findFirstInvalidRowForSourceOffset(
       startColumn,
     })
     if (line === null) return Math.max(0, currentRow - 1)
-    if (line.sourceEnd >= clamped || line.sourceStart >= clamped) return currentRow
+    if (line.sourceStart >= clamped) return clamped === 0 ? currentRow : Math.max(0, currentRow - 1)
+    if (line.sourceEnd >= clamped) return currentRow
     cursor = line.end
     startColumn = 0
     currentRow++

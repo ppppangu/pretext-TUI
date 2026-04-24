@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 TUI benchmark workloads 与保守阈值；当前进度：Task 9 加入 virtual text paging/source/append invalidation 与 full reprepare counters。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI benchmark workloads 与保守阈值；当前进度：Task 5B 记录 prepared geometry sidecar 复用、page miss sequential walk 与 virtual text paging/source/append counters。",
     "schema": "pretext-tui-benchmark@1"
   },
   "defaults": {
@@ -19,7 +19,15 @@
         "prepareCalls": { "exact": 200 },
         "layoutPasses": { "exact": 400 },
         "materializedLines": { "exact": 400 },
-        "materializedCodeUnits": { "exact": 5400 }
+        "materializedCodeUnits": { "exact": 5400 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 200 },
+        "preparedGeometryCacheHits": { "min": 21400 },
+        "preparedGeometryWidthPrefixHits": { "min": 1800 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 400 }
       }
     },
     {
@@ -36,7 +44,15 @@
         "prepareCalls": { "exact": 120 },
         "layoutPasses": { "exact": 360 },
         "materializedLines": { "exact": 360 },
-        "materializedCodeUnits": { "exact": 3120 }
+        "materializedCodeUnits": { "exact": 3120 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 120 },
+        "preparedGeometryCacheHits": { "min": 10440 },
+        "preparedGeometryWidthPrefixHits": { "min": 2160 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 360 }
       }
     },
     {
@@ -51,7 +67,15 @@
         "richPrepareCalls": { "exact": 120 },
         "richSpans": { "exact": 240 },
         "richDiagnostics": { "exact": 0 },
-        "ansiCodeUnits": { "exact": 11520 }
+        "ansiCodeUnits": { "exact": 11520 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 120 },
+        "preparedGeometryCacheHits": { "min": 12840 },
+        "preparedGeometryWidthPrefixHits": { "min": 1080 },
+        "richBoundaryGraphemeSegmentations": { "exact": 240 },
+        "richFragmentGraphemeSegmentations": { "exact": 480 },
+        "richFragmentWidthMeasurements": { "exact": 480 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 240 }
       }
     },
     {
@@ -64,9 +88,17 @@
       "maxMilliseconds": 4000,
       "counterAssertions": {
         "prepareCalls": { "exact": 20 },
-        "layoutPasses": { "exact": 560 },
-        "materializedLines": { "exact": 560 },
-        "materializedCodeUnits": { "exact": 21140 }
+        "layoutPasses": { "exact": 580 },
+        "materializedLines": { "exact": 580 },
+        "materializedCodeUnits": { "exact": 21620 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 20 },
+        "preparedGeometryCacheHits": { "min": 74580 },
+        "preparedGeometryWidthPrefixHits": { "min": 7000 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 580 }
       }
     },
     {
@@ -81,18 +113,26 @@
       "maxMilliseconds": 9000,
       "counterAssertions": {
         "prepareCalls": { "exact": 18 },
-        "layoutPasses": { "exact": 2532 },
+        "layoutPasses": { "exact": 492 },
         "materializedLines": { "exact": 240 },
-        "materializedCodeUnits": { "exact": 7524 },
+        "materializedCodeUnits": { "exact": 7656 },
         "pageCacheHits": { "exact": 6 },
         "pageCacheMisses": { "exact": 24 },
         "pageBuilds": { "exact": 24 },
-        "anchorCount": { "exact": 12 },
+        "anchorCount": { "exact": 18 },
         "maxAnchorReplayRows": { "max": 16 },
         "sourceLookups": { "exact": 192 },
         "appendInvalidatedCodeUnits": { "exact": 1854 },
-        "appendReprepareCodeUnits": { "exact": 6732 },
-        "invalidatedPages": { "exact": 6 }
+        "appendReprepareCodeUnits": { "exact": 6876 },
+        "invalidatedPages": { "exact": 6 },
+        "lineTextGraphemeSegmentations": { "exact": 6 },
+        "preparedGeometryBuilds": { "exact": 12 },
+        "preparedGeometryCacheHits": { "min": 68748 },
+        "preparedGeometryWidthPrefixHits": { "min": 5736 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 240 }
       }
     }
   ]

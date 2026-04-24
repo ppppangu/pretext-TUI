@@ -13,11 +13,14 @@ import {
   type TerminalLineRange,
   type TerminalPrepareOptions,
 } from '../../src/index.js'
+import type { PreparedTextWithSegments } from '../../src/layout.js'
+import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
 import {
   terminalGraphemeWidth,
   terminalStringWidth,
   terminalTabAdvance,
 } from '../../src/terminal-string-width.js'
+import type { TerminalRichPrepareOptions } from '../../src/terminal-rich-inline.js'
 
 export type CollectedTerminalLine = {
   range: TerminalLineRange
@@ -46,7 +49,7 @@ export type LayoutGoldenCase = {
 export type RichGoldenCase = {
   id: string
   rawText: string
-  prepare?: TerminalPrepareOptions & { unsupportedControlMode?: 'sanitize' | 'reject' }
+  prepare?: TerminalRichPrepareOptions
   layout: TerminalLayoutOptions
   expected: {
     visibleText: string
@@ -130,6 +133,7 @@ export function assertTerminalInvariants(
   const next = collectTerminalLinesByNext(prepared, options)
   const layout = layoutTerminal(prepared, options)
   const stats = measureTerminalLineStats(prepared, options)
+  const internal = getInternalPreparedTerminalText(prepared)
 
   assert(layout.rows === walked.length, `layout rows mismatch: ${layout.rows} !== ${walked.length}`)
   assert(stats.rows === walked.length, `stats rows mismatch: ${stats.rows} !== ${walked.length}`)
@@ -140,19 +144,19 @@ export function assertTerminalInvariants(
     'layoutNext/walk cursor mismatch',
   )
 
-  const sourceBoundaries = graphemeBoundarySet(prepared.sourceText)
+  const sourceBoundaries = graphemeBoundarySet(internal.sourceText)
   for (let i = 0; i < walked.length; i++) {
     const { range, materialized } = walked[i]!
     assert(range.sourceStart <= range.sourceEnd, `invalid source range ${range.sourceStart}:${range.sourceEnd}`)
     assert(sourceBoundaries.has(range.sourceStart), `sourceStart is not a grapheme boundary: ${range.sourceStart}`)
     assert(sourceBoundaries.has(range.sourceEnd), `sourceEnd is not a grapheme boundary: ${range.sourceEnd}`)
     assert(
-      materialized.sourceText === prepared.sourceText.slice(range.sourceStart, range.sourceEnd),
+      materialized.sourceText === internal.sourceText.slice(range.sourceStart, range.sourceEnd),
       `sourceText mismatch on line ${i}`,
     )
     assert(!hasUnsafeControls(materialized.text), `unsafe control emitted on line ${i}`)
     assert(
-      terminalStringWidth(materialized.text, prepared.widthProfile) === range.width,
+      terminalStringWidth(materialized.text, internal.widthProfile) === range.width,
       `materialized width mismatch on line ${i}`,
     )
     assertDeepEqual(range.overflow, range.startColumn + range.width > range.columns
@@ -200,12 +204,13 @@ export function computePreparedGreedyOracle(
   prepared: PreparedTerminalText,
   options: TerminalLayoutOptions,
 ): OracleLine[] {
+  const internal = getInternalPreparedTerminalText(prepared)
   const lines: OracleLine[] = []
   let position: Position = { segmentIndex: 0, graphemeIndex: 0 }
   let startColumn = options.startColumn ?? 0
 
-  while (position.segmentIndex < prepared.segments.length) {
-    const line = computeNextOracleLine(prepared, position, options.columns, startColumn)
+  while (position.segmentIndex < internal.segments.length) {
+    const line = computeNextOracleLine(internal, position, options.columns, startColumn)
     if (line === null) break
     lines.push(line.line)
     position = line.next
@@ -216,7 +221,7 @@ export function computePreparedGreedyOracle(
 }
 
 function computeNextOracleLine(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   rawStart: Position,
   columns: number,
   startColumn: number,
@@ -352,7 +357,7 @@ function computeNextOracleLine(
 
 function makeOracleLine(
   text: string,
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   sourceStart: number,
   sourceEnd: number,
   width: number,
@@ -371,7 +376,7 @@ function makeOracleLine(
   }
 }
 
-function normalizeOracleLineStart(prepared: PreparedTerminalText, start: Position): Position {
+function normalizeOracleLineStart(prepared: PreparedTextWithSegments, start: Position): Position {
   const next = { ...start }
   while (next.graphemeIndex === 0 && next.segmentIndex < prepared.segments.length) {
     const kind = prepared.kinds[next.segmentIndex]
@@ -382,7 +387,7 @@ function normalizeOracleLineStart(prepared: PreparedTerminalText, start: Positio
 }
 
 function readOracleUnit(
-  prepared: PreparedTerminalText,
+  prepared: PreparedTextWithSegments,
   position: Position,
   absoluteColumn: number,
 ): { text: string, width: number, sourceStart: number, sourceEnd: number, next: Position } | null {
@@ -414,7 +419,7 @@ function readOracleUnit(
   }
 }
 
-function sourceOffsetForPosition(prepared: PreparedTerminalText, position: Position): number {
+function sourceOffsetForPosition(prepared: PreparedTextWithSegments, position: Position): number {
   if (position.segmentIndex >= prepared.segments.length) return prepared.sourceText.length
   const segmentStart = prepared.sourceStarts[position.segmentIndex] ?? prepared.sourceText.length
   if (position.graphemeIndex === 0) return segmentStart
@@ -451,6 +456,27 @@ export function hasUnsafeControls(text: string): boolean {
     }
   }
   return false
+}
+
+export function hasBidiFormatControls(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i)
+    if (
+      code === 0x061c ||
+      code === 0x200e ||
+      code === 0x200f ||
+      (code >= 0x202a && code <= 0x202e) ||
+      (code >= 0x2066 && code <= 0x2069)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+export function assertNoUnsafeTerminalOutput(text: string): void {
+  assert(!hasUnsafeControls(text), 'unsafe terminal control emitted')
+  assert(!hasBidiFormatControls(text), 'bidi format control emitted')
 }
 
 export function stableHash(value: unknown): string {

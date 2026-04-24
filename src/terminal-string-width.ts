@@ -4,6 +4,7 @@ import {
   type TerminalWidthProfile,
   type TerminalWidthProfileInput,
 } from './terminal-width-profile.js'
+import { isTerminalBidiFormatControlCodePoint } from './terminal-control-policy.js'
 
 export type TerminalSegmentMetrics = {
   width: number
@@ -222,6 +223,8 @@ export function terminalGraphemeWidth(
     width = 0
   } else if (points.some(isControlCodePoint)) {
     width = handleControlWidth(points.find(isControlCodePoint)!, profile)
+  } else if (points.some(isTerminalBidiFormatControlCodePoint)) {
+    throw new Error('Bidi format control is not valid visible terminal text')
   } else if (points.every(isCombiningOrZeroWidth)) {
     width = 0
   } else if (points.every(isRegionalIndicator)) {

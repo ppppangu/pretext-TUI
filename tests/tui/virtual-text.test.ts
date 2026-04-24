@@ -11,6 +11,7 @@ import {
   getTerminalLineIndexMetadata,
   getTerminalLineIndexStats,
   getTerminalLinePage,
+  getTerminalLineRangeAtRow,
   getTerminalPageCacheStats,
   getTerminalSourceOffsetForCursor,
   invalidateTerminalLineIndex,
@@ -21,6 +22,7 @@ import {
   measureTerminalLineIndexRows,
   prepareTerminal,
   prepareTerminalCellFlow,
+  TERMINAL_START_CURSOR,
   type PreparedTerminalText,
   type TerminalLayoutOptions,
 } from '../../src/index.js'
@@ -28,6 +30,12 @@ import {
   collectTerminalLines,
   type CollectedTerminalLine,
 } from './validation-helpers.js'
+import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
+import {
+  disableTerminalPerformanceCounters,
+  resetTerminalPerformanceCounters,
+  snapshotTerminalPerformanceCounters,
+} from '../../src/terminal-performance-counters.js'
 
 function baselineLines(
   prepared: PreparedTerminalText,
@@ -45,6 +53,19 @@ function materializedPageTexts(
   page: Parameters<typeof materializeTerminalLinePage>[1],
 ): string[] {
   return materializeTerminalLinePage(prepared, page).map(line => line.text)
+}
+
+function rangeSignature(prepared: PreparedTerminalText, page: Parameters<typeof materializeTerminalLinePage>[1]): unknown[] {
+  const materialized = materializeTerminalLinePage(prepared, page)
+  return page.lines.map((line, index) => ({
+    sourceEnd: line.sourceEnd,
+    sourceStart: line.sourceStart,
+    sourceText: materialized[index]!.sourceText,
+    text: materialized[index]!.text,
+    width: line.width,
+    break: line.break,
+    overflow: line.overflow,
+  }))
 }
 
 function makeLongTranscript(rowCount = 48): string {
@@ -122,6 +143,71 @@ describe('tui virtual text primitives', () => {
     }).lines.map(line => line.width)).not.toEqual(first.lines.map(line => line.width))
   })
 
+  test('single-row lookup does not pre-store the following anchor', () => {
+    const prepared = prepareTerminal(makeLongTranscript(), { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const index = createTerminalLineIndex(prepared, { columns: 20, anchorInterval: 16 })
+
+    expect(materializeTerminalLineRange(prepared, getTerminalLineRangeAtRow(prepared, index, 15)!).text).toBeTruthy()
+    expect(getTerminalLineIndexStats(index).anchorCount).toBe(1)
+    expect(getTerminalLineIndexStats(index).maxReplayRows).toBe(15)
+    expect(materializeTerminalLineRange(prepared, getTerminalLineRangeAtRow(prepared, index, 16)!).text).toBeTruthy()
+    expect(getTerminalLineIndexStats(index).anchorCount).toBe(2)
+  })
+
+  test('page cache miss uses one sparse seek before sequential row walking', () => {
+    const prepared = prepareTerminal(makeLongTranscript(), { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const index = createTerminalLineIndex(prepared, { columns: 20, anchorInterval: 16 })
+    const cache = createTerminalPageCache(prepared, index, { pageSize: 8, maxPages: 2 })
+    expect(getTerminalLineRangeAtRow(prepared, index, 16)).not.toBeNull()
+    const before = getTerminalLineIndexStats(index).rangeWalks
+    const page = getTerminalLinePage(prepared, cache, index, { startRow: 31, rowCount: 8 })
+    const stats = getTerminalLineIndexStats(index)
+    const repeatedIndex = createTerminalLineIndex(prepared, { columns: 20, anchorInterval: 16 })
+    expect(getTerminalLineRangeAtRow(prepared, repeatedIndex, 16)).not.toBeNull()
+    const repeatedBefore = getTerminalLineIndexStats(repeatedIndex).rangeWalks
+    for (let row = 31; row < 39; row++) {
+      expect(getTerminalLineRangeAtRow(prepared, repeatedIndex, row)).not.toBeNull()
+    }
+    const repeatedWalks = getTerminalLineIndexStats(repeatedIndex).rangeWalks - repeatedBefore
+
+    expect(page.rowCount).toBe(8)
+    expect(stats.rangeWalks - before).toBeLessThan(repeatedWalks)
+    expect(stats.maxReplayRows).toBeLessThanOrEqual(16)
+    expect(stats.anchorCount).toBeGreaterThan(1)
+  })
+
+  test('page cache miss and hit preserve unicode-heavy range/source parity', () => {
+    const text = [
+      'combining: e\u0301 cafe\u0301 wrap',
+      'emoji: 👩‍💻 1️⃣ 🇺🇸 😀',
+      'cjk tab: 世界\tterminal',
+      'soft\u00ADhyphen zero\u200Bwidth tail',
+      'plain ending',
+    ].join('\n')
+    const prepared = prepareTerminal(text, {
+      whiteSpace: 'pre-wrap',
+      tabSize: 4,
+      widthProfile: { ambiguousWidth: 'wide' },
+    })
+    const layout = { columns: 9 }
+    const eager = baselineLines(prepared, layout)
+    const index = createTerminalLineIndex(prepared, { ...layout, anchorInterval: 3 })
+    const cache = createTerminalPageCache(prepared, index, { pageSize: 4, maxPages: 2 })
+    const page = getTerminalLinePage(prepared, cache, index, { startRow: 2, rowCount: 4 })
+    const cachedHit = getTerminalLinePage(prepared, cache, index, { startRow: 2, rowCount: 4 })
+    const expected = {
+      kind: 'terminal-line-page@1' as const,
+      columns: 9,
+      generation: 0,
+      startRow: 2,
+      rowCount: 4,
+      lines: eager.slice(2, 6).map(line => line.range),
+    }
+
+    expect(rangeSignature(prepared, page)).toEqual(rangeSignature(prepared, expected))
+    expect(rangeSignature(prepared, cachedHit)).toEqual(rangeSignature(prepared, expected))
+  })
+
   test('source offset index round-trips grapheme-safe cursors independently from row caches', () => {
     const prepared = prepareTerminal('A😀e\u0301\t世界\ntrans\u00ADatlantic\u200Btail', {
       whiteSpace: 'pre-wrap',
@@ -156,6 +242,126 @@ describe('tui virtual text primitives', () => {
     const replaySafe = getTerminalCursorForSourceOffset(hardBreakPrepared, hardBreakIndex, 2)
     const replayed = layoutNextTerminalLineRange(hardBreakPrepared, replaySafe.cursor, { columns: 10 })
     expect(replayed && materializeTerminalLineRange(hardBreakPrepared, replayed).text).toBe('b')
+  })
+
+  test('source offset cursors replay from canonical segment boundaries', () => {
+    for (const item of [
+      {
+        text: 'hello world',
+        offset: 5,
+        expected: 'world',
+        whiteSpace: 'normal',
+      },
+      {
+        text: 'a\nb',
+        offset: 2,
+        expected: 'b',
+        whiteSpace: 'pre-wrap',
+      },
+      {
+        text: 'a\n',
+        offset: 2,
+        expected: '',
+        whiteSpace: 'pre-wrap',
+      },
+      {
+        text: 'a\u200Bb',
+        offset: 2,
+        expected: 'b',
+        whiteSpace: 'pre-wrap',
+      },
+      {
+        text: 'a\u00ADb',
+        offset: 2,
+        expected: 'b',
+        whiteSpace: 'pre-wrap',
+      },
+      {
+        text: 'a\tb',
+        offset: 2,
+        expected: 'b',
+        whiteSpace: 'pre-wrap',
+      },
+    ] as const) {
+      const prepared = prepareTerminal(item.text, { whiteSpace: item.whiteSpace, tabSize: 4 })
+      const sourceIndex = createTerminalSourceOffsetIndex(prepared)
+      const before = getTerminalCursorForSourceOffset(prepared, sourceIndex, item.offset, 'before')
+      const closest = getTerminalCursorForSourceOffset(prepared, sourceIndex, item.offset, 'closest')
+      const after = getTerminalCursorForSourceOffset(prepared, sourceIndex, item.offset, 'after')
+      const canonicalLine = layoutNextTerminalLineRange(prepared, after.cursor, { columns: 10 })
+      const expectedSignature = canonicalLine === null
+        ? null
+        : rangeSignature(prepared, {
+          kind: 'terminal-line-page@1',
+          columns: 10,
+          generation: 0,
+          startRow: 0,
+          rowCount: 1,
+          lines: [canonicalLine],
+        })[0]
+      for (const cursor of [before.cursor, closest.cursor, after.cursor]) {
+        const line = layoutNextTerminalLineRange(prepared, cursor, { columns: 10 })
+        expect(line === null ? '' : materializeTerminalLineRange(prepared, line).text).toBe(item.expected)
+        expect(line === null
+          ? null
+          : rangeSignature(prepared, {
+            kind: 'terminal-line-page@1',
+            columns: 10,
+            generation: 0,
+            startRow: 0,
+            rowCount: 1,
+            lines: [line],
+          })[0]).toEqual(expectedSignature)
+      }
+    }
+  })
+
+  test('prepared geometry is reused across source lookup, layout, materialization, and append boundaries', () => {
+    const prepared = prepareTerminal('A😀e\u0301\t世界\ntrans\u00ADatlantic\u200Btail', {
+      whiteSpace: 'pre-wrap',
+      tabSize: 4,
+    })
+    const internal = getInternalPreparedTerminalText(prepared)
+
+    try {
+      resetTerminalPerformanceCounters()
+      const sourceIndex = createTerminalSourceOffsetIndex(prepared)
+      const sourceCounters = snapshotTerminalPerformanceCounters()
+      expect(sourceCounters.preparedGeometryBuilds).toBe(1)
+      expect(sourceCounters.preparedGeometrySegments).toBe(internal.segments.length)
+      expect(getTerminalSourceOffsetForCursor(prepared, TERMINAL_START_CURSOR, sourceIndex)).toBe(0)
+
+      resetTerminalPerformanceCounters()
+      let cursor = TERMINAL_START_CURSOR
+      let lineCount = 0
+      while (true) {
+        const line = layoutNextTerminalLineRange(prepared, cursor, { columns: 7 })
+        if (line === null) break
+        lineCount++
+        cursor = line.end
+        if (lineCount === 1) {
+          materializeTerminalLineRange(prepared, line)
+        }
+      }
+      const layoutCounters = snapshotTerminalPerformanceCounters()
+      expect(lineCount).toBeGreaterThan(1)
+      expect(layoutCounters.preparedGeometryBuilds).toBe(0)
+      expect(layoutCounters.preparedGeometryCacheHits).toBeGreaterThan(0)
+      expect(layoutCounters.preparedGeometryWidthPrefixHits).toBeGreaterThan(0)
+      expect(layoutCounters.terminalMaterializeGraphemeSegmentations).toBe(1)
+
+      resetTerminalPerformanceCounters()
+      const flow = prepareTerminalCellFlow('prefix e\u0301 tail', { whiteSpace: 'pre-wrap' })
+      const appended = appendTerminalCellFlow(flow, '\nnext line', { invalidationWindowCodeUnits: 4 })
+      const appendCounters = snapshotTerminalPerformanceCounters()
+      expect(appendCounters.preparedGeometryBuilds).toBe(1)
+      expect(appendCounters.preparedGeometrySegments).toBeGreaterThan(0)
+      expect(appended.invalidation.stablePrefixCodeUnits).toBe(
+        getInternalPreparedTerminalText(getTerminalCellFlowPrepared(flow)).sourceText.length,
+      )
+    } finally {
+      disableTerminalPerformanceCounters()
+    }
   })
 
   test('append invalidation preserves stable prefix pages and refreshes suffix pages', () => {
@@ -200,7 +406,7 @@ describe('tui virtual text primitives', () => {
     )
 
     expect(appended.invalidation.strategy).toBe('full-reprepare-bounded-invalidation')
-    expect(appended.invalidation.stablePrefixCodeUnits).toBe(initialPrepared.sourceText.length)
+    expect(appended.invalidation.stablePrefixCodeUnits).toBe(getInternalPreparedTerminalText(initialPrepared).sourceText.length)
     expect(lineInvalidation.firstInvalidRow).toBeGreaterThan(10)
     expect(materializedPageTexts(appendedPrepared, prefixPageAfter)).toEqual(prefixTextsBefore)
     expect(materializedPageTexts(appendedPrepared, suffixPage)).toEqual(
@@ -219,7 +425,7 @@ describe('tui virtual text primitives', () => {
 
     const lineInvalidation = invalidateTerminalLineIndex(after, index, {
       generation: 1,
-      firstInvalidSourceOffset: before.sourceText.length,
+      firstInvalidSourceOffset: getInternalPreparedTerminalText(before).sourceText.length,
     })
     invalidateTerminalPageCache(cache, lineInvalidation)
     const page = getTerminalLinePage(after, cache, index, { startRow: 0, rowCount: 1 })
@@ -227,6 +433,109 @@ describe('tui virtual text primitives', () => {
     expect(lineInvalidation.firstInvalidRow).toBe(0)
     expect(materializedPageTexts(after, page)).toEqual(['helloworld'])
     expect(getTerminalPageCacheStats(cache).invalidatedPages).toBe(1)
+  })
+
+  test('source-offset invalidation backs up at exact row boundaries for merged graphemes', () => {
+    for (const [beforeText, afterText, invalidOffset] of [
+      ['1B', '1\uFE0F\u20E3B', 1],
+      ['eB', 'e\u0301B', 1],
+      ['👩B', '👩‍💻B', 2],
+    ] as const) {
+      const before = prepareTerminal(beforeText, { whiteSpace: 'pre-wrap' })
+      const after = prepareTerminal(afterText, { whiteSpace: 'pre-wrap' })
+      const index = createTerminalLineIndex(before, { columns: 1, anchorInterval: 1, generation: 0 })
+      const cache = createTerminalPageCache(before, index, { pageSize: 1, maxPages: 2 })
+      getTerminalLinePage(before, cache, index, { startRow: 0, rowCount: 1 })
+
+      const lineInvalidation = invalidateTerminalLineIndex(after, index, {
+        generation: 1,
+        firstInvalidSourceOffset: invalidOffset,
+      })
+      invalidateTerminalPageCache(cache, lineInvalidation)
+      const page = getTerminalLinePage(after, cache, index, { startRow: 0, rowCount: 1 })
+      const freshIndex = createTerminalLineIndex(after, { columns: 1, anchorInterval: 1, generation: 1 })
+      const freshPage = getTerminalLinePage(
+        after,
+        createTerminalPageCache(after, freshIndex, { pageSize: 1, maxPages: 2 }),
+        freshIndex,
+        { startRow: 0, rowCount: 1 },
+      )
+
+      expect(lineInvalidation.firstInvalidRow).toBe(0)
+      expect(rangeSignature(after, page)).toEqual(rangeSignature(after, freshPage))
+      expect(getTerminalPageCacheStats(cache).invalidatedPages).toBe(1)
+    }
+  })
+
+  test('source-offset invalidation stays correct with dense anchors at structural boundaries', () => {
+    for (const item of [
+      {
+        beforeText: 'A\nB',
+        afterText: 'A\nXB',
+        columns: 4,
+        expectedFirstInvalidRow: 0,
+        invalidOffset: 2,
+        startRow: 0,
+      },
+      {
+        beforeText: 'A\n\nB',
+        afterText: 'A\n\nXB',
+        columns: 4,
+        expectedFirstInvalidRow: 1,
+        invalidOffset: 3,
+        startRow: 1,
+      },
+      {
+        beforeText: 'alpha\u200Bbeta',
+        afterText: 'alpha\u200BXYbeta',
+        columns: 5,
+        expectedFirstInvalidRow: 0,
+        invalidOffset: 6,
+        startRow: 0,
+      },
+      {
+        beforeText: 'a\u00ADbc',
+        afterText: 'a\u00ADXbc',
+        columns: 2,
+        expectedFirstInvalidRow: 0,
+        invalidOffset: 2,
+        startRow: 0,
+      },
+    ] as const) {
+      const before = prepareTerminal(item.beforeText, { whiteSpace: 'pre-wrap' })
+      const after = prepareTerminal(item.afterText, { whiteSpace: 'pre-wrap' })
+      const index = createTerminalLineIndex(before, {
+        columns: item.columns,
+        anchorInterval: 1,
+        generation: 0,
+      })
+      const cache = createTerminalPageCache(before, index, { pageSize: 2, maxPages: 8 })
+      const rows = measureTerminalLineIndexRows(before, index)
+      for (let row = 0; row < rows; row++) {
+        getTerminalLinePage(before, cache, index, { startRow: row, rowCount: 1 })
+      }
+
+      const lineInvalidation = invalidateTerminalLineIndex(after, index, {
+        generation: 1,
+        firstInvalidSourceOffset: item.invalidOffset,
+      })
+      invalidateTerminalPageCache(cache, lineInvalidation)
+      const page = getTerminalLinePage(after, cache, index, { startRow: item.startRow, rowCount: 2 })
+      const freshIndex = createTerminalLineIndex(after, {
+        columns: item.columns,
+        anchorInterval: 1,
+        generation: 1,
+      })
+      const freshPage = getTerminalLinePage(
+        after,
+        createTerminalPageCache(after, freshIndex, { pageSize: 2, maxPages: 8 }),
+        freshIndex,
+        { startRow: item.startRow, rowCount: 2 },
+      )
+
+      expect(lineInvalidation.firstInvalidRow).toBe(item.expectedFirstInvalidRow)
+      expect(rangeSignature(after, page)).toEqual(rangeSignature(after, freshPage))
+    }
   })
 
   test('public virtual handles do not expose mutable implementation state', () => {

@@ -249,6 +249,10 @@ Rich metadata may include:
 - inert selection metadata
 - opaque payload ids
 
+Rich metadata defaults are fragment-first. Reconstructed ANSI output is not emitted unless materialization is called with an explicit `ansiText` mode, and the prepared policy may still cap or disable that output.
+
+Rich diagnostics are structured and redacted. They should not retain full unsafe control sequences by default.
+
 The core package must not encode application click behavior.
 
 Selection metadata is descriptive data for consumers. It is not selection behavior, focus behavior, key handling, clipboard behavior, or interaction policy.
@@ -273,6 +277,8 @@ The package must reject or sanitize:
 - all OSC except OSC8
 
 Unsupported controls must not contribute width, source-visible text, or materialized output.
+
+Trojan Source-style bidi format controls are unsafe visible terminal text for this package. The plain core rejects them; the rich path sanitizes or rejects them according to policy.
 
 ## Bidi And Rendering Boundary
 

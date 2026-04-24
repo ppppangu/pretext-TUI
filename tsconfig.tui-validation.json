@@ -9,6 +9,8 @@
   },
   "include": [
     "scripts/build-package.ts",
+    "scripts/api-snapshot-check.ts",
+    "scripts/competitive-tui-benchmark.ts",
     "scripts/package-smoke-test.ts",
     "scripts/terminal-demo.ts",
     "scripts/terminal-demo-check.ts",

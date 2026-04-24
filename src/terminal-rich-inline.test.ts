@@ -7,6 +7,7 @@ import {
   walkTerminalRichLineRanges,
 } from './terminal-rich-inline.js'
 import { TERMINAL_START_CURSOR } from './terminal.js'
+import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
 
 describe('terminal rich inline tokenizer', () => {
   test('captures SGR style spans on visible offsets', () => {
@@ -66,7 +67,7 @@ describe('terminal rich inline tokenizer', () => {
 
   test('default whitespace matches the terminal core canonical space', () => {
     const prepared = prepareTerminalRichInline('A\x1b[31m \t \x1b[0mB')
-    expect(prepared.visibleText).toBe(prepared.prepared.sourceText)
+    expect(prepared.visibleText).toBe(getInternalPreparedTerminalText(prepared.prepared).sourceText)
     expect(prepared.visibleText).toBe('A B')
   })
 
@@ -134,8 +135,9 @@ describe('terminal rich inline materialization', () => {
     const prepared = prepareTerminalRichInline('\x1b[31mabcdef\x1b[0m', { whiteSpace: 'pre-wrap' })
     const lines = []
     walkTerminalRichLineRanges(prepared, { columns: 3 }, line => lines.push(line))
-    const line0 = materializeTerminalRichLineRange(prepared, lines[0]!)
-    const line1 = materializeTerminalRichLineRange(prepared, lines[1]!)
+    expect(materializeTerminalRichLineRange(prepared, lines[0]!).ansiText).toBeUndefined()
+    const line0 = materializeTerminalRichLineRange(prepared, lines[0]!, { ansiText: 'sgr' })
+    const line1 = materializeTerminalRichLineRange(prepared, lines[1]!, { ansiText: 'sgr' })
     expect(line0.text).toBe('abc')
     expect(line1.text).toBe('def')
     expect(line0.ansiText).toContain('\x1b[31m')
@@ -150,8 +152,8 @@ describe('terminal rich inline materialization', () => {
     })
     const lines = []
     walkTerminalRichLineRanges(prepared, { columns: 3 }, line => lines.push(line))
-    const line0 = materializeTerminalRichLineRange(prepared, lines[0]!)
-    const line1 = materializeTerminalRichLineRange(prepared, lines[1]!)
+    const line0 = materializeTerminalRichLineRange(prepared, lines[0]!, { ansiText: 'sgr-osc8' })
+    const line1 = materializeTerminalRichLineRange(prepared, lines[1]!, { ansiText: 'sgr-osc8' })
     expect(line0.ansiText).toContain('\x1b]8;;https://x.test\x1b\\')
     expect(line1.ansiText).toContain('\x1b]8;;https://x.test\x1b\\')
   })

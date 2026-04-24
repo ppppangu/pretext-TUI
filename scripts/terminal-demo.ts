@@ -110,7 +110,7 @@ function buildReport(args: DemoArgs, fixturePath: string, input: string): DemoRe
       path: path.relative(packageRoot, fixturePath).replaceAll(path.sep, '/'),
     },
     prepare: {
-      inputCodeUnits: prepared.sourceText.length,
+      inputCodeUnits: input.length,
       tabSize: 4,
       whiteSpace: 'pre-wrap',
       widthProfile: 'terminal-unicode-narrow@1',
