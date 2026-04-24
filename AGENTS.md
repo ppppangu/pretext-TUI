@@ -35,6 +35,11 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `src/line-break.ts` — internal line-walking core.
 - `src/line-text.ts` — lazy line materialization helpers.
 - `src/terminal.ts` — terminal public API surface.
+- `src/terminal-cell-flow.ts` — appendable terminal source generation and invalidation boundary.
+- `src/terminal-line-index.ts` — fixed-column sparse row anchor index.
+- `src/terminal-materialize.ts` — bounded range/page materialization helpers.
+- `src/terminal-page-cache.ts` — fixed-column range-only page cache.
+- `src/terminal-source-offset-index.ts` — source offset/cursor lookup index independent from row caches.
 - `src/terminal-string-width.ts` — terminal cell-width backend.
 - `src/terminal-width-profile.ts` — terminal width profile model.
 - `src/terminal-rich-inline.ts` — terminal rich metadata surface.
@@ -54,6 +59,8 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - Tabs remain structural segments and are measured at layout time from current visible column.
 - Terminal fitting uses exact integer-cell comparison only.
 - Prepared source data and width-dependent line/page caches must remain separate.
+- Virtual text caches are fixed-column and must not cache materialized strings as their primary payload.
+- Virtual text public handles must stay runtime-opaque; do not expose anchors, pages, raw text, or mutable cache state.
 - Rich metadata may model style/link/copy semantics, but not host interaction behavior.
 - A terminal static gate must reject active runtime imports/usages of browser globals and web pages.
 

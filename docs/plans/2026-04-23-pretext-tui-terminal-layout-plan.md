@@ -624,9 +624,9 @@ git commit -m "feat: add terminal demo vertical slice"
 
 **Step 1: Keep prepared state width-independent**
 
-`PreparedCellFlow` must contain immutable prepared source chunks/pages and source mapping.
+`PreparedTerminalCellFlow` is an opaque generation handle. The initial public implementation may full-reprepare on append, but it must expose honest counters and bounded invalidation metadata so future chunked storage can replace the internals without freezing raw storage shape.
 
-Width-dependent line/page caches must live separately under keys like:
+Width-dependent line/page caches must live separately under identities like:
 
 ```ts
 { columns, profileVersion, generation }
@@ -642,12 +642,13 @@ Build page bodies from the nearest anchor when needed.
 
 Do not imply source offset lookup from the line index. Add it explicitly now.
 
-**Step 4: Add bounded tail rebuild on append**
+**Step 4: Add append invalidation without overpromising storage internals**
 
 On append:
-- roll back to the last committed source chunk boundary or repair window
+- compute the stable prefix and invalidation window on grapheme-safe source boundaries
+- reprepare honestly until chunked storage exists behind the opaque flow handle
 - invalidate forward only
-- keep stable prefix untouched
+- keep the prefix before the invalidation window reusable
 
 **Step 5: Scope paging correctly**
 
@@ -666,7 +667,8 @@ bun run tui-oracle-check
 ```
 
 Expected:
-- large-text seek/materialize/append behavior is proven without forcing whole-text materialization
+- large-text seek/materialize/page behavior is proven without forcing whole-text materialization
+- append counters distinguish full reprepare cost from bounded cache invalidation
 - paged/append counters are now available and checked here, not earlier
 
 **Step 7: Sync docs and commit**

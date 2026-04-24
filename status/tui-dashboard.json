@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 Task 7 TUI validation gate 的机器可读状态；当前进度：首版声明门禁项，实际结果由脚本输出与 CI 运行确认。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Task 9 已包含 virtual text primitives、terminal demo gate 与 package smoke gate。",
     "schema": "pretext-tui-status@1"
   },
   "gate": {
@@ -12,11 +12,12 @@
     "tui-corpus-check": "required",
     "tui-fuzz --seed=ci --cases=2000": "required",
     "benchmark-check:tui": "required",
+    "terminal-demo-check": "required",
     "package-smoke-test": "required"
   },
   "scope": {
     "browserProductSurface": "removed from active validation",
     "hostAppIntegration": "out of scope",
-    "streamingAndPageCache": "deferred to Task 9"
+    "virtualTextPrimitives": "Task 9 sparse index, page cache, source lookup, and append invalidation landed"
   }
 }

@@ -46,7 +46,7 @@ bun run package-smoke-test
 
 `terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
 
-The benchmark thresholds are intentionally conservative because the Task 7 harness also runs invariants. Tighter performance counters belong with the large-text primitives.
+The benchmark thresholds are intentionally conservative because the harness also runs invariants. Task 9 adds virtual text counters for page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages.
 
 ## Packaging Target
 
@@ -78,6 +78,8 @@ Use these documents while the migration is in progress:
 - Keep prepared source data width-independent.
 - Keep width-dependent caches separate.
 - Keep line/range APIs non-materializing by default.
+- Keep virtual text caches fixed-column and range-only; materialize only requested rows.
+- Keep virtual text handles opaque at runtime; anchor/page/source storage must stay behind capability boundaries.
 - Do not monkey-patch web globals to pass tests.
 - Do not add host-specific adapters to this package.
 - Do not keep parallel browser and terminal public stories.

@@ -15,7 +15,7 @@ The package surface is terminal-first:
 - `./terminal-rich-inline` is the opt-in rich metadata/ANSI sidecar
 - browser/demo/legacy `rich-inline` subpaths are not exported
 
-The package is still `0.0.0` while the large-text primitives and final release hygiene are added.
+The package is still `0.0.0` while the final release hygiene pass hardens the packed tarball surface.
 
 ## Target Architecture
 
@@ -93,6 +93,28 @@ console.log(stats.rows)
 ```
 
 The `pretext-tui` package name and terminal exports are the active package surface.
+
+## Virtual Text Primitives
+
+For large terminal buffers, use the fixed-column virtual text helpers:
+
+```ts
+import {
+  createTerminalLineIndex,
+  createTerminalPageCache,
+  getTerminalLinePage,
+  materializeTerminalLinePage,
+  prepareTerminal,
+} from 'pretext-tui'
+
+const prepared = prepareTerminal(transcript, { whiteSpace: 'pre-wrap', tabSize: 4 })
+const index = createTerminalLineIndex(prepared, { columns: 80, anchorInterval: 64 })
+const cache = createTerminalPageCache(prepared, index, { pageSize: 32, maxPages: 8 })
+const page = getTerminalLinePage(prepared, cache, index, { startRow: 400, rowCount: 20 })
+const visibleRows = materializeTerminalLinePage(prepared, page)
+```
+
+These helpers are fixed-column primitives for sparse row seeking, page-range caching, source-offset lookup, and append invalidation. They cache range metadata only; text is materialized only for requested rows. Indexes and caches are opaque handles bound to the prepared text and line index that created them, so consumers cannot depend on internal anchor or page storage.
 
 ## Terminal Demo
 

@@ -1,7 +1,25 @@
-// 补建说明：该文件为后续补建，用于执行 Task 7 的 TUI benchmark gate；当前进度：首版使用 public APIs 与 harness counters，阈值保守以降低 CI 噪声。
+// 补建说明：该文件为后续补建，用于执行 TUI benchmark gate；当前进度：Task 9 覆盖 public APIs、rich inline、virtual text paging/source/append counters，阈值保守以降低 CI 噪声。
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/index.js'
+import {
+  appendTerminalCellFlow,
+  createTerminalLineIndex,
+  createTerminalPageCache,
+  createTerminalSourceOffsetIndex,
+  getTerminalCellFlowGeneration,
+  getTerminalCellFlowPrepared,
+  getTerminalCursorForSourceOffset,
+  getTerminalLineIndexStats,
+  getTerminalLinePage,
+  getTerminalPageCacheStats,
+  invalidateTerminalLineIndex,
+  invalidateTerminalPageCache,
+  materializeTerminalLinePage,
+  prepareTerminal,
+  prepareTerminalCellFlow,
+  type TerminalLayoutOptions,
+  type TerminalPrepareOptions,
+} from '../src/index.js'
 import {
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
@@ -18,12 +36,21 @@ type BenchmarkWorkload = {
   text?: string
   rawText?: string
   corpusFile?: string
+  counterAssertions?: Record<string, CounterAssertion>
   maxChars?: number
   rich?: boolean
+  virtual?: boolean
+  appendText?: string
   prepare?: TerminalPrepareOptions
   layout: TerminalLayoutOptions
   iterations?: number
   maxMilliseconds?: number
+}
+
+type CounterAssertion = {
+  exact?: number
+  max?: number
+  min?: number
 }
 
 type BenchmarkConfig = {
@@ -49,6 +76,7 @@ for (const workload of config.workloads) {
   const elapsedMs = performance.now() - started
   const maxMilliseconds = workload.maxMilliseconds ?? config.defaults.maxMilliseconds
   assert(elapsedMs <= maxMilliseconds, `${workload.id} exceeded ${maxMilliseconds}ms: ${elapsedMs.toFixed(2)}ms`)
+  assertCounterAssertions(workload, counters)
   results.push({
     id: workload.id,
     elapsedMs: Number(elapsedMs.toFixed(2)),
@@ -71,6 +99,15 @@ function runWorkload(
     layoutPasses: 0,
     materializedLines: 0,
     materializedCodeUnits: 0,
+    pageCacheHits: 0,
+    pageCacheMisses: 0,
+    pageBuilds: 0,
+    anchorCount: 0,
+    maxAnchorReplayRows: 0,
+    sourceLookups: 0,
+    appendInvalidatedCodeUnits: 0,
+    appendReprepareCodeUnits: 0,
+    invalidatedPages: 0,
     richPrepareCalls: 0,
     richSpans: 0,
     richDiagnostics: 0,
@@ -93,6 +130,19 @@ function runWorkload(
       continue
     }
 
+    if (workload.virtual) {
+      const virtualCounters = runVirtualWorkload(workload, input)
+      for (const key of Object.keys(virtualCounters) as Array<keyof typeof virtualCounters>) {
+        if (key === 'maxAnchorReplayRows') {
+          counters[key] = Math.max(counters[key], virtualCounters[key])
+        } else {
+          counters[key] += virtualCounters[key]
+        }
+      }
+      assertVirtualCounters(workload, virtualCounters)
+      continue
+    }
+
     const prepared = prepareTerminal(input, workload.prepare)
     counters.prepareCalls++
     const lines = collectTerminalLines(prepared, workload.layout)
@@ -102,6 +152,148 @@ function runWorkload(
   }
 
   return counters
+}
+
+function runVirtualWorkload(
+  workload: BenchmarkWorkload,
+  input: string,
+): Record<
+  | 'anchorCount'
+  | 'appendInvalidatedCodeUnits'
+  | 'appendReprepareCodeUnits'
+  | 'invalidatedPages'
+  | 'layoutPasses'
+  | 'materializedCodeUnits'
+  | 'materializedLines'
+  | 'maxAnchorReplayRows'
+  | 'pageBuilds'
+  | 'pageCacheHits'
+  | 'pageCacheMisses'
+  | 'prepareCalls'
+  | 'sourceLookups',
+  number
+> {
+  const prepared = prepareTerminal(input, workload.prepare)
+  const index = createTerminalLineIndex(prepared, {
+    ...workload.layout,
+    anchorInterval: 16,
+  })
+  const cache = createTerminalPageCache(prepared, index, {
+    maxPages: 3,
+    pageSize: 8,
+  })
+  const sourceIndex = createTerminalSourceOffsetIndex(prepared)
+  const starts = [0, 8, 16, 24]
+  let materializedLines = 0
+  let materializedCodeUnits = 0
+  let sourceLookups = 0
+
+  for (const startRow of starts) {
+    const page = getTerminalLinePage(prepared, cache, index, { startRow, rowCount: 8 })
+    const materialized = materializeTerminalLinePage(prepared, page)
+    materializedLines += materialized.length
+    materializedCodeUnits += materialized.reduce((sum, line) => sum + line.text.length, 0)
+    for (const line of page.lines) {
+      getTerminalCursorForSourceOffset(prepared, sourceIndex, line.sourceStart)
+      sourceLookups++
+    }
+  }
+  getTerminalLinePage(prepared, cache, index, { startRow: 8, rowCount: 8 })
+
+  let appendInvalidatedCodeUnits = 0
+  let appendReprepareCodeUnits = 0
+  let invalidatedPages = 0
+  let flowRangeWalks = 0
+  if (workload.appendText !== undefined) {
+    const flow = prepareTerminalCellFlow(input, workload.prepare)
+    const flowPrepared = getTerminalCellFlowPrepared(flow)
+    const flowIndex = createTerminalLineIndex(flowPrepared, {
+      ...workload.layout,
+      anchorInterval: 16,
+      generation: getTerminalCellFlowGeneration(flow),
+    })
+    const flowCache = createTerminalPageCache(flowPrepared, flowIndex, {
+      maxPages: 2,
+      pageSize: 8,
+    })
+    getTerminalLinePage(flowPrepared, flowCache, flowIndex, { startRow: 8, rowCount: 8 })
+    getTerminalLinePage(flowPrepared, flowCache, flowIndex, {
+      startRow: 96,
+      rowCount: 8,
+    })
+    const appended = appendTerminalCellFlow(flow, workload.appendText, { invalidationWindowCodeUnits: 256 })
+    const appendedPrepared = getTerminalCellFlowPrepared(appended.flow)
+    appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
+    appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+    const lineInvalidation = invalidateTerminalLineIndex(appendedPrepared, flowIndex, appended.invalidation)
+    invalidateTerminalPageCache(flowCache, lineInvalidation)
+    invalidatedPages += getTerminalPageCacheStats(flowCache).invalidatedPages
+    const page = getTerminalLinePage(appendedPrepared, flowCache, flowIndex, { startRow: 8, rowCount: 8 })
+    const materialized = materializeTerminalLinePage(appendedPrepared, page)
+    materializedLines += materialized.length
+    materializedCodeUnits += materialized.reduce((sum, line) => sum + line.text.length, 0)
+    flowRangeWalks += getTerminalLineIndexStats(flowIndex).rangeWalks
+  }
+
+  const indexStats = getTerminalLineIndexStats(index)
+  const cacheStats = getTerminalPageCacheStats(cache)
+  return {
+    prepareCalls: workload.appendText === undefined ? 1 : 3,
+    layoutPasses: indexStats.rangeWalks + flowRangeWalks,
+    materializedLines,
+    materializedCodeUnits,
+    pageCacheHits: cacheStats.pageHits,
+    pageCacheMisses: cacheStats.pageMisses,
+    pageBuilds: cacheStats.pageBuilds,
+    anchorCount: indexStats.anchorCount,
+    maxAnchorReplayRows: indexStats.maxReplayRows,
+    sourceLookups,
+    appendInvalidatedCodeUnits,
+    appendReprepareCodeUnits,
+    invalidatedPages,
+  }
+}
+
+function assertVirtualCounters(
+  workload: BenchmarkWorkload,
+  counters: Record<string, number>,
+): void {
+  assert(counter(counters, 'pageCacheHits') >= 1, `${workload.id} expected at least one page cache hit`)
+  assert(counter(counters, 'pageCacheMisses') >= 4, `${workload.id} expected page cache misses`)
+  assert(counter(counters, 'pageBuilds') >= 4, `${workload.id} expected page builds`)
+  assert(counter(counters, 'anchorCount') > 0, `${workload.id} expected sparse anchors`)
+  assert(counter(counters, 'maxAnchorReplayRows') <= 16, `${workload.id} exceeded sparse anchor replay bound`)
+  assert(counter(counters, 'sourceLookups') > 0, `${workload.id} expected source lookups`)
+  if (workload.appendText !== undefined) {
+    assert(counter(counters, 'appendInvalidatedCodeUnits') > 0, `${workload.id} expected append invalidation`)
+    assert(
+      counter(counters, 'appendReprepareCodeUnits') >= counter(counters, 'appendInvalidatedCodeUnits'),
+      `${workload.id} expected honest full reprepare counter`,
+    )
+    assert(counter(counters, 'invalidatedPages') > 0, `${workload.id} expected page invalidation`)
+  }
+}
+
+function assertCounterAssertions(
+  workload: BenchmarkWorkload,
+  counters: Record<string, number>,
+): void {
+  for (const [key, assertion] of Object.entries(workload.counterAssertions ?? {})) {
+    const value = counter(counters, key)
+    if (assertion.exact !== undefined) {
+      assert(value === assertion.exact, `${workload.id} counter ${key} expected ${assertion.exact}, got ${value}`)
+    }
+    if (assertion.min !== undefined) {
+      assert(value >= assertion.min, `${workload.id} counter ${key} expected >= ${assertion.min}, got ${value}`)
+    }
+    if (assertion.max !== undefined) {
+      assert(value <= assertion.max, `${workload.id} counter ${key} expected <= ${assertion.max}, got ${value}`)
+    }
+  }
+}
+
+function counter(counters: Record<string, number>, key: string): number {
+  return counters[key] ?? 0
 }
 
 async function loadInput(workload: BenchmarkWorkload): Promise<string> {
@@ -132,6 +324,15 @@ function parseBenchmarkConfig(value: unknown): BenchmarkConfig {
     expectRecord(workload['layout'], `workloads[${index}].layout`)
     if (workload['iterations'] !== undefined) expectNumber(workload['iterations'], `workloads[${index}].iterations`)
     if (workload['maxMilliseconds'] !== undefined) expectNumber(workload['maxMilliseconds'], `workloads[${index}].maxMilliseconds`)
+    if (workload['counterAssertions'] !== undefined) {
+      const assertions = expectRecord(workload['counterAssertions'], `workloads[${index}].counterAssertions`)
+      for (const [counterKey, assertionValue] of Object.entries(assertions)) {
+        const assertion = expectRecord(assertionValue, `workloads[${index}].counterAssertions.${counterKey}`)
+        if (assertion['exact'] !== undefined) expectNumber(assertion['exact'], `workloads[${index}].counterAssertions.${counterKey}.exact`)
+        if (assertion['min'] !== undefined) expectNumber(assertion['min'], `workloads[${index}].counterAssertions.${counterKey}.min`)
+        if (assertion['max'] !== undefined) expectNumber(assertion['max'], `workloads[${index}].counterAssertions.${counterKey}.max`)
+      }
+    }
   }
   return {
     metadata: { schema: metadata['schema'] },

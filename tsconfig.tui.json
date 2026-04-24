@@ -1,4 +1,4 @@
-// 补建说明：该配置为后续补建，用于建立纯 TUI TypeScript 边界；当前进度：Task 2 仅覆盖已无 DOM/Canvas 依赖的核心语义文件，待 measurement 重构后扩大到终端 API 与构建入口。
+// 补建说明：该配置为后续补建，用于建立纯 TUI TypeScript 边界；当前进度：Task 9 覆盖终端 API、rich sidecar、virtual text primitives 与构建入口，不引入 DOM/Canvas lib。
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -17,7 +17,12 @@
     "src/line-text.ts",
     "src/measurement.ts",
     "src/terminal.ts",
+    "src/terminal-cell-flow.ts",
+    "src/terminal-line-index.ts",
+    "src/terminal-materialize.ts",
+    "src/terminal-page-cache.ts",
     "src/terminal-rich-inline.ts",
+    "src/terminal-source-offset-index.ts",
     "src/ansi-tokenize.ts",
     "src/terminal-string-width.ts",
     "src/terminal-types.ts",

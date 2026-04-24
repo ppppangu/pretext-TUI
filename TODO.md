@@ -12,14 +12,9 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Initial terminal rich metadata sidecar has landed.
 - TUI-only validation stack and CI have landed.
 - Terminal vertical slice demo has landed with a mixed transcript fixture, row-count precomputation, resize reflow, and visible-window materialization.
+- Sparse-anchor virtual text primitives have landed with opaque handles, source-offset lookup, fixed-column page caching, append invalidation metadata, and benchmark counters.
 
-## 1. Add Large-Text Primitives
-
-- Add sparse anchors for large text.
-- Add page caches only after the core API is stable.
-- Add source offset lookup and bounded append invalidation.
-
-## 2. Holistic Release Pass
+## 1. Holistic Release Pass
 
 - Remove or internalize any remaining legacy public-looking internals from the tarball.
 - Re-run the full validation gate.
@@ -37,7 +32,6 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 
 ## Open Questions
 
-- Which large-text counters best predict seek/materialize responsiveness after sparse anchors land?
 - Should internal layout modules be split before publish so `dist/layout.js` no longer contains legacy-shaped helper exports?
 
 ## Fixed Decisions

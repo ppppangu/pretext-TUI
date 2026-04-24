@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 Task 7 的 TUI benchmark workloads 与保守阈值；当前进度：首版使用非侵入式 harness counters，Task 9 后再加入 paging/append counters。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI benchmark workloads 与保守阈值；当前进度：Task 9 加入 virtual text paging/source/append invalidation 与 full reprepare counters。",
     "schema": "pretext-tui-benchmark@1"
   },
   "defaults": {
@@ -14,7 +14,13 @@
       "prepare": { "whiteSpace": "normal" },
       "layout": { "columns": 20 },
       "iterations": 200,
-      "maxMilliseconds": 1200
+      "maxMilliseconds": 1200,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 200 },
+        "layoutPasses": { "exact": 400 },
+        "materializedLines": { "exact": 400 },
+        "materializedCodeUnits": { "exact": 5400 }
+      }
     },
     {
       "id": "emoji-cjk",
@@ -25,7 +31,13 @@
       },
       "layout": { "columns": 12 },
       "iterations": 120,
-      "maxMilliseconds": 1500
+      "maxMilliseconds": 1500,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 120 },
+        "layoutPasses": { "exact": 360 },
+        "materializedLines": { "exact": 360 },
+        "materializedCodeUnits": { "exact": 3120 }
+      }
     },
     {
       "id": "rich-ansi",
@@ -34,7 +46,13 @@
       "prepare": { "whiteSpace": "pre-wrap" },
       "layout": { "columns": 18 },
       "iterations": 120,
-      "maxMilliseconds": 1800
+      "maxMilliseconds": 1800,
+      "counterAssertions": {
+        "richPrepareCalls": { "exact": 120 },
+        "richSpans": { "exact": 240 },
+        "richDiagnostics": { "exact": 0 },
+        "ansiCodeUnits": { "exact": 11520 }
+      }
     },
     {
       "id": "mixed-corpus",
@@ -43,7 +61,39 @@
       "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
       "layout": { "columns": 52 },
       "iterations": 20,
-      "maxMilliseconds": 4000
+      "maxMilliseconds": 4000,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 20 },
+        "layoutPasses": { "exact": 560 },
+        "materializedLines": { "exact": 560 },
+        "materializedCodeUnits": { "exact": 21140 }
+      }
+    },
+    {
+      "id": "virtual-large-text",
+      "corpusFile": "mixed-app-text.txt",
+      "maxChars": 1200,
+      "virtual": true,
+      "appendText": "\nappend benchmark row 世界 😀\nappend benchmark row tail",
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 44 },
+      "iterations": 6,
+      "maxMilliseconds": 9000,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 18 },
+        "layoutPasses": { "exact": 2532 },
+        "materializedLines": { "exact": 240 },
+        "materializedCodeUnits": { "exact": 7524 },
+        "pageCacheHits": { "exact": 6 },
+        "pageCacheMisses": { "exact": 24 },
+        "pageBuilds": { "exact": 24 },
+        "anchorCount": { "exact": 12 },
+        "maxAnchorReplayRows": { "max": 16 },
+        "sourceLookups": { "exact": 192 },
+        "appendInvalidatedCodeUnits": { "exact": 1854 },
+        "appendReprepareCodeUnits": { "exact": 6732 },
+        "invalidatedPages": { "exact": 6 }
+      }
     }
   ]
 }

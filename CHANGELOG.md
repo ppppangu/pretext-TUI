@@ -11,5 +11,6 @@ Initial terminal-package migration release.
 - Adds the `./terminal-rich-inline` sidecar for inline SGR/OSC8 metadata.
 - Adds TUI-only validation gates covering static checks, goldens, corpus invariants, fuzzing, benchmarks, CI, and package smoke.
 - Adds a deterministic terminal demo that shows prepare, resize reflow, and visible-window materialization over a mixed terminal transcript.
+- Adds runtime-opaque sparse-anchor virtual text primitives for fixed-column page caching, source-offset lookup, and append invalidation metadata.
 
-This version is intentionally pre-1.0 while the large-text primitives continue to harden.
+This version is intentionally pre-1.0 while final tarball hygiene continues to harden.
