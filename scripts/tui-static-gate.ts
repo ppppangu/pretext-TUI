@@ -7,6 +7,7 @@ const includeRoots = [
   'src',
   'scripts',
   'tests/tui',
+  'fixtures',
   'package.json',
   'tsconfig.tui.json',
   'tsconfig.build.json',
@@ -15,7 +16,7 @@ const includeRoots = [
 ]
 const ignoredDirs = new Set(['node_modules', 'dist', '.git'])
 const codeFileExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs'])
-const textFileExtensions = new Set(['.json', '.yml', '.yaml'])
+const textFileExtensions = new Set(['.json', '.yml', '.yaml', '.md', '.txt'])
 
 type Finding = {
   file: string
@@ -94,6 +95,7 @@ function scanConfig(file: string, raw: string): void {
   const configPatterns: Array<[RegExp, string]> = [
     [/\b(playwright|puppeteer|jsdom|happy-dom)\b/g, 'browser automation/dom package in config'],
     [/\b(site:build|pages\/|browser-automation|build-demo-site)\b/g, 'browser demo or page workflow in active config'],
+    [/\b(Claude Code|pane system|file browser|workspace adapter|focus router|command runner)\b/gi, 'host application concept in package validation text'],
   ]
   for (const [pattern, reason] of configPatterns) {
     for (const match of raw.matchAll(pattern)) {

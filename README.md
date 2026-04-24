@@ -15,7 +15,7 @@ The package surface is terminal-first:
 - `./terminal-rich-inline` is the opt-in rich metadata/ANSI sidecar
 - browser/demo/legacy `rich-inline` subpaths are not exported
 
-The package is still `0.0.0` while the vertical demo and large-text primitives are added.
+The package is still `0.0.0` while the large-text primitives and final release hygiene are added.
 
 ## Target Architecture
 
@@ -93,6 +93,16 @@ console.log(stats.rows)
 ```
 
 The `pretext-tui` package name and terminal exports are the active package surface.
+
+## Terminal Demo
+
+The repository includes a deterministic package-level demo for the terminal primitive stack:
+
+```sh
+bun run --silent terminal-demo --columns=52 --fixture=mixed-terminal-session
+```
+
+The demo prepares a mixed terminal transcript once, reports row counts across resize widths, and materializes only a bounded visible window. It is intentionally not an application shell: it has no renderer, input handling, persistence layer, or package-external integration.
 
 ## Terminal Semantics
 

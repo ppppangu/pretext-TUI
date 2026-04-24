@@ -11,21 +11,15 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Package exports and smoke tests now target the terminal API surface.
 - Initial terminal rich metadata sidecar has landed.
 - TUI-only validation stack and CI have landed.
+- Terminal vertical slice demo has landed with a mixed transcript fixture, row-count precomputation, resize reflow, and visible-window materialization.
 
-## 1. Add Vertical Slice Demo
-
-- Add a mixed terminal session fixture.
-- Show row-count precomputation.
-- Show resize reflow.
-- Show visible-window materialization.
-
-## 2. Add Large-Text Primitives
+## 1. Add Large-Text Primitives
 
 - Add sparse anchors for large text.
 - Add page caches only after the core API is stable.
 - Add source offset lookup and bounded append invalidation.
 
-## 3. Holistic Release Pass
+## 2. Holistic Release Pass
 
 - Remove or internalize any remaining legacy public-looking internals from the tarball.
 - Re-run the full validation gate.

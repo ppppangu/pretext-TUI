@@ -10,5 +10,6 @@ Initial terminal-package migration release.
 - Adds deterministic terminal width profiles and terminal API facade work as the basis for upcoming releases.
 - Adds the `./terminal-rich-inline` sidecar for inline SGR/OSC8 metadata.
 - Adds TUI-only validation gates covering static checks, goldens, corpus invariants, fuzzing, benchmarks, CI, and package smoke.
+- Adds a deterministic terminal demo that shows prepare, resize reflow, and visible-window materialization over a mixed terminal transcript.
 
-This version is intentionally pre-1.0 while the terminal demo and large-text primitives continue to harden.
+This version is intentionally pre-1.0 while the large-text primitives continue to harden.

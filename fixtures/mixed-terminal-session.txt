@@ -1,0 +1,23 @@
+# 补建说明：该文件为后续补建，用于提供 Task 8 terminal-demo 的混合终端 transcript fixture；当前进度：首版覆盖 ASCII、CJK、Arabic、emoji、tabs、URLs、硬换行、表格和 CLI-like logs。
+$ pretext-tui demo --profile terminal-unicode-narrow@1
+[09:41:02] INFO  preparing terminal transcript
+[09:41:02] WARN  long URL will wrap: https://example.test/docs/pretext-tui?section=terminal-layout&mode=pre-wrap
+
+STATUS	TASK	OWNER
+ok	width-profile	core
+ok	rich-inline	metadata
+todo	virtual-text	index
+
+ASCII prose: the package prepares text once, then reflows rows when the terminal is resized.
+中文: 终端宽度以 cell 为单位，中文字符通常占两个 cell。
+日本語: タブ、句読点、絵文字🙂、そして長い単語を同じ transcript で確認します。
+العربية: هذا السطر يتحقق من النص العربي داخل سجل طرفية مختلط.
+
+tabs:	alpha	beta	gamma
+emoji: build ✅  tests ✅  release-candidate 🚀
+soft-hyphen sample: trans­atlantic wrapping keeps copy/source offsets stable.
+
+$ tail -n 3 release.log
+2026-04-24T09:41:03Z pass typecheck:tui
+2026-04-24T09:41:04Z pass tui-fuzz seed=ci cases=2000
+2026-04-24T09:41:05Z pass package-smoke-test

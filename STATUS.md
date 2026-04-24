@@ -4,7 +4,7 @@ This repository is being migrated into `pretext-TUI`, a pure terminal-cell text 
 
 ## Current Phase
 
-Task 7 has landed the TUI validation stack and CI surface. The package now has typed validation scripts, static no-browser gating, reference goldens, corpus invariants, deterministic fuzzing, benchmark guardrails, and tarball smoke verification.
+Task 8 has landed the terminal vertical slice demo. The package now has typed validation scripts, static no-browser gating, reference goldens, corpus invariants, deterministic fuzzing, benchmark guardrails, tarball smoke verification, and a deterministic demo that exercises prepare, resize reflow, and visible-window materialization.
 
 ## Target Package Status
 
@@ -19,7 +19,7 @@ Task 7 has landed the TUI validation stack and CI surface. The package now has t
 | Package export surface | Terminal root and `./terminal` exports landed |
 | Package smoke test | Terminal API and tarball surface covered |
 | Terminal rich sidecar | Initial `./terminal-rich-inline` landed |
-| TUI demo | Pending |
+| TUI demo | Mixed transcript fixture and terminal-demo script landed |
 | Publishable tarball hygiene | Release gate landed; internal legacy-shaped dist modules still need final Task 10 cleanup |
 
 ## Current Sources Of Truth
@@ -38,7 +38,7 @@ Task 7 has landed the TUI validation stack and CI surface. The package now has t
 - `benchmarks/tui.json`
 - `corpora/tui-step10.json`
 
-These files are active validation inputs/status data for the Task 7 release gate.
+These files are active validation inputs/status data for the current release gate.
 
 ## Removed Product Surface
 

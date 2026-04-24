@@ -1,4 +1,4 @@
-# 补建说明：该 workflow 为后续补建，用于运行 pretext-TUI 的 TUI-only 发布验证门禁；当前进度：Task 7 首版，覆盖 typecheck/test/static/oracle/corpus/fuzz/benchmark/package smoke。
+# 补建说明：该 workflow 为后续补建，用于运行 pretext-TUI 的 TUI-only 发布验证门禁；当前进度：Task 8 覆盖 typecheck/test/static/oracle/corpus/fuzz/benchmark/terminal demo/package smoke。
 name: TUI validation
 
 on:
@@ -39,6 +39,9 @@ jobs:
 
       - name: Benchmark check
         run: bun run benchmark-check:tui
+
+      - name: Terminal demo
+        run: bun run terminal-demo-check
 
       - name: Package smoke
         run: bun run package-smoke-test

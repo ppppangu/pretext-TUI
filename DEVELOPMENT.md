@@ -23,6 +23,7 @@ bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
+bun run terminal-demo-check
 bun run package-smoke-test
 ```
 
@@ -39,11 +40,11 @@ bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
+bun run terminal-demo-check
 bun run package-smoke-test
-bun run terminal-demo --columns=52 --fixture=mixed-terminal-session
 ```
 
-`terminal-demo` lands in the next task. Until then, `prepublishOnly` runs the non-demo release gate.
+`terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
 
 The benchmark thresholds are intentionally conservative because the Task 7 harness also runs invariants. Tighter performance counters belong with the large-text primitives.
 

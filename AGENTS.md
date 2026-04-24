@@ -29,6 +29,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `tsconfig.tui-validation.json` — validation scripts/tests typecheck boundary.
 - `tsconfig.build.json` — publish-time emit config for `dist/`.
 - `scripts/package-smoke-test.ts` — tarball-level JS/TS consumer verification.
+- `fixtures/` — deterministic package-level terminal demo fixtures.
 - `src/analysis.ts` — normalization, segmentation, glue rules, and text-analysis phase.
 - `src/measurement.ts` — terminal-width measurement adapter used by the prepared/layout pipeline.
 - `src/line-break.ts` — internal line-walking core.
@@ -38,6 +39,8 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `src/terminal-width-profile.ts` — terminal width profile model.
 - `src/terminal-rich-inline.ts` — terminal rich metadata surface.
 - `tests/tui/` — deterministic TUI tests and fixtures.
+- `scripts/terminal-demo.ts` — non-app vertical slice for prepare, resize reflow, and visible-window materialization.
+- `scripts/terminal-demo-check.ts` — deterministic terminal-demo output and JSON contract gate.
 - `scripts/tui-*.ts` — static, oracle, corpus, fuzz, and benchmark release gates.
 
 ### Implementation Notes
@@ -77,6 +80,7 @@ Current package publish gate should include:
 - TUI corpus check
 - TUI fuzzing
 - TUI benchmark check
+- terminal demo smoke
 - package smoke test
 
 If a task cannot pass because the active source tree still carries source-project behavior, either complete the planned migration step or explicitly move that behavior out of the active TUI surface. Do not paper over failures with shims.
