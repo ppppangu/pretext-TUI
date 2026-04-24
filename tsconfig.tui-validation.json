@@ -1,0 +1,18 @@
+// 补建说明：该配置为后续补建，用于 typecheck Task 7 的 TUI validation scripts/tests；当前进度：首版覆盖 scripts/tui-*.ts 与 tests/tui/**/*.ts，不引入 DOM lib。
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["bun", "node"],
+    "allowJs": false,
+    "noEmit": true
+  },
+  "include": [
+    "scripts/tui-*.ts",
+    "tests/tui/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}

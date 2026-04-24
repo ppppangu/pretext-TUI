@@ -34,8 +34,6 @@
     "pages",
     "scripts",
     "shared",
-    "src/**/*.test.ts",
-    "src/test-data.ts",
-    "src/rich-inline.ts"
+    "src/**/*.test.ts"
   ]
 }

@@ -1,0 +1,213 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 Task 7 的 TUI reference goldens；当前进度：首版覆盖 layout、rich inline 与 width profile 小型人工可审快照。",
+    "schema": "pretext-tui-reference@1"
+  },
+  "widthCases": [
+    {
+      "id": "ascii",
+      "text": "abc",
+      "expectedWidth": 3
+    },
+    {
+      "id": "cjk-wide",
+      "text": "世界",
+      "expectedWidth": 4
+    },
+    {
+      "id": "ambiguous-wide",
+      "text": "Ω",
+      "widthProfile": {
+        "ambiguousWidth": "wide"
+      },
+      "expectedWidth": 2
+    },
+    {
+      "id": "emoji-zwj",
+      "text": "👩‍💻",
+      "expectedWidth": 2
+    }
+  ],
+  "layoutCases": [
+    {
+      "id": "normal-wrap",
+      "text": "hello world from tui",
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layout": {
+        "columns": 7
+      },
+      "expected": {
+        "rows": 4,
+        "maxLineWidth": 5,
+        "texts": ["hello", "world", "from", "tui"],
+        "sourceTexts": ["hello", "world", "from", "tui"],
+        "widths": [5, 5, 4, 3],
+        "breakKinds": ["wrap", "wrap", "wrap", "end"],
+        "sourceRanges": [[0, 5], [6, 11], [12, 16], [17, 20]],
+        "overflow": [null, null, null, null]
+      }
+    },
+    {
+      "id": "start-column-tab-fit",
+      "text": "abc\td",
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "layout": {
+        "columns": 6,
+        "startColumn": 1
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 5,
+        "texts": ["abc", "    d"],
+        "sourceTexts": ["abc", "\td"],
+        "widths": [3, 5],
+        "breakKinds": ["wrap", "end"],
+        "sourceRanges": [[0, 3], [3, 5]],
+        "overflow": [null, null]
+      }
+    },
+    {
+      "id": "prewrap-tabs-start-column",
+      "text": "x\t世界\ny",
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "layout": {
+        "columns": 8,
+        "startColumn": 2
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 6,
+        "texts": ["x 世界", "y"],
+        "sourceTexts": ["x\t世界", "y"],
+        "widths": [6, 1],
+        "breakKinds": ["hard", "end"],
+        "sourceRanges": [[0, 4], [5, 6]],
+        "overflow": [null, null]
+      }
+    },
+    {
+      "id": "soft-hyphen-wrap",
+      "text": "trans­atlantic",
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layout": {
+        "columns": 6
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 6,
+        "texts": ["trans-", "atlant", "ic"],
+        "sourceTexts": ["trans­", "atlant", "ic"],
+        "widths": [6, 6, 2],
+        "breakKinds": ["soft-hyphen", "wrap", "end"],
+        "sourceRanges": [[0, 6], [6, 12], [12, 14]],
+        "overflow": [null, null, null]
+      }
+    },
+    {
+      "id": "emoji-cjk-graphemes",
+      "text": "A界é😀B",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 3
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 3,
+        "texts": ["A界", "é😀", "B"],
+        "sourceTexts": ["A界", "é😀", "B"],
+        "widths": [3, 3, 1],
+        "breakKinds": ["wrap", "wrap", "end"],
+        "sourceRanges": [[0, 2], [2, 6], [6, 7]],
+        "overflow": [null, null, null]
+      }
+    },
+    {
+      "id": "ambiguous-wide-overflow",
+      "text": "ΩΩa",
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "widthProfile": {
+          "ambiguousWidth": "wide"
+        }
+      },
+      "layout": {
+        "columns": 3
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 3,
+        "texts": ["Ω", "Ωa"],
+        "sourceTexts": ["Ω", "Ωa"],
+        "widths": [2, 3],
+        "breakKinds": ["wrap", "end"],
+        "sourceRanges": [[0, 1], [1, 3]],
+        "overflow": [null, null]
+      }
+    }
+  ],
+  "richCases": [
+    {
+      "id": "sgr-wrap",
+      "rawText": "\u001b[31mabcdef\u001b[0m",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 3
+      },
+      "expected": {
+        "visibleText": "abcdef",
+        "diagnosticCount": 0,
+        "spanKinds": ["style"],
+        "texts": ["abc", "def"],
+        "fragmentTexts": [["abc"], ["def"]]
+      }
+    },
+    {
+      "id": "osc8-normal",
+      "rawText": "go \u001b]8;;https://e.test\u001b\\there\u001b]8;;\u001b\\",
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layout": {
+        "columns": 4
+      },
+      "expected": {
+        "visibleText": "go there",
+        "diagnosticCount": 0,
+        "spanKinds": ["link"],
+        "texts": ["go", "ther", "e"],
+        "fragmentTexts": [["go"], ["ther"], ["e"]]
+      }
+    },
+    {
+      "id": "sanitize-csi",
+      "rawText": "a\u001b[2Kb",
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layout": {
+        "columns": 10
+      },
+      "expected": {
+        "visibleText": "ab",
+        "diagnosticCount": 1,
+        "spanKinds": [],
+        "texts": ["ab"],
+        "fragmentTexts": [["ab"]]
+      }
+    }
+  ]
+}

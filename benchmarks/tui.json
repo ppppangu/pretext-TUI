@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 Task 7 的 TUI benchmark workloads 与保守阈值；当前进度：首版使用非侵入式 harness counters，Task 9 后再加入 paging/append counters。",
+    "schema": "pretext-tui-benchmark@1"
+  },
+  "defaults": {
+    "iterations": 60,
+    "maxMilliseconds": 2500
+  },
+  "workloads": [
+    {
+      "id": "short-ascii",
+      "text": "hello world from pretext tui",
+      "prepare": { "whiteSpace": "normal" },
+      "layout": { "columns": 20 },
+      "iterations": 200,
+      "maxMilliseconds": 1200
+    },
+    {
+      "id": "emoji-cjk",
+      "text": "A界é😀B 👩‍💻 こんにちは 世界 ΩΩΩ",
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "widthProfile": { "ambiguousWidth": "wide" }
+      },
+      "layout": { "columns": 12 },
+      "iterations": 120,
+      "maxMilliseconds": 1500
+    },
+    {
+      "id": "rich-ansi",
+      "rawText": "\u001b[31mabcdef\u001b[0m and \u001b]8;;https://e.test\u001b\\linked terminal text\u001b]8;;\u001b\\",
+      "rich": true,
+      "prepare": { "whiteSpace": "pre-wrap" },
+      "layout": { "columns": 18 },
+      "iterations": 120,
+      "maxMilliseconds": 1800
+    },
+    {
+      "id": "mixed-corpus",
+      "corpusFile": "mixed-app-text.txt",
+      "maxChars": 2400,
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 52 },
+      "iterations": 20,
+      "maxMilliseconds": 4000
+    }
+  ]
+}

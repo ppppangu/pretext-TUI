@@ -10,26 +10,26 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 - Initial terminal-first API facade and TUI core tests have landed.
 - Package exports and smoke tests now target the terminal API surface.
 - Initial terminal rich metadata sidecar has landed.
+- TUI-only validation stack and CI have landed.
 
-## 1. Add TUI Validation
-
-- Add no-browser static gate.
-- Add terminal width goldens.
-- Add whitespace, tab, hard-break, CJK, emoji, combining-mark, and source-offset tests.
-- Add deterministic corpus/fuzz/benchmark scripts.
-
-## 2. Add Vertical Slice Demo
+## 1. Add Vertical Slice Demo
 
 - Add a mixed terminal session fixture.
 - Show row-count precomputation.
 - Show resize reflow.
 - Show visible-window materialization.
 
-## 3. Add Optional Rich And Large-Text Primitives
+## 2. Add Large-Text Primitives
 
-- Add source-mapped spans for style/link/copy semantics.
 - Add sparse anchors for large text.
 - Add page caches only after the core API is stable.
+- Add source offset lookup and bounded append invalidation.
+
+## 3. Holistic Release Pass
+
+- Remove or internalize any remaining legacy public-looking internals from the tarball.
+- Re-run the full validation gate.
+- Verify docs, package exports, and tarball contents tell one terminal-first story.
 
 ## Not Worth Doing Now
 
@@ -43,8 +43,8 @@ Current priorities for turning `pretext-TUI` into a publishable terminal-cell la
 
 ## Open Questions
 
-- Which corpus rows should become the permanent TUI release gate?
-- What performance counters best predict large-text responsiveness?
+- Which large-text counters best predict seek/materialize responsiveness after sparse anchors land?
+- Should internal layout modules be split before publish so `dist/layout.js` no longer contains legacy-shaped helper exports?
 
 ## Fixed Decisions
 

@@ -48,13 +48,19 @@
   ],
   "scripts": {
     "build:package": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
-    "check": "bun run typecheck:tui && oxlint --type-aware src",
+    "benchmark-check:tui": "bun run scripts/tui-benchmark-check.ts",
+    "check": "bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && oxlint --type-aware src",
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",
     "package-smoke-test": "bun run scripts/package-smoke-test.ts",
     "prepack": "bun run build:package",
-    "prepublishOnly": "bun run check && bun run test:tui && bun run package-smoke-test",
-    "test:tui": "bun test src/terminal-core.test.ts src/terminal-rich-inline.test.ts src/terminal-string-width.test.ts",
-    "typecheck:tui": "bunx tsc --noEmit -p tsconfig.tui.json"
+    "prepublishOnly": "bun run check && bun run test:tui && bun run tui-oracle-check && bun run tui-corpus-check && bun run tui-fuzz --seed=ci --cases=2000 && bun run benchmark-check:tui && bun run package-smoke-test",
+    "test:tui": "bun test src/terminal-core.test.ts src/terminal-rich-inline.test.ts src/terminal-string-width.test.ts tests/tui",
+    "tui-corpus-check": "bun run scripts/tui-corpus-check.ts",
+    "tui-fuzz": "bun run scripts/tui-fuzz.ts",
+    "tui-oracle-check": "bun run scripts/tui-reference-check.ts",
+    "tui-static-gate": "bun run scripts/tui-static-gate.ts",
+    "typecheck:tui": "bunx tsc --noEmit -p tsconfig.tui.json",
+    "typecheck:tui-validation": "bunx tsc --noEmit -p tsconfig.tui-validation.json"
   },
   "devDependencies": {
     "@types/bun": "latest",

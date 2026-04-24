@@ -6,16 +6,16 @@ The corpus directory is currently a fixture source for the terminal migration.
 
 - Keep reusable text fixtures.
 - Remove browser snapshot status from the active package story.
-- Let future TUI scripts create their own deterministic status outputs.
+- Feed the active TUI corpus manifest used by the release gate.
 
-## Future TUI Outputs
+## Active TUI Outputs
 
-The implementation plan reserves:
+The active validation files are:
 
 - `corpora/tui-step10.json`
 - `status/tui-dashboard.json`
 
-Those files do not exist yet.
+`corpora/tui-step10.json` references existing `*.txt` fixtures instead of copying large text payloads.
 
 ## Not Active
 

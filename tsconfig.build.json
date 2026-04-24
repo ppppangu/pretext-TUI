@@ -26,5 +26,5 @@
     "src/terminal-width-profile.ts",
     "src/text-modules.d.ts"
   ],
-  "exclude": ["src/**/*.test.ts", "src/test-data.ts"]
+  "exclude": ["src/**/*.test.ts"]
 }

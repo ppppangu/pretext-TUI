@@ -17,7 +17,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - Do not add renderer-specific or host-specific dependencies.
 - Do not add host application adapters to this package.
 - Do not keep two public product stories. The package story is terminal-first.
-- Browser-oriented source material is migration context only until removal tasks land.
+- Browser-oriented source material must stay out of active source, docs, package exports, scripts, and validation.
 
 ### Important Files
 
@@ -25,18 +25,20 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `docs/contracts/host-app-boundary.md` — host-neutral package boundary and non-goals.
 - `docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md` — detailed implementation plan.
 - `package.json` — package identity, exports, scripts, and publish surface.
-- `tsconfig.tui.json` — active TUI typecheck boundary once created.
+- `tsconfig.tui.json` — active TUI runtime typecheck boundary.
+- `tsconfig.tui-validation.json` — validation scripts/tests typecheck boundary.
 - `tsconfig.build.json` — publish-time emit config for `dist/`.
 - `scripts/package-smoke-test.ts` — tarball-level JS/TS consumer verification.
 - `src/analysis.ts` — normalization, segmentation, glue rules, and text-analysis phase.
-- `src/measurement.ts` — temporary source-project measurement module; will be replaced by terminal-width capability work.
+- `src/measurement.ts` — terminal-width measurement adapter used by the prepared/layout pipeline.
 - `src/line-break.ts` — internal line-walking core.
 - `src/line-text.ts` — lazy line materialization helpers.
-- `src/terminal.ts` — planned terminal public API surface.
-- `src/terminal-string-width.ts` — planned terminal cell-width backend.
-- `src/terminal-width-profile.ts` — planned terminal width profile model.
-- `src/terminal-rich-inline.ts` — planned terminal rich metadata surface.
-- `tests/tui/` — planned deterministic TUI tests and fixtures.
+- `src/terminal.ts` — terminal public API surface.
+- `src/terminal-string-width.ts` — terminal cell-width backend.
+- `src/terminal-width-profile.ts` — terminal width profile model.
+- `src/terminal-rich-inline.ts` — terminal rich metadata surface.
+- `tests/tui/` — deterministic TUI tests and fixtures.
+- `scripts/tui-*.ts` — static, oracle, corpus, fuzz, and benchmark release gates.
 
 ### Implementation Notes
 
@@ -68,15 +70,13 @@ Before marking a migration task done, run the task's specific validation command
 Current package publish gate should include:
 
 - TUI typecheck
-- TUI tests
-- package smoke test
-
-The broader TUI release gate lands in later migration tasks and should eventually include:
-
+- TUI validation typecheck
 - no-browser static gate
+- TUI tests
 - deterministic TUI oracle
 - TUI corpus check
 - TUI fuzzing
 - TUI benchmark check
+- package smoke test
 
 If a task cannot pass because the active source tree still carries source-project behavior, either complete the planned migration step or explicitly move that behavior out of the active TUI surface. Do not paper over failures with shims.

@@ -8,5 +8,7 @@ Initial terminal-package migration release.
 - Retargets the active package surface toward terminal cells, rows, ranges, and lazy materialization.
 - Removes browser demos, browser validation scripts, and browser snapshot dashboards from the active package surface.
 - Adds deterministic terminal width profiles and terminal API facade work as the basis for upcoming releases.
+- Adds the `./terminal-rich-inline` sidecar for inline SGR/OSC8 metadata.
+- Adds TUI-only validation gates covering static checks, goldens, corpus invariants, fuzzing, benchmarks, CI, and package smoke.
 
-This version is intentionally pre-1.0 while terminal validation, rich metadata, and large-text primitives continue to harden.
+This version is intentionally pre-1.0 while the terminal demo and large-text primitives continue to harden.

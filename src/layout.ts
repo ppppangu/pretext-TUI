@@ -828,8 +828,8 @@ export function layoutNextLineRange(
   ) {
     return createLayoutLineRange(
       0,
-      normalizedStart.segmentIndex,
-      normalizedStart.graphemeIndex,
+      start.segmentIndex,
+      start.graphemeIndex,
       normalizedStart.segmentIndex,
       normalizedStart.graphemeIndex,
     )

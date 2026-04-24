@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 Task 7 的 TUI corpus validation manifest；当前进度：首版引用既有 corpora/*.txt，不复制大段语料。",
+    "schema": "pretext-tui-corpus-manifest@1"
+  },
+  "samples": [
+    {
+      "id": "mixed-app-text",
+      "file": "mixed-app-text.txt",
+      "maxChars": 400,
+      "windows": ["head", "middle", "tail"],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "layouts": [
+        { "columns": 24 },
+        { "columns": 52 },
+        { "columns": 80, "startColumn": 4 }
+      ]
+    },
+    {
+      "id": "zh-guxiang",
+      "file": "zh-guxiang.txt",
+      "maxChars": 1400,
+      "windows": ["head", "middle"],
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layouts": [
+        { "columns": 20 },
+        { "columns": 40 }
+      ]
+    },
+    {
+      "id": "ja-rashomon",
+      "file": "ja-rashomon.txt",
+      "maxChars": 1400,
+      "windows": ["head", "middle"],
+      "prepare": {
+        "whiteSpace": "normal",
+        "wordBreak": "keep-all"
+      },
+      "layouts": [
+        { "columns": 20 },
+        { "columns": 48 }
+      ]
+    },
+    {
+      "id": "ar-bukhala",
+      "file": "ar-al-bukhala.txt",
+      "maxChars": 1200,
+      "windows": ["head"],
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layouts": [
+        { "columns": 32 },
+        { "columns": 72 }
+      ]
+    },
+    {
+      "id": "hi-eidgah",
+      "file": "hi-eidgah.txt",
+      "maxChars": 1200,
+      "windows": ["head"],
+      "prepare": {
+        "whiteSpace": "normal"
+      },
+      "layouts": [
+        { "columns": 28 },
+        { "columns": 64 }
+      ]
+    }
+  ]
+}

@@ -19,15 +19,20 @@ The currently enforced package gate is:
 ```sh
 bun run check
 bun run test:tui
+bun run tui-oracle-check
+bun run tui-corpus-check
+bun run tui-fuzz --seed=ci --cases=2000
+bun run benchmark-check:tui
 bun run package-smoke-test
 ```
 
-## Later TUI Validation Surface
+## Full TUI Validation Surface
 
-Later migration tasks add the broader TUI validation surface:
+The full release validation surface is:
 
 ```sh
 bun run typecheck:tui
+bun run typecheck:tui-validation
 bun run test:tui
 bun run tui-static-gate
 bun run tui-oracle-check
@@ -35,19 +40,12 @@ bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run package-smoke-test
-bun run test:tui
 bun run terminal-demo --columns=52 --fixture=mixed-terminal-session
 ```
 
-Current package publish gate:
+`terminal-demo` lands in the next task. Until then, `prepublishOnly` runs the non-demo release gate.
 
-```sh
-bun run check
-bun run test:tui
-bun run package-smoke-test
-```
-
-Broader TUI release gates such as the static no-browser sweep, oracle/corpus/fuzz checks, and benchmark checks land in later tasks of the migration plan.
+The benchmark thresholds are intentionally conservative because the Task 7 harness also runs invariants. Tighter performance counters belong with the large-text primitives.
 
 ## Packaging Target
 
@@ -59,6 +57,7 @@ The final package smoke test must verify:
 - removed demo/assets subpaths fail
 - package files do not ship obsolete browser product surfaces
 - type declarations match the terminal API surface
+- validation scripts stay typed and terminal-only
 
 ## Source Of Truth
 

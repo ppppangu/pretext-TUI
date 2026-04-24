@@ -81,6 +81,7 @@ function normalizeWhitespacePreWrap(text: string): string {
 }
 
 let sharedWordSegmenter: Intl.Segmenter | null = null
+let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 let segmenterLocale: string | undefined
 
 function getSharedWordSegmenter(): Intl.Segmenter {
@@ -90,8 +91,16 @@ function getSharedWordSegmenter(): Intl.Segmenter {
   return sharedWordSegmenter
 }
 
+function getSharedGraphemeSegmenter(): Intl.Segmenter {
+  if (sharedGraphemeSegmenter === null) {
+    sharedGraphemeSegmenter = new Intl.Segmenter(segmenterLocale, { granularity: 'grapheme' })
+  }
+  return sharedGraphemeSegmenter
+}
+
 export function clearAnalysisCaches(): void {
   sharedWordSegmenter = null
+  sharedGraphemeSegmenter = null
 }
 
 export function setAnalysisLocale(locale?: string): void {
@@ -99,6 +108,7 @@ export function setAnalysisLocale(locale?: string): void {
   if (segmenterLocale === nextLocale) return
   segmenterLocale = nextLocale
   sharedWordSegmenter = null
+  sharedGraphemeSegmenter = null
 }
 
 const arabicScriptRe = /\p{Script=Arabic}/u
@@ -479,13 +489,15 @@ function splitSegmentByBreakKind(
   let currentWordLike = false
   let offset = 0
 
-  for (const ch of segment) {
-    const kind = classifySegmentBreakChar(ch, whiteSpaceProfile)
+  for (const { segment: grapheme } of getSharedGraphemeSegmenter().segment(segment)) {
+    const kind = grapheme.length === 1
+      ? classifySegmentBreakChar(grapheme, whiteSpaceProfile)
+      : 'text'
     const wordLike = kind === 'text' && isWordLike
 
     if (currentKind !== null && kind === currentKind && wordLike === currentWordLike) {
-      currentTextParts.push(ch)
-      offset += ch.length
+      currentTextParts.push(grapheme)
+      offset += grapheme.length
       continue
     }
 
@@ -499,10 +511,10 @@ function splitSegmentByBreakKind(
     }
 
     currentKind = kind
-    currentTextParts = [ch]
+    currentTextParts = [grapheme]
     currentStart = start + offset
     currentWordLike = wordLike
-    offset += ch.length
+    offset += grapheme.length
   }
 
   if (currentKind !== null) {
@@ -518,12 +530,7 @@ function splitSegmentByBreakKind(
 }
 
 function isTextRunBoundary(kind: SegmentBreakKind): boolean {
-  return (
-    kind === 'space' ||
-    kind === 'preserved-space' ||
-    kind === 'zero-width-break' ||
-    kind === 'hard-break'
-  )
+  return kind !== 'text'
 }
 
 const urlSchemeSegmentRe = /^[A-Za-z][A-Za-z0-9+.-]*:$/
@@ -1291,6 +1298,44 @@ function mergeKeepAllTextSegments(
   }
 }
 
+const leadingGraphemeContinuationRe = /^[\p{M}\uFE00-\uFE0F\u20E3]/u
+
+function mergeLeadingGraphemeContinuations(segmentation: MergedSegmentation): MergedSegmentation {
+  const texts: string[] = []
+  const isWordLike: boolean[] = []
+  const kinds: SegmentBreakKind[] = []
+  const starts: number[] = []
+
+  for (let i = 0; i < segmentation.len; i++) {
+    const text = segmentation.texts[i]!
+    const kind = segmentation.kinds[i]!
+    const previousIndex = texts.length - 1
+    if (
+      kind === 'text' &&
+      previousIndex >= 0 &&
+      kinds[previousIndex] === 'text' &&
+      leadingGraphemeContinuationRe.test(text)
+    ) {
+      texts[previousIndex] += text
+      isWordLike[previousIndex] = isWordLike[previousIndex] || segmentation.isWordLike[i]!
+      continue
+    }
+
+    texts.push(text)
+    isWordLike.push(segmentation.isWordLike[i]!)
+    kinds.push(kind)
+    starts.push(segmentation.starts[i]!)
+  }
+
+  return {
+    len: texts.length,
+    texts,
+    isWordLike,
+    kinds,
+    starts,
+  }
+}
+
 export function analyzeText(
   text: string,
   profile: AnalysisProfile,
@@ -1313,9 +1358,10 @@ export function analyzeText(
     }
   }
   const mergedSegmentation = buildMergedSegmentation(normalized, profile, whiteSpaceProfile)
-  const segmentation = wordBreak === 'keep-all'
+  const segmentationBeforeGraphemeRepair = wordBreak === 'keep-all'
     ? mergeKeepAllTextSegments(normalized, mergedSegmentation, profile.breakKeepAllAfterPunctuation)
     : mergedSegmentation
+  const segmentation = mergeLeadingGraphemeContinuations(segmentationBeforeGraphemeRepair)
   return {
     normalized,
     chunks: compileAnalysisChunks(segmentation, whiteSpaceProfile),

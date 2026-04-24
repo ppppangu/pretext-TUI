@@ -1,6 +1,5 @@
 // 补建说明：该文件为后续补建，用于暴露 pretext-TUI 的 terminal-first 公共 API facade；当前进度：Task 4 首版，基于现有 prepared/range walker 提供 columns/rows/source-offset 语义。
 import {
-  layoutNextLineRange,
   materializeLineRange,
   prepareWithSegments,
   type LayoutCursor,
@@ -10,6 +9,7 @@ import {
 } from './layout.js'
 import {
   terminalGraphemeWidth,
+  terminalStringWidth,
   terminalTabAdvance,
 } from './terminal-string-width.js'
 import type { TerminalWidthProfileInput } from './terminal-types.js'
@@ -143,6 +143,33 @@ function sourceOffsetForCursor(prepared: PreparedTerminalText, cursor: LayoutCur
   return segmentStart + (offsets[cursor.graphemeIndex] ?? segment.length)
 }
 
+function visibleSourceStartForRange(
+  prepared: PreparedTerminalText,
+  range: LayoutLineRange,
+): number {
+  const visibleStart = visibleStartCursorForRange(prepared, range)
+  return sourceOffsetForCursor(prepared, visibleStart)
+}
+
+function visibleStartCursorForRange(
+  prepared: PreparedTerminalText,
+  range: LayoutLineRange,
+): LayoutCursor {
+  if (range.start.graphemeIndex > 0) {
+    return range.start
+  }
+  let segmentIndex = range.start.segmentIndex
+  while (segmentIndex < range.end.segmentIndex) {
+    const kind = prepared.kinds[segmentIndex]
+    if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen') break
+    segmentIndex++
+  }
+  return {
+    segmentIndex,
+    graphemeIndex: 0,
+  }
+}
+
 function breakForRange(
   prepared: PreparedTerminalText,
   range: LayoutLineRange,
@@ -192,18 +219,20 @@ function terminalWidthForRange(
   range: LayoutLineRange,
   startColumn: number,
   visibleSoftHyphenOffset: number | null,
+  trimTrailingCollapsibleSpaces: boolean,
 ): number {
   let width = 0
+  const visibleStart = visibleStartCursorForRange(prepared, range)
   const lastSegmentIndex = range.end.graphemeIndex > 0
     ? range.end.segmentIndex
     : range.end.segmentIndex - 1
-  for (let i = range.start.segmentIndex; i <= lastSegmentIndex; i++) {
+  for (let i = visibleStart.segmentIndex; i <= lastSegmentIndex; i++) {
     if (i >= prepared.segments.length) break
     const kind = prepared.kinds[i]
     if (kind === 'hard-break' || kind === 'zero-width-break') continue
     const segment = prepared.segments[i] ?? ''
     const graphemes = segmentGraphemes(segment)
-    const start = i === range.start.segmentIndex ? range.start.graphemeIndex : 0
+    const start = i === visibleStart.segmentIndex ? visibleStart.graphemeIndex : 0
     const end = i === range.end.segmentIndex && range.end.graphemeIndex > 0
       ? range.end.graphemeIndex
       : graphemes.length
@@ -229,9 +258,25 @@ function terminalWidthForRange(
     }
   }
 
-  const previousIndex = range.end.segmentIndex - 1
-  if (range.end.graphemeIndex === 0 && prepared.kinds[previousIndex] === 'space') {
-    width = Math.max(0, width - terminalGraphemeWidth(' ', prepared.widthProfile))
+  if (trimTrailingCollapsibleSpaces && range.end.graphemeIndex === 0) {
+    let trailingIndex = range.end.segmentIndex - 1
+    while (trailingIndex >= visibleStart.segmentIndex) {
+      const kind = prepared.kinds[trailingIndex]
+      if (kind === 'hard-break' || kind === 'zero-width-break' || kind === 'soft-hyphen') {
+        trailingIndex--
+        continue
+      }
+      if (
+        kind === 'glue' &&
+        terminalStringWidth(prepared.segments[trailingIndex] ?? '', prepared.widthProfile) === 0
+      ) {
+        trailingIndex--
+        continue
+      }
+      if (kind !== 'space') break
+      width = Math.max(0, width - terminalStringWidth(prepared.segments[trailingIndex] ?? ' ', prepared.widthProfile))
+      trailingIndex--
+    }
   }
   return width
 }
@@ -243,14 +288,20 @@ function toTerminalRange(
 ): TerminalLineRange {
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
-  const sourceStart = sourceOffsetForCursor(prepared, range.start)
-  const sourceEnd = visibleSourceEndForRange(prepared, range)
+  const sourceStart = visibleSourceStartForRange(prepared, range)
+  const sourceEnd = Math.max(sourceStart, visibleSourceEndForRange(prepared, range))
   const breakInfo = breakForRange(prepared, range, sourceStart, sourceEnd)
   const visibleSoftHyphenOffset =
     breakInfo.kind === 'soft-hyphen'
       ? sourceStart + prepared.sourceText.slice(sourceStart, sourceEnd).lastIndexOf('\u00AD')
       : null
-  const width = terminalWidthForRange(prepared, range, startColumn, visibleSoftHyphenOffset)
+  const width = terminalWidthForRange(
+    prepared,
+    range,
+    startColumn,
+    visibleSoftHyphenOffset,
+    breakInfo.kind === 'wrap',
+  )
   const occupiedWidth = startColumn + width
   return {
     kind: 'terminal-line-range@1',
@@ -286,6 +337,9 @@ function materializeVisibleTerminalText(
     if (segment === '\u200B' || segment === '\u2060' || segment === '\uFEFF') {
       continue
     }
+    if (segment === '\u00AD') {
+      continue
+    }
     rendered += segment
     column += terminalGraphemeWidth(segment, prepared.widthProfile)
   }
@@ -293,6 +347,199 @@ function materializeVisibleTerminalText(
     rendered = rendered.slice(1)
   }
   return { text: rendered, width: column - startColumn }
+}
+
+function shouldTrimMaterializedTrailingSpaces(
+  prepared: PreparedTerminalText,
+  range: TerminalLineRange,
+  lineText: string,
+): boolean {
+  if (range.break.kind !== 'wrap') return false
+  const visibleTrailingText = lineText.replace(/[\u00AD\u200B\u2060\uFEFF]+$/g, '')
+  if (!visibleTrailingText.endsWith(' ')) return false
+  let segmentIndex = range.end.graphemeIndex > 0
+    ? range.end.segmentIndex
+    : range.end.segmentIndex - 1
+  while (segmentIndex >= range.start.segmentIndex) {
+    const kind = prepared.kinds[segmentIndex]
+    if (kind === 'hard-break' || kind === 'zero-width-break' || kind === 'soft-hyphen') {
+      segmentIndex--
+      continue
+    }
+    if (
+      kind === 'glue' &&
+      terminalStringWidth(prepared.segments[segmentIndex] ?? '', prepared.widthProfile) === 0
+    ) {
+      segmentIndex--
+      continue
+    }
+    return kind === 'space'
+  }
+  return false
+}
+
+type TerminalBreakCandidate = {
+  end: LayoutCursor
+  width: number
+}
+
+function compareLayoutCursors(a: LayoutCursor, b: LayoutCursor): number {
+  if (a.segmentIndex !== b.segmentIndex) return a.segmentIndex - b.segmentIndex
+  return a.graphemeIndex - b.graphemeIndex
+}
+
+function nextGraphemeCursor(
+  prepared: PreparedTerminalText,
+  cursor: LayoutCursor,
+): LayoutCursor | null {
+  const segment = prepared.segments[cursor.segmentIndex]
+  if (segment === undefined) return null
+  const graphemes = segmentGraphemes(segment)
+  if (cursor.graphemeIndex >= graphemes.length) {
+    return {
+      segmentIndex: cursor.segmentIndex + 1,
+      graphemeIndex: 0,
+    }
+  }
+  if (cursor.graphemeIndex + 1 >= graphemes.length) {
+    return {
+      segmentIndex: cursor.segmentIndex + 1,
+      graphemeIndex: 0,
+    }
+  }
+  return {
+    segmentIndex: cursor.segmentIndex,
+    graphemeIndex: cursor.graphemeIndex + 1,
+  }
+}
+
+function normalizeTerminalLineStart(
+  prepared: PreparedTerminalText,
+  cursor: LayoutCursor,
+): LayoutCursor | null {
+  if (cursor.segmentIndex >= prepared.segments.length) return null
+  if (cursor.graphemeIndex > 0) return { ...cursor }
+
+  let segmentIndex = cursor.segmentIndex
+  while (segmentIndex < prepared.segments.length) {
+    const kind = prepared.kinds[segmentIndex]
+    if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen') break
+    segmentIndex++
+  }
+  return {
+    segmentIndex,
+    graphemeIndex: 0,
+  }
+}
+
+function createInternalTerminalRange(
+  start: LayoutCursor,
+  end: LayoutCursor,
+  width: number,
+): LayoutLineRange {
+  return { start, end, width }
+}
+
+function layoutNextTerminalInternalRange(
+  prepared: PreparedTerminalText,
+  cursor: TerminalCursor,
+  columns: number,
+  startColumn: number,
+): LayoutLineRange | null {
+  const rawStart = toLayoutCursor(cursor)
+  const visibleStart = normalizeTerminalLineStart(prepared, rawStart)
+  if (visibleStart === null) return null
+  const rangeStart = visibleStart.segmentIndex >= prepared.segments.length &&
+    rawStart.segmentIndex < prepared.segments.length
+    ? rawStart
+    : visibleStart
+  if (visibleStart.segmentIndex >= prepared.segments.length) {
+    return createInternalTerminalRange(
+      rangeStart,
+      visibleStart,
+      0,
+    )
+  }
+
+  if (prepared.kinds[visibleStart.segmentIndex] === 'hard-break') {
+    return createInternalTerminalRange(
+      visibleStart,
+      { segmentIndex: visibleStart.segmentIndex + 1, graphemeIndex: 0 },
+      0,
+    )
+  }
+
+  let position = { ...visibleStart }
+  let width = 0
+  let hasContent = false
+  let lastBreak: TerminalBreakCandidate | null = null
+
+  while (position.segmentIndex < prepared.segments.length) {
+    const kind = prepared.kinds[position.segmentIndex]
+    const segment = prepared.segments[position.segmentIndex] ?? ''
+    const graphemes = segmentGraphemes(segment)
+
+    if (kind === 'hard-break') {
+      return createInternalTerminalRange(
+        rangeStart,
+        { segmentIndex: position.segmentIndex + 1, graphemeIndex: 0 },
+        width,
+      )
+    }
+
+    if (position.graphemeIndex >= graphemes.length) {
+      position = { segmentIndex: position.segmentIndex + 1, graphemeIndex: 0 }
+      continue
+    }
+
+    const next = nextGraphemeCursor(prepared, position)
+    if (next === null) break
+
+    if (kind === 'zero-width-break') {
+      if (hasContent) lastBreak = { end: next, width }
+      position = next
+      continue
+    }
+
+    if (kind === 'soft-hyphen') {
+      if (hasContent && startColumn + width + 1 <= columns) {
+        lastBreak = { end: next, width: width + 1 }
+      }
+      position = next
+      continue
+    }
+
+    let advance = 0
+    if (kind === 'tab') {
+      advance = terminalTabAdvance(startColumn + width, prepared.tabStopAdvance)
+    } else {
+      advance = terminalGraphemeWidth(graphemes[position.graphemeIndex]!, prepared.widthProfile)
+    }
+
+    if (startColumn + width + advance > columns) {
+      if (lastBreak !== null && compareLayoutCursors(lastBreak.end, rangeStart) > 0) {
+        return createInternalTerminalRange(rangeStart, lastBreak.end, lastBreak.width)
+      }
+      if (!hasContent) {
+        return createInternalTerminalRange(rangeStart, next, advance)
+      }
+      return createInternalTerminalRange(rangeStart, position, width)
+    }
+
+    if (kind === 'space') {
+      lastBreak = { end: next, width }
+    }
+
+    width += advance
+    hasContent = true
+    position = next
+
+    if (kind === 'preserved-space' || kind === 'tab') {
+      lastBreak = { end: position, width }
+    }
+  }
+
+  return createInternalTerminalRange(rangeStart, position, width)
 }
 
 export function prepareTerminal(
@@ -365,34 +612,25 @@ export function layoutNextTerminalLineRange(
   options: TerminalLayoutOptions,
 ): TerminalLineRange | null {
   const columns = validateColumns(options.columns)
-  let effectiveColumns = columns
-  while (effectiveColumns >= 1) {
-    const line = layoutNextLineRange(
-      prepared,
-      toLayoutCursor(cursor),
-      effectiveColumns,
-    )
-    if (line === null) return null
-    const terminalLine = toTerminalRange(prepared, line, options)
-    if (terminalLine.overflow === null || effectiveColumns === 1) {
-      return terminalLine
-    }
-    effectiveColumns--
-  }
-  return null
+  const startColumn = normalizeStartColumn(options.startColumn)
+  const line = layoutNextTerminalInternalRange(prepared, cursor, columns, startColumn)
+  return line === null ? null : toTerminalRange(prepared, line, { columns, startColumn })
 }
 
 export function materializeTerminalLineRange(
   prepared: PreparedTerminalText,
   range: TerminalLineRange,
 ): MaterializedTerminalLine {
+  const visibleStart = visibleStartCursorForRange(prepared, range)
   const line = materializeLineRange(prepared, {
     width: range.width,
-    start: toLayoutCursor(range.start),
+    start: visibleStart,
     end: toLayoutCursor(range.end),
   })
   const sourceText = prepared.sourceText.slice(range.sourceStart, range.sourceEnd)
-  const visibleText = sourceText.endsWith(' ') ? line.text : line.text.replace(/ +$/g, '')
+  const visibleText = shouldTrimMaterializedTrailingSpaces(prepared, range, line.text)
+    ? line.text.replace(/[ \u00AD\u200B\u2060\uFEFF]+$/g, '')
+    : line.text
   const materialized = materializeVisibleTerminalText(
     visibleText,
     range.startColumn,

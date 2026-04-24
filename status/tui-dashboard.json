@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 Task 7 TUI validation gate 的机器可读状态；当前进度：首版声明门禁项，实际结果由脚本输出与 CI 运行确认。",
+    "schema": "pretext-tui-status@1"
+  },
+  "gate": {
+    "typecheck:tui": "required",
+    "typecheck:tui-validation": "required",
+    "tui-static-gate": "required",
+    "test:tui": "required",
+    "tui-oracle-check": "required",
+    "tui-corpus-check": "required",
+    "tui-fuzz --seed=ci --cases=2000": "required",
+    "benchmark-check:tui": "required",
+    "package-smoke-test": "required"
+  },
+  "scope": {
+    "browserProductSurface": "removed from active validation",
+    "hostAppIntegration": "out of scope",
+    "streamingAndPageCache": "deferred to Task 9"
+  }
+}

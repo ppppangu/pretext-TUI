@@ -15,7 +15,7 @@ The package surface is terminal-first:
 - `./terminal-rich-inline` is the opt-in rich metadata/ANSI sidecar
 - browser/demo/legacy `rich-inline` subpaths are not exported
 
-The package is still `0.0.0` while broader validation, rich metadata, and large-text primitives are added.
+The package is still `0.0.0` while the vertical demo and large-text primitives are added.
 
 ## Target Architecture
 
@@ -64,9 +64,9 @@ if (line) {
 
 The plain terminal core continues to reject raw ANSI input. The rich sidecar is the only package surface that tokenizes inline `SGR` and `OSC8`.
 
-## Target API Shape
+## Core API Shape
 
-The planned core API is:
+The core API is:
 
 ```ts
 import {
