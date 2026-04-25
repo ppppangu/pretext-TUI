@@ -11,12 +11,13 @@ import {
   walkTerminalLineRanges,
   layoutNextTerminalLineRange,
 } from './terminal.js'
+import {
+  getTerminalLineSourceBoundaryOffsets,
+  materializeTerminalLineSourceRange,
+} from './terminal-line-source.js'
 import type { PreparedTextWithSegments } from './layout.js'
 import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
-import {
-  terminalStringWidth,
-  terminalTabAdvance,
-} from './terminal-string-width.js'
+import { terminalStringWidth } from './terminal-string-width.js'
 import {
   tokenizeTerminalInlineAnsi,
   type PreparedRichMetadata,
@@ -70,44 +71,6 @@ export type TerminalRichMaterializeOptions = Readonly<{
   ansiText?: TerminalRichAnsiReemitPolicy
 }>
 
-function materializeFragmentVisibleText(
-  sourceText: string,
-  columnStart: number,
-  prepared: PreparedTextWithSegments,
-  visibleSoftHyphenIndex: number | null = null,
-): { text: string; width: number } {
-  let rendered = ''
-  let column = columnStart
-  let sourceOffset = 0
-  recordTerminalPerformanceCounter('richFragmentGraphemeSegmentations')
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  for (const { segment } of segmenter.segment(sourceText)) {
-    if (segment === '\t') {
-      const advance = terminalTabAdvance(column, prepared.tabStopAdvance)
-      rendered += ' '.repeat(advance)
-      column += advance
-      sourceOffset += segment.length
-      continue
-    }
-    if (segment === '\u00AD') {
-      if (visibleSoftHyphenIndex === sourceOffset) {
-        rendered += '-'
-        column += 1
-      }
-      sourceOffset += segment.length
-      continue
-    }
-    if (segment === '\u200B' || segment === '\u2060' || segment === '\uFEFF') {
-      sourceOffset += segment.length
-      continue
-    }
-    rendered += segment
-    column += terminalStringWidth(segment, prepared.widthProfile)
-    sourceOffset += segment.length
-  }
-  return { text: rendered, width: column - columnStart }
-}
-
 function styleToSgr(style: TerminalRichStyle | null): string {
   if (style === null) return '\x1b[0m'
   const codes: string[] = []
@@ -141,18 +104,6 @@ function sourceBoundaries(spans: readonly TerminalRichSpan[], start: number, end
     boundaries.add(Math.min(end, span.sourceEnd))
   }
   return [...boundaries].sort((a, b) => a - b)
-}
-
-function graphemeBoundaryOffsets(text: string): number[] {
-  const boundaries = [0]
-  let offset = 0
-  recordTerminalPerformanceCounter('richBoundaryGraphemeSegmentations')
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  for (const { segment } of segmenter.segment(text)) {
-    offset += segment.length
-    boundaries.push(offset)
-  }
-  return boundaries
 }
 
 function clampToGraphemeBoundary(
@@ -267,7 +218,8 @@ export function materializeTerminalRichLineRange(
   const internal = getInternalPreparedTerminalText(prepared.prepared)
   const base = materializeTerminalLineRange(prepared.prepared, line)
   const spans = overlappingSpans(prepared.spans, line.sourceStart, line.sourceEnd)
-  const localBoundaries = graphemeBoundaryOffsets(base.sourceText)
+  const localBoundaries = getTerminalLineSourceBoundaryOffsets(prepared.prepared, line)
+    .map(boundary => boundary - line.sourceStart)
   const boundaries = sourceBoundaries(spans, line.sourceStart, line.sourceEnd).map(boundary =>
     line.sourceStart +
     clampToGraphemeBoundary(boundary - line.sourceStart, localBoundaries, boundary === line.sourceStart ? 'start' : 'end'),
@@ -277,35 +229,29 @@ export function materializeTerminalRichLineRange(
   const ansiTextMode = effectiveAnsiTextMode(prepared, options)
   let ansiText = ansiTextMode === 'none' ? undefined : ''
   let renderedOffset = 0
-  const lastSoftHyphenOffset =
-    line.break.kind === 'soft-hyphen'
-      ? base.sourceText.lastIndexOf('\u00AD')
-      : -1
 
   for (let i = 0; i < boundaries.length - 1; i++) {
     const sourceStart = boundaries[i]!
     const sourceEnd = boundaries[i + 1]!
     if (sourceEnd <= sourceStart) continue
     const sourceText = base.sourceText.slice(sourceStart - line.sourceStart, sourceEnd - line.sourceStart)
-    const visibleSoftHyphenIndex =
-      lastSoftHyphenOffset >= 0 &&
-      lastSoftHyphenOffset >= sourceStart - line.sourceStart &&
-      lastSoftHyphenOffset < sourceEnd - line.sourceStart
-        ? lastSoftHyphenOffset - (sourceStart - line.sourceStart)
-        : null
-    const materialized = materializeFragmentVisibleText(
-      sourceText,
+    const materialized = materializeTerminalLineSourceRange(
+      prepared.prepared,
+      line,
+      sourceStart,
+      sourceEnd,
       currentColumn,
-      internal,
-      visibleSoftHyphenIndex,
     )
     let fragmentText = materialized.text
     const remainingBaseText = base.text.slice(renderedOffset)
+    let usedMaterializedWidth = true
     while (fragmentText.length > 0 && !remainingBaseText.startsWith(fragmentText)) {
       fragmentText = fragmentText.slice(0, -1)
+      usedMaterializedWidth = false
     }
-    recordTerminalPerformanceCounter('richFragmentWidthMeasurements')
-    const fragmentWidth = terminalStringWidth(fragmentText, internal.widthProfile)
+    const fragmentWidth = usedMaterializedWidth
+      ? materialized.width
+      : measureTrimmedRichFragmentWidth(fragmentText, internal)
     const style = currentStyle(spans, sourceStart, sourceEnd)
     const link = currentLink(spans, sourceStart, sourceEnd)
     const fragment: TerminalRichFragment = {
@@ -340,4 +286,12 @@ export function materializeTerminalRichLineRange(
   }
   if (ansiText !== undefined) materialized.ansiText = ansiText
   return materialized
+}
+
+function measureTrimmedRichFragmentWidth(
+  text: string,
+  prepared: PreparedTextWithSegments,
+): number {
+  recordTerminalPerformanceCounter('richFragmentWidthMeasurements')
+  return terminalStringWidth(text, prepared.widthProfile)
 }

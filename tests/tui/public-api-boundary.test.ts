@@ -1,5 +1,11 @@
 // 补建说明：该文件为后续补建，用于验证 Task 1 的通用 TUI 文本内核公共 API 边界；当前进度：首版覆盖 runtime export allowlist、opaque handle 形态与 forged handle 拒绝。
 import { describe, expect, test } from 'bun:test'
+import {
+  forbiddenRootRuntimeExports,
+  richPublicRuntimeExports,
+  terminalPublicRuntimeExports,
+} from '../../scripts/public-api-contract.js'
+import * as publicFacade from '../../src/public-index.js'
 import * as root from '../../src/index.js'
 import * as rich from '../../src/terminal-rich-inline.js'
 import type {
@@ -10,50 +16,22 @@ import type {
   TerminalSourceOffsetIndex,
 } from '../../src/index.js'
 
-const terminalRuntimeExports = [
-  'TERMINAL_START_CURSOR',
-  'appendTerminalCellFlow',
-  'createTerminalLineIndex',
-  'createTerminalPageCache',
-  'createTerminalSourceOffsetIndex',
-  'getTerminalCellFlowGeneration',
-  'getTerminalCellFlowPrepared',
-  'getTerminalCursorForSourceOffset',
-  'getTerminalLineIndexMetadata',
-  'getTerminalLineIndexStats',
-  'getTerminalLinePage',
-  'getTerminalLineRangeAtRow',
-  'getTerminalPageCacheStats',
-  'getTerminalSourceOffsetForCursor',
-  'invalidateTerminalLineIndex',
-  'invalidateTerminalPageCache',
-  'layoutNextTerminalLineRange',
-  'layoutTerminal',
-  'materializeTerminalLinePage',
-  'materializeTerminalLineRange',
-  'materializeTerminalLineRanges',
-  'measureTerminalLineIndexRows',
-  'measureTerminalLineStats',
-  'prepareTerminal',
-  'prepareTerminalCellFlow',
-  'walkTerminalLineRanges',
-].sort()
-
-const richRuntimeExports = [
-  'layoutNextTerminalRichLineRange',
-  'materializeTerminalRichLineRange',
-  'prepareTerminalRichInline',
-  'walkTerminalRichLineRanges',
-].sort()
+type RuntimeModule = Record<string, unknown>
 
 describe('public API boundary', () => {
-  test('root and rich runtime exports stay intentionally host-neutral', () => {
-    expect(Object.keys(root).sort()).toEqual(terminalRuntimeExports)
-    expect(Object.keys(rich).sort()).toEqual(richRuntimeExports)
-    expect(root).not.toHaveProperty('disableTerminalPerformanceCounters')
-    expect(root).not.toHaveProperty('resetTerminalPerformanceCounters')
-    expect(root).not.toHaveProperty('snapshotTerminalPerformanceCounters')
-    expect(root).not.toHaveProperty('getTerminalLineRangesAtRows')
+  test('root re-exports the canonical public facade and rich runtime exports stay intentionally host-neutral', () => {
+    expect(terminalPublicRuntimeExports).toContain('projectTerminalSourceOffset')
+    expect(terminalPublicRuntimeExports).toContain('projectTerminalCursor')
+    expect(terminalPublicRuntimeExports).toContain('projectTerminalRow')
+    expect(Object.keys(publicFacade).sort()).toEqual([...terminalPublicRuntimeExports])
+    expect(Object.keys(root).sort()).toEqual([...terminalPublicRuntimeExports])
+    expect(Object.keys(rich).sort()).toEqual([...richPublicRuntimeExports])
+    for (const name of terminalPublicRuntimeExports) {
+      expect((root as RuntimeModule)[name]).toBe((publicFacade as RuntimeModule)[name])
+    }
+    for (const name of forbiddenRootRuntimeExports) {
+      expect(root).not.toHaveProperty(name)
+    }
   })
 
   test('public handles do not expose mutable prepared/index/cache storage', () => {

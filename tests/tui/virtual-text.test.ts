@@ -28,9 +28,9 @@ import {
 } from '../../src/index.js'
 import {
   collectTerminalLines,
+  readInternalPreparedTerminalText,
   type CollectedTerminalLine,
 } from './validation-helpers.js'
-import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
 import {
   disableTerminalPerformanceCounters,
   resetTerminalPerformanceCounters,
@@ -321,7 +321,7 @@ describe('tui virtual text primitives', () => {
       whiteSpace: 'pre-wrap',
       tabSize: 4,
     })
-    const internal = getInternalPreparedTerminalText(prepared)
+    const internal = readInternalPreparedTerminalText(prepared)
 
     try {
       resetTerminalPerformanceCounters()
@@ -348,7 +348,7 @@ describe('tui virtual text primitives', () => {
       expect(layoutCounters.preparedGeometryBuilds).toBe(0)
       expect(layoutCounters.preparedGeometryCacheHits).toBeGreaterThan(0)
       expect(layoutCounters.preparedGeometryWidthPrefixHits).toBeGreaterThan(0)
-      expect(layoutCounters.terminalMaterializeGraphemeSegmentations).toBe(1)
+      expect(layoutCounters.terminalMaterializeGraphemeSegmentations).toBe(0)
 
       resetTerminalPerformanceCounters()
       const flow = prepareTerminalCellFlow('prefix e\u0301 tail', { whiteSpace: 'pre-wrap' })
@@ -357,7 +357,7 @@ describe('tui virtual text primitives', () => {
       expect(appendCounters.preparedGeometryBuilds).toBe(1)
       expect(appendCounters.preparedGeometrySegments).toBeGreaterThan(0)
       expect(appended.invalidation.stablePrefixCodeUnits).toBe(
-        getInternalPreparedTerminalText(getTerminalCellFlowPrepared(flow)).sourceText.length,
+        readInternalPreparedTerminalText(getTerminalCellFlowPrepared(flow)).sourceText.length,
       )
     } finally {
       disableTerminalPerformanceCounters()
@@ -406,7 +406,7 @@ describe('tui virtual text primitives', () => {
     )
 
     expect(appended.invalidation.strategy).toBe('full-reprepare-bounded-invalidation')
-    expect(appended.invalidation.stablePrefixCodeUnits).toBe(getInternalPreparedTerminalText(initialPrepared).sourceText.length)
+    expect(appended.invalidation.stablePrefixCodeUnits).toBe(readInternalPreparedTerminalText(initialPrepared).sourceText.length)
     expect(lineInvalidation.firstInvalidRow).toBeGreaterThan(10)
     expect(materializedPageTexts(appendedPrepared, prefixPageAfter)).toEqual(prefixTextsBefore)
     expect(materializedPageTexts(appendedPrepared, suffixPage)).toEqual(
@@ -425,7 +425,7 @@ describe('tui virtual text primitives', () => {
 
     const lineInvalidation = invalidateTerminalLineIndex(after, index, {
       generation: 1,
-      firstInvalidSourceOffset: getInternalPreparedTerminalText(before).sourceText.length,
+      firstInvalidSourceOffset: readInternalPreparedTerminalText(before).sourceText.length,
     })
     invalidateTerminalPageCache(cache, lineInvalidation)
     const page = getTerminalLinePage(after, cache, index, { startRow: 0, rowCount: 1 })

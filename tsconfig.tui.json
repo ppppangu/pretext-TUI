@@ -20,6 +20,7 @@
     "src/public-terminal-rich-inline.ts",
     "src/terminal.ts",
     "src/terminal-cell-flow.ts",
+    "src/terminal-coordinate-projection.ts",
     "src/terminal-control-policy.ts",
     "src/terminal-line-index.ts",
     "src/terminal-materialize.ts",

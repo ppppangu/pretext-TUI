@@ -143,7 +143,7 @@ bun run api-snapshot-check
 
 **Exit criteria:**
 
-- Public `.d.ts` no longer exposes `PreparedTextWithSegments`, `segments`, `sourceText`, `sourceStarts`, or `kinds`.
+- Public `.d.ts` no longer exposes `PreparedTextWithSegments`, prepared-handle structural fields such as `segments`, `sourceStarts`, `kinds`, `widths`, or `tabStopAdvance`, while `sourceText` remains allowed only on materialized line/fragment result objects as the visible source slice for that range.
 - Private imports fail in package smoke and declaration tests.
 - `package.json.exports` remains limited to `.`, `./terminal`, `./terminal-rich-inline`, and `./package.json`.
 - API changes have explicit semver status and migration notes.

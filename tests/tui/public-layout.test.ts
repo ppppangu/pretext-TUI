@@ -4,13 +4,13 @@ import {
   layoutTerminal,
   prepareTerminal,
 } from '../../src/index.js'
-import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
 import {
   assertDeepEqual,
   assertTerminalInvariants,
   collectTerminalLines,
   collectTerminalLinesByNext,
   computePreparedGreedyOracle,
+  readInternalPreparedTerminalText,
 } from './validation-helpers.js'
 
 describe('tui public layout validation', () => {
@@ -62,7 +62,7 @@ describe('tui public layout validation', () => {
       wordBreak: 'keep-all',
       tabSize: 2,
     })
-    const internal = getInternalPreparedTerminalText(prepared)
+    const internal = readInternalPreparedTerminalText(prepared)
     expect(internal.kinds).toContain('tab')
     expect(internal.kinds).toContain('soft-hyphen')
     assertTerminalInvariants(prepared, { columns: 6 })
@@ -89,7 +89,7 @@ describe('tui public layout validation', () => {
 
   test('break-kind splitting preserves keycap grapheme clusters', () => {
     const prepared = prepareTerminal('\u202F1️⃣。', { whiteSpace: 'normal' })
-    const internal = getInternalPreparedTerminalText(prepared)
+    const internal = readInternalPreparedTerminalText(prepared)
     expect(internal.segments.some(segment => segment.includes('1️⃣'))).toBe(true)
     expect(internal.segments.every(segment => !/^[\p{M}\uFE00-\uFE0F\u20E3]/u.test(segment))).toBe(true)
     assertTerminalInvariants(prepared, { columns: 5 })

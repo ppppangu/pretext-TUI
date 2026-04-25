@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 的纯 TUI 终端语义、运行时边界与失败判据；当前进度：Task 1 已落地首版规范，后续实现必须以此为准。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 的纯 TUI 终端语义、运行时边界与失败判据；当前进度：作为当前终端语义规范，后续实现必须以此为准。 -->
 # Terminal Contract
 
 ## Purpose
@@ -54,7 +54,7 @@ The terminal lane has no pixels, font strings, CSS `lineHeight`, CSS `letter-spa
 
 ## Core API Contract
 
-The planned core API is terminal-first:
+The core API is terminal-first:
 
 ```ts
 prepareTerminal(text, { whiteSpace?, widthProfile?, tabSize?, wordBreak? })
@@ -110,7 +110,7 @@ Unsupported controls must never be interpreted during layout.
 - normalizes CRLF, bare CR, and FF to LF before source offsets are frozen
 - treats preserved spaces as real terminal cells
 
-There is no browser-style trailing-space hanging behavior in the active TUI contract unless a future task explicitly adds it with tests.
+There is no browser-style trailing-space hanging behavior in the active TUI contract unless a future contract update explicitly adds it with tests.
 
 Consecutive hard breaks emit empty rows.
 
@@ -220,7 +220,7 @@ Prepared data must retain enough mapping for:
 - materialization
 - future paging
 
-Layout cursors are opaque and grapheme/range-oriented. They are not raw string offsets.
+Terminal cursors are package-owned replay tokens with segment/grapheme fields. Hosts may store and pass them back to package APIs, but should not treat those fields as raw source offsets or mutable implementation state.
 
 Ranges expose:
 
@@ -230,6 +230,57 @@ Ranges expose:
 - terminal width
 - optional overflow metadata
 - optional discretionary-hyphen metadata
+
+## Coordinate Projection
+
+Coordinate projection is a host-neutral convenience layer over the public source-offset index and fixed-column line index. It must not expose prepared segments, row anchors, page caches, raw source storage, or mutable implementation state.
+
+The agreed public shape is:
+
+```ts
+projectTerminalSourceOffset(prepared, sourceIndex, lineIndex, sourceOffset, biasOrOptions?)
+projectTerminalSourceOffset(prepared, { sourceIndex, lineIndex }, sourceOffset, options?)
+projectTerminalCursor(prepared, sourceIndex, lineIndex, cursor, options?)
+projectTerminalCursor(prepared, { sourceIndex, lineIndex }, cursor, options?)
+projectTerminalRow(prepared, lineIndex, row)
+```
+
+`projectTerminalSourceOffset()` maps a UTF-16 source offset to a grapheme-safe source boundary, then projects that boundary into the fixed-column layout represented by `lineIndex`.
+
+`projectTerminalCursor()` maps an opaque terminal cursor back through the same source/line indexes and returns the matching terminal coordinate.
+
+`projectTerminalRow()` maps a terminal row to the line range and row extent for that fixed-column layout, or `null` when the row is outside the emitted row set.
+
+A coordinate projection result must include:
+
+- `kind: "terminal-coordinate-projection@1"`
+- `row`: zero-based terminal row in the fixed-column layout
+- `column`: absolute terminal cell column on that row, including row `startColumn`
+- `coordinate`: convenience mirror of `{ row, column }`; it must equal the top-level `row` and `column`
+- `sourceOffset`: normalized UTF-16 source offset at a grapheme-safe boundary
+- `requestedSourceOffset`: the originally requested source offset for source-offset projections
+- `exact`: whether the requested offset was already a projectable source boundary
+- `atEnd`: whether the projection denotes the logical end of the prepared source
+- `cursor`: the opaque terminal cursor for replay
+- `line`: the projected row's `TerminalLineRange`, or `null` for empty-source EOF and EOF endpoints after a final hard break. When a zero-width break, collapsed space, or other wrap delimiter is consumed as the boundary between rows, the projected coordinate may land on the next visible row while `sourceOffset` still denotes the consumed delimiter before that row's visible `sourceStart`.
+
+A row projection result must include:
+
+- `kind: "terminal-row-projection@1"`
+- `row`
+- `line`
+- `sourceStart` and `sourceEnd`
+- `startColumn` and `endColumn`
+
+Projection columns are terminal-cell columns, not UTF-16 columns. Tabs expand from the current terminal column, wide graphemes advance by their terminal width, combining marks stay inside their base grapheme cell, and zero-width break/glue characters never add visible columns.
+
+Source offsets inside a grapheme cluster must honor the requested bias (`before`, `after`, or `closest`) and project to an adjacent canonical boundary. Source offsets at or after consumed wrap delimiters may project to the next visible row when that delimiter was used as a wrap boundary.
+
+EOF projection must be explicit. For ordinary text, EOF projects to the end column of the final emitted line. For text ending in a final LF, EOF projects to `{ row: rows, column: 0, line: null, atEnd: true }`; this must not fabricate an extra materialized row.
+
+Resize is handled by rebuilding the width-dependent `TerminalLineIndex` for the new `columns` and projecting the same source offset through the new index. The prepared text and source-offset index remain width-independent unless the visible source text or prepare-time identity changes.
+
+Forged handles and mismatched prepared/source/line index handles must be rejected through the same capability boundaries as the underlying public index APIs.
 
 ## Rich Metadata Boundary
 

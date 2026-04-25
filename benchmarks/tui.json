@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 TUI benchmark workloads 与保守阈值；当前进度：Task 5B 记录 prepared geometry sidecar 复用、page miss sequential walk 与 virtual text paging/source/append counters。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI benchmark workloads 与保守阈值；当前进度：Task 2 补强 geometry-backed materialization 的 build/segment/grapheme/cache churn 成本守门。",
     "schema": "pretext-tui-benchmark@1"
   },
   "defaults": {
@@ -8,6 +8,36 @@
     "maxMilliseconds": 2500
   },
   "workloads": [
+    {
+      "id": "hard-break-before-huge-segment",
+      "repeatText": {
+        "prefix": "a\n",
+        "text": "x",
+        "count": 50000
+      },
+      "prepare": { "whiteSpace": "pre-wrap" },
+      "layout": { "columns": 80 },
+      "firstLineOnly": true,
+      "iterations": 5,
+      "maxMilliseconds": 1200,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 5 },
+        "layoutPasses": { "exact": 5 },
+        "materializedLines": { "exact": 5 },
+        "materializedCodeUnits": { "exact": 5 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 5 },
+        "preparedGeometryCacheHits": { "max": 35 },
+        "preparedGeometryGraphemes": { "max": 10 },
+        "preparedGeometrySegments": { "max": 10 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 5 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
+      }
+    },
     {
       "id": "short-ascii",
       "text": "hello world from pretext tui",
@@ -22,12 +52,15 @@
         "materializedCodeUnits": { "exact": 5400 },
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryBuilds": { "exact": 200 },
-        "preparedGeometryCacheHits": { "min": 21400 },
-        "preparedGeometryWidthPrefixHits": { "min": 1800 },
+        "preparedGeometryCacheHits": { "max": 28800 },
+        "preparedGeometryGraphemes": { "max": 5600 },
+        "preparedGeometrySegments": { "max": 1800 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 1800 },
         "richBoundaryGraphemeSegmentations": { "exact": 0 },
         "richFragmentGraphemeSegmentations": { "exact": 0 },
         "richFragmentWidthMeasurements": { "exact": 0 },
-        "terminalMaterializeGraphemeSegmentations": { "exact": 400 }
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
       }
     },
     {
@@ -47,12 +80,15 @@
         "materializedCodeUnits": { "exact": 3120 },
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryBuilds": { "exact": 120 },
-        "preparedGeometryCacheHits": { "min": 10440 },
-        "preparedGeometryWidthPrefixHits": { "min": 2160 },
+        "preparedGeometryCacheHits": { "max": 15240 },
+        "preparedGeometryGraphemes": { "max": 2400 },
+        "preparedGeometrySegments": { "max": 2160 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 2160 },
         "richBoundaryGraphemeSegmentations": { "exact": 0 },
         "richFragmentGraphemeSegmentations": { "exact": 0 },
         "richFragmentWidthMeasurements": { "exact": 0 },
-        "terminalMaterializeGraphemeSegmentations": { "exact": 360 }
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
       }
     },
     {
@@ -70,12 +106,15 @@
         "ansiCodeUnits": { "exact": 11520 },
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryBuilds": { "exact": 120 },
-        "preparedGeometryCacheHits": { "min": 12840 },
-        "preparedGeometryWidthPrefixHits": { "min": 1080 },
-        "richBoundaryGraphemeSegmentations": { "exact": 240 },
-        "richFragmentGraphemeSegmentations": { "exact": 480 },
-        "richFragmentWidthMeasurements": { "exact": 480 },
-        "terminalMaterializeGraphemeSegmentations": { "exact": 240 }
+        "preparedGeometryCacheHits": { "max": 25560 },
+        "preparedGeometryGraphemes": { "max": 3720 },
+        "preparedGeometrySegments": { "max": 1080 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 1080 },
+        "richBoundaryGraphemeSegmentations": { "exact": 0 },
+        "richFragmentGraphemeSegmentations": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 },
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
       }
     },
     {
@@ -93,12 +132,15 @@
         "materializedCodeUnits": { "exact": 21620 },
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryBuilds": { "exact": 20 },
-        "preparedGeometryCacheHits": { "min": 74580 },
-        "preparedGeometryWidthPrefixHits": { "min": 7000 },
+        "preparedGeometryCacheHits": { "max": 102920 },
+        "preparedGeometryGraphemes": { "max": 21060 },
+        "preparedGeometrySegments": { "max": 7220 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 7000 },
         "richBoundaryGraphemeSegmentations": { "exact": 0 },
         "richFragmentGraphemeSegmentations": { "exact": 0 },
         "richFragmentWidthMeasurements": { "exact": 0 },
-        "terminalMaterializeGraphemeSegmentations": { "exact": 580 }
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
       }
     },
     {
@@ -113,26 +155,29 @@
       "maxMilliseconds": 9000,
       "counterAssertions": {
         "prepareCalls": { "exact": 18 },
-        "layoutPasses": { "exact": 492 },
-        "materializedLines": { "exact": 240 },
-        "materializedCodeUnits": { "exact": 7656 },
+        "layoutPasses": { "exact": 480 },
+        "materializedLines": { "exact": 234 },
+        "materializedCodeUnits": { "exact": 7962 },
         "pageCacheHits": { "exact": 6 },
         "pageCacheMisses": { "exact": 24 },
         "pageBuilds": { "exact": 24 },
-        "anchorCount": { "exact": 18 },
+        "anchorCount": { "exact": 12 },
         "maxAnchorReplayRows": { "max": 16 },
-        "sourceLookups": { "exact": 192 },
+        "sourceLookups": { "exact": 186 },
         "appendInvalidatedCodeUnits": { "exact": 1854 },
         "appendReprepareCodeUnits": { "exact": 6876 },
         "invalidatedPages": { "exact": 6 },
-        "lineTextGraphemeSegmentations": { "exact": 6 },
-        "preparedGeometryBuilds": { "exact": 12 },
-        "preparedGeometryCacheHits": { "min": 68748 },
-        "preparedGeometryWidthPrefixHits": { "min": 5736 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryBuilds": { "exact": 18 },
+        "preparedGeometryCacheHits": { "max": 78390 },
+        "preparedGeometryGraphemes": { "max": 14200 },
+        "preparedGeometrySegments": { "max": 4900 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "preparedGeometryWidthPrefixHits": { "max": 5900 },
         "richBoundaryGraphemeSegmentations": { "exact": 0 },
         "richFragmentGraphemeSegmentations": { "exact": 0 },
         "richFragmentWidthMeasurements": { "exact": 0 },
-        "terminalMaterializeGraphemeSegmentations": { "exact": 240 }
+        "terminalMaterializeGraphemeSegmentations": { "exact": 0 }
       }
     }
   ]

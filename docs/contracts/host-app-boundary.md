@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 与通用 host app 的职责边界；当前进度：Task 1 已落地首版边界文档，后续实现不得把 host app 职责纳入包内。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 与通用 host app 的职责边界；当前进度：作为当前 host-neutral 边界文档，后续实现不得把 host app 职责纳入包内。 -->
 # Host App Boundary
 
 ## Purpose
@@ -41,6 +41,7 @@ what keys do, and how is the screen composed?
 | Streaming text | Optional append/page/cache primitives for large text flows | Data lifecycle, persistence, scrolling policy |
 | Rich metadata | SGR/OSC8 parsing in rich path only | Link opening, action handling, interaction policy |
 | Large terminal text | Text wrapping, source mapping, paged visible line materialization | Loading domain content, permissions, preview selection, operation routing |
+| Coordinate projection | Source offset, cursor, and row projection into fixed-column terminal rows/columns | Choosing anchors to preserve, scroll adjustment, caret policy, selections, diagnostics UX |
 | Capabilities | Pure functions and data contracts | Lifecycle, telemetry, feature flags, fallbacks |
 
 ## What Belongs In `pretext-TUI`
@@ -51,6 +52,7 @@ what keys do, and how is the screen composed?
 - Range walking.
 - Materializing requested lines/ranges.
 - Stable cursor/range/source-offset mapping.
+- Stable source-offset/cursor/row projection into terminal row and cell-column coordinates.
 - Rich inline metadata for style/link/copy semantics.
 - Sparse-anchor/page-cache primitives for large terminal text.
 - Deterministic tests, fixtures, fuzzing, and benchmarks.
@@ -106,6 +108,7 @@ A host may later build multi-pane navigation, file previews, searchable logs, co
 - terminal string width and truncation helpers
 - wrapped content line ranges
 - source-offset mapping for search and copy
+- coordinate projection for source anchors, cursors, and rows after resize
 - large-text paging primitives
 - terminal-safe rich inline metadata
 

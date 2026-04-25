@@ -1,6 +1,5 @@
 // 补建说明：该文件为后续补建，用于暴露 pretext-TUI 的 terminal-first 公共 API facade；当前进度：Task 4 首版，基于现有 prepared/range walker 提供 columns/rows/source-offset 语义。
 import {
-  materializeLineRange,
   prepareWithSegments,
   type LayoutCursor,
   type LayoutLineRange,
@@ -13,6 +12,10 @@ import {
   getInternalPreparedTerminalText,
   type PreparedTerminalText,
 } from './terminal-prepared-reader.js'
+import {
+  materializePreparedTerminalSourceRange,
+  visibleStartCursorForRange,
+} from './terminal-line-source.js'
 import {
   getTerminalCursorSourceOffset,
   getTerminalSegmentGeometry,
@@ -28,7 +31,6 @@ import {
   terminalStringWidth,
   terminalTabAdvance,
 } from './terminal-string-width.js'
-import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
 import type { TerminalWidthProfileInput } from './terminal-types.js'
 
 export type TerminalPrepareOptions = {
@@ -164,25 +166,6 @@ function visibleSourceStartForRange(
 ): number {
   const visibleStart = visibleStartCursorForRange(prepared, range)
   return sourceOffsetForCursor(geometry, visibleStart)
-}
-
-function visibleStartCursorForRange(
-  prepared: PreparedTextWithSegments,
-  range: LayoutLineRange,
-): LayoutCursor {
-  if (range.start.graphemeIndex > 0) {
-    return range.start
-  }
-  let segmentIndex = range.start.segmentIndex
-  while (segmentIndex < range.end.segmentIndex) {
-    const kind = prepared.kinds[segmentIndex]
-    if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen') break
-    segmentIndex++
-  }
-  return {
-    segmentIndex,
-    graphemeIndex: 0,
-  }
 }
 
 function breakForRange(
@@ -342,47 +325,11 @@ function toTerminalRange(
   }
 }
 
-function materializeVisibleTerminalText(
-  text: string,
-  startColumn: number,
-  tabSize: number,
-  prepared: PreparedTextWithSegments,
-  stripLeadingSoftHyphenArtifact: boolean,
-): { text: string; width: number } {
-  let rendered = ''
-  let column = startColumn
-  recordTerminalPerformanceCounter('terminalMaterializeGraphemeSegmentations')
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  for (const { segment } of segmenter.segment(text)) {
-    if (segment === '\t') {
-      const advance = terminalTabAdvance(column, tabSize)
-      rendered += ' '.repeat(advance)
-      column += advance
-      continue
-    }
-    if (segment === '\u200B' || segment === '\u2060' || segment === '\uFEFF') {
-      continue
-    }
-    if (segment === '\u00AD') {
-      continue
-    }
-    rendered += segment
-    column += terminalGraphemeWidth(segment, prepared.widthProfile)
-  }
-  if (stripLeadingSoftHyphenArtifact && rendered.startsWith('-')) {
-    rendered = rendered.slice(1)
-  }
-  return { text: rendered, width: column - startColumn }
-}
-
 function shouldTrimMaterializedTrailingSpaces(
   prepared: PreparedTextWithSegments,
   range: TerminalLineRange,
-  lineText: string,
 ): boolean {
   if (range.break.kind !== 'wrap') return false
-  const visibleTrailingText = lineText.replace(/[\u00AD\u200B\u2060\uFEFF]+$/g, '')
-  if (!visibleTrailingText.endsWith(' ')) return false
   let segmentIndex = range.end.graphemeIndex > 0
     ? range.end.segmentIndex
     : range.end.segmentIndex - 1
@@ -570,6 +517,13 @@ function layoutNextTerminalInternalRange(
 
     if (kind === 'preserved-space' || kind === 'tab') {
       lastBreak = { end: position, width }
+    } else if (
+      kind === 'text' &&
+      position.graphemeIndex === 0 &&
+      prepared.kinds[position.segmentIndex] === 'text' &&
+      prepared.segmentBreaksAfter[position.segmentIndex - 1] === true
+    ) {
+      lastBreak = { end: position, width }
     }
   }
 
@@ -664,28 +618,21 @@ export function materializeTerminalLineRange(
   range: TerminalLineRange,
 ): MaterializedTerminalLine {
   const internal = getInternalPreparedTerminalText(prepared)
-  const visibleStart = visibleStartCursorForRange(internal, range)
-  const line = materializeLineRange(internal, {
-    width: range.width,
-    start: visibleStart,
-    end: toLayoutCursor(range.end),
-  })
+  const geometry = getInternalPreparedTerminalGeometry(prepared)
   const sourceText = internal.sourceText.slice(range.sourceStart, range.sourceEnd)
-  const visibleText = shouldTrimMaterializedTrailingSpaces(internal, range, line.text)
-    ? line.text.replace(/[ \u00AD\u200B\u2060\uFEFF]+$/g, '')
-    : line.text
-  const materialized = materializeVisibleTerminalText(
-    visibleText,
-    range.startColumn,
-    internal.tabStopAdvance,
+  const materialized = materializePreparedTerminalSourceRange(
     internal,
-    internal.sourceText[range.sourceStart - 1] === '\u00AD' &&
-      !sourceText.includes('\u00AD') &&
-      !sourceText.startsWith('-'),
+    geometry,
+    range,
+    range.sourceStart,
+    range.sourceEnd,
+    range.startColumn,
   )
   return {
     ...range,
-    text: materialized.text,
+    text: shouldTrimMaterializedTrailingSpaces(internal, range)
+      ? materialized.text.replace(/[ \u00AD\u200B\u2060\uFEFF]+$/g, '')
+      : materialized.text,
     sourceText,
   }
 }

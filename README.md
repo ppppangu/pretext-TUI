@@ -220,7 +220,7 @@ The publish gate is:
 bun run prepublishOnly
 ```
 
-It runs TUI typechecks, validation typechecks, static no-browser gating, TUI tests, oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, terminal demo checks, API snapshot checks, and package smoke tests.
+It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, terminal demo checks, API snapshot checks, and package smoke tests.
 
 Useful focused commands:
 

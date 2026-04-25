@@ -180,6 +180,47 @@ describe('terminal rich inline materialization', () => {
     expect(materialized.fragments.every(fragment => fragment.text !== '')).toBe(true)
   })
 
+  test('selected styled soft hyphen remains visible inside its rich fragment', () => {
+    const prepared = prepareTerminalRichInline('\x1b[31m\u00A0\u00AD\u2060\x1b[0mX', {
+      whiteSpace: 'normal',
+    })
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 1 })!
+    const materialized = materializeTerminalRichLineRange(prepared, line)
+    expect(line.break.kind).toBe('soft-hyphen')
+    expect(materialized.text).toBe('\u00A0-')
+    expect(materialized.fragments).toHaveLength(1)
+    expect(materialized.fragments[0]).toMatchObject({
+      text: '\u00A0-',
+      sourceText: '\u00A0\u00AD\u2060',
+      sourceStart: 0,
+      sourceEnd: 3,
+      columnStart: 0,
+      columnEnd: 2,
+    })
+    expect(materialized.fragments[0]?.style).not.toBeNull()
+  })
+
+  test('styled tabs materialize with terminal cell width in rich fragments', () => {
+    const prepared = prepareTerminalRichInline('A\x1b[31m\tB\x1b[0m', {
+      whiteSpace: 'pre-wrap',
+    })
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, {
+      columns: 8,
+      startColumn: 1,
+    })!
+    const materialized = materializeTerminalRichLineRange(prepared, line)
+    expect(materialized.text).toBe('A      ')
+    expect(materialized.fragments.map(fragment => fragment.text)).toEqual(['A', '      '])
+    expect(materialized.fragments[1]).toMatchObject({
+      sourceText: '\t',
+      sourceStart: 1,
+      sourceEnd: 2,
+      columnStart: 2,
+      columnEnd: 8,
+    })
+    expect(materialized.fragments[1]?.style).not.toBeNull()
+  })
+
   test('does not reintroduce wrap-hidden space into fragments', () => {
     const prepared = prepareTerminalRichInline('A\x1b[31m \x1b[0mBB', { whiteSpace: 'normal' })
     const lines = []

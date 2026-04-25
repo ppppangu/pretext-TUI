@@ -13,8 +13,11 @@ import {
   type TerminalLineRange,
   type TerminalPrepareOptions,
 } from '../../src/index.js'
-import type { PreparedTextWithSegments } from '../../src/layout.js'
-import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
+import {
+  type PreparedTerminalText as InternalPreparedTerminalText,
+  getInternalPreparedTerminalTextDebugSnapshot,
+  type PreparedTerminalTextDebugSnapshot,
+} from '../../src/terminal-prepared-reader.js'
 import {
   terminalGraphemeWidth,
   terminalStringWidth,
@@ -25,6 +28,12 @@ import type { TerminalRichPrepareOptions } from '../../src/terminal-rich-inline.
 export type CollectedTerminalLine = {
   range: TerminalLineRange
   materialized: MaterializedTerminalLine
+}
+
+export function readInternalPreparedTerminalText(
+  prepared: PreparedTerminalText,
+): PreparedTerminalTextDebugSnapshot {
+  return getInternalPreparedTerminalTextDebugSnapshot(prepared as unknown as InternalPreparedTerminalText)
 }
 
 export type LayoutSnapshot = {
@@ -133,7 +142,7 @@ export function assertTerminalInvariants(
   const next = collectTerminalLinesByNext(prepared, options)
   const layout = layoutTerminal(prepared, options)
   const stats = measureTerminalLineStats(prepared, options)
-  const internal = getInternalPreparedTerminalText(prepared)
+  const internal = readInternalPreparedTerminalText(prepared)
 
   assert(layout.rows === walked.length, `layout rows mismatch: ${layout.rows} !== ${walked.length}`)
   assert(stats.rows === walked.length, `stats rows mismatch: ${stats.rows} !== ${walked.length}`)
@@ -204,7 +213,7 @@ export function computePreparedGreedyOracle(
   prepared: PreparedTerminalText,
   options: TerminalLayoutOptions,
 ): OracleLine[] {
-  const internal = getInternalPreparedTerminalText(prepared)
+  const internal = readInternalPreparedTerminalText(prepared)
   const lines: OracleLine[] = []
   let position: Position = { segmentIndex: 0, graphemeIndex: 0 }
   let startColumn = options.startColumn ?? 0
@@ -221,7 +230,7 @@ export function computePreparedGreedyOracle(
 }
 
 function computeNextOracleLine(
-  prepared: PreparedTextWithSegments,
+  prepared: PreparedTerminalTextDebugSnapshot,
   rawStart: Position,
   columns: number,
   startColumn: number,
@@ -346,6 +355,19 @@ function computeNextOracleLine(
         width,
         breakKind: 'wrap',
       }
+    } else if (
+      kind === 'text' &&
+      position.graphemeIndex === 0 &&
+      prepared.kinds[position.segmentIndex] === 'text' &&
+      prepared.segmentBreaksAfter[position.segmentIndex - 1] === true
+    ) {
+      lastBreak = {
+        position,
+        text,
+        sourceEnd,
+        width,
+        breakKind: 'wrap',
+      }
     }
   }
 
@@ -357,7 +379,7 @@ function computeNextOracleLine(
 
 function makeOracleLine(
   text: string,
-  prepared: PreparedTextWithSegments,
+  prepared: PreparedTerminalTextDebugSnapshot,
   sourceStart: number,
   sourceEnd: number,
   width: number,
@@ -376,7 +398,7 @@ function makeOracleLine(
   }
 }
 
-function normalizeOracleLineStart(prepared: PreparedTextWithSegments, start: Position): Position {
+function normalizeOracleLineStart(prepared: PreparedTerminalTextDebugSnapshot, start: Position): Position {
   const next = { ...start }
   while (next.graphemeIndex === 0 && next.segmentIndex < prepared.segments.length) {
     const kind = prepared.kinds[next.segmentIndex]
@@ -387,7 +409,7 @@ function normalizeOracleLineStart(prepared: PreparedTextWithSegments, start: Pos
 }
 
 function readOracleUnit(
-  prepared: PreparedTextWithSegments,
+  prepared: PreparedTerminalTextDebugSnapshot,
   position: Position,
   absoluteColumn: number,
 ): { text: string, width: number, sourceStart: number, sourceEnd: number, next: Position } | null {
@@ -419,7 +441,7 @@ function readOracleUnit(
   }
 }
 
-function sourceOffsetForPosition(prepared: PreparedTextWithSegments, position: Position): number {
+function sourceOffsetForPosition(prepared: PreparedTerminalTextDebugSnapshot, position: Position): number {
   if (position.segmentIndex >= prepared.segments.length) return prepared.sourceText.length
   const segmentStart = prepared.sourceStarts[position.segmentIndex] ?? prepared.sourceText.length
   if (position.graphemeIndex === 0) return segmentStart

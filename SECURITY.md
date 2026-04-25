@@ -15,11 +15,27 @@ When possible, include:
 - Reproduction steps or a small proof of concept
 - Any suggested fix or mitigation
 
-I will review reports on a best-effort basis and coordinate a fix before any public disclosure.
+Maintainers review reports on a best-effort basis and coordinate fixes before public disclosure when the report is in scope.
+
+## Response And Disclosure
+
+Reports are triaged privately through GitHub Security Advisories. Sensitive details should stay out of public issues, release notes, benchmark reports, and marketing copy until a fix, mitigation, or no-impact determination is ready to share.
+
+Expected handling:
+
+- Acknowledge and triage reports as soon as practical, without promising a fixed SLA.
+- Confirm whether the issue affects the published package surface, the opt-in rich sidecar, repository-only validation tooling, or an out-of-scope host behavior.
+- Coordinate a fix, mitigation, or advisory text privately with the reporter when possible.
+- Publish public disclosure through a GitHub advisory, changelog/release note, or issue only after the fix or mitigation path is available, unless earlier disclosure is needed to protect users.
+- Keep disclosure host-neutral: this package does not certify or promise behavior for any specific host application.
 
 ## Supported Versions
 
-Security fixes, when needed, will be made against the latest published version of `pretext-tui`.
+Security fixes, when needed, target the latest published version of `pretext-tui`.
+
+Backports are not guaranteed. They may be considered only for actively used older release lines when the fix is narrow, low risk, and can be validated with the current TUI gates. If a backport is not practical, the supported mitigation is to upgrade to the latest fixed release.
+
+Unpublished branches, local benchmark evidence reports, repository-only planning documents, and consumer host integrations are not supported release lines for security fixes.
 
 ## Scope
 

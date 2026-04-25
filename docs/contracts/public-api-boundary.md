@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：首版定位文档，作为后续 API gate、recipes 和发布文案审核的依据。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Task 3 收敛为当前 canonical 公共 API 边界，配合 API snapshot、package smoke 和 recipe gate 持续校验。 -->
 # Public API Boundary
 
 ## Purpose
@@ -16,7 +16,8 @@ The public package story is:
 ```text
 Given visible terminal text and terminal layout options,
 prepare reusable text data, derive terminal-cell rows and ranges,
-map rows back to source offsets, and materialize only requested output.
+project source offsets/cursors/rows through fixed-column indexes,
+and materialize only requested output.
 ```
 
 This is deliberately broader than one application category. Transcript viewers are one useful workload, but they do not define the package boundary.
@@ -27,12 +28,22 @@ The intended public entry points are:
 
 | Entry point | Status | Purpose |
 | --- | --- | --- |
-| `pretext-tui` | Public | Root terminal API surface. |
+| `pretext-tui` | Public canonical facade | Root terminal API surface for core terminal-cell layout consumers. |
 | `pretext-tui/terminal` | Public alias | Same terminal API surface for consumers that prefer explicit terminal naming. |
 | `pretext-tui/terminal-rich-inline` | Incubating public | Opt-in rich inline metadata for supported `SGR` and `OSC8` input. |
 | `pretext-tui/package.json` | Public metadata | Package metadata for tooling. |
 
 No other subpath should be treated as public unless a future contract explicitly adds it.
+
+## Canonical Public Facade
+
+The package root `pretext-tui` is the canonical public facade for core terminal APIs. Public examples should import core APIs from the root facade unless they are specifically demonstrating the explicit `pretext-tui/terminal` alias.
+
+`pretext-tui/terminal` must remain behaviorally and declaratively equivalent to the root terminal facade. It is an explicit naming convenience, not a second product story.
+
+`pretext-tui/terminal-rich-inline` is a separate opt-in, incubating public sidecar for policy-bound rich inline metadata. It must not become the default facade for plain terminal layout.
+
+Internal implementation modules, validation helpers, benchmarks, fixtures, and generated status data are not public facades. Public docs must not import them, and future host-specific convenience layers must be built outside this package unless a new host-neutral contract explicitly expands the facade.
 
 ## Stability Classes
 
@@ -59,6 +70,7 @@ These surfaces are useful but need more evidence before they become stable:
 - sparse line indexes
 - fixed-column page caches
 - source-offset indexes
+- coordinate projection helpers and projection result types
 - append/cell-flow invalidation metadata
 - rich diagnostics and ANSI re-emission
 - custom terminal width profiles
@@ -107,6 +119,8 @@ This applies to:
 
 Future implementation work should preserve this shape through capability boundaries, branded types, private symbols, WeakMaps, or equivalent internal storage.
 
+Repository validation may use internal debug snapshot APIs to inspect copied prepared-reader structure. Those snapshots are private test infrastructure: they must stay outside package exports and public subpaths, must be detached from live WeakMap state, and must not appear in public examples or recipes.
+
 ## Documentation Rules
 
 Public documentation should:
@@ -121,8 +135,10 @@ Public documentation should:
 ## Acceptance Checklist
 
 - Root and `./terminal` exports describe the same terminal API surface.
+- Root `pretext-tui` remains the canonical public facade for core APIs.
 - `./terminal-rich-inline` is clearly marked as opt-in and incubating.
 - Public examples import only public entry points.
 - Public docs do not imply bundled integration code for any named host.
 - Performance wording is tied to reproducible evidence or kept qualitative.
 - Internal storage is not part of the public data contract.
+- Internal debug snapshots are copied repository-only validation data and are absent from public package exports.

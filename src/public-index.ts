@@ -37,6 +37,11 @@ import {
   getTerminalCursorForSourceOffset as internalGetTerminalCursorForSourceOffset,
   getTerminalSourceOffsetForCursor as internalGetTerminalSourceOffsetForCursor,
 } from './terminal-source-offset-index.js'
+import {
+  projectTerminalCursor as internalProjectTerminalCursor,
+  projectTerminalRow as internalProjectTerminalRow,
+  projectTerminalSourceOffset as internalProjectTerminalSourceOffset,
+} from './terminal-coordinate-projection.js'
 
 export type AmbiguousWidthPolicy = 'narrow' | 'wide'
 export type EmojiWidthPolicy = 'presentation-wide' | 'wide' | 'narrow'
@@ -382,6 +387,45 @@ export type TerminalSourceOffsetIndex = Readonly<{
   readonly [terminalSourceOffsetIndexBrand]: true
 }>
 
+export type TerminalProjectionIndexes = Readonly<{
+  lineIndex: TerminalLineIndex
+  sourceIndex: TerminalSourceOffsetIndex
+}>
+
+export type TerminalCellCoordinate = Readonly<{
+  column: number
+  row: number
+}>
+
+export type TerminalSourceProjectionOptions = Readonly<{
+  bias?: TerminalSourceOffsetBias
+}>
+
+export type TerminalSourceProjection = Readonly<{
+  kind: 'terminal-coordinate-projection@1'
+  atEnd: boolean
+  column: number
+  coordinate: TerminalCellCoordinate
+  cursor: TerminalCursor
+  exact: boolean
+  line: TerminalLineRange | null
+  requestedSourceOffset: number | null
+  row: number
+  sourceOffset: number
+}>
+
+export type TerminalCoordinateProjection = TerminalSourceProjection
+
+export type TerminalRowProjection = Readonly<{
+  kind: 'terminal-row-projection@1'
+  endColumn: number
+  line: TerminalLineRange
+  row: number
+  startColumn: number
+  sourceEnd: number
+  sourceStart: number
+}>
+
 export function createTerminalSourceOffsetIndex(
   prepared: PreparedTerminalText,
 ): TerminalSourceOffsetIndex {
@@ -408,4 +452,74 @@ export function getTerminalCursorForSourceOffset(
     sourceOffset,
     bias,
   ) as TerminalSourceLookupResult
+}
+
+export function projectTerminalSourceOffset(
+  prepared: PreparedTerminalText,
+  indexes: TerminalProjectionIndexes,
+  sourceOffset: number,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalSourceOffset(
+  prepared: PreparedTerminalText,
+  sourceIndex: TerminalSourceOffsetIndex,
+  lineIndex: TerminalLineIndex,
+  sourceOffset: number,
+  bias?: TerminalSourceOffsetBias | TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalSourceOffset(
+  prepared: PreparedTerminalText,
+  indexesOrSourceIndex: TerminalProjectionIndexes | TerminalSourceOffsetIndex,
+  lineIndexOrSourceOffset: TerminalLineIndex | number,
+  sourceOffsetOrOptions?: number | TerminalSourceOffsetBias | TerminalSourceProjectionOptions,
+  biasOrOptions?: TerminalSourceOffsetBias | TerminalSourceProjectionOptions,
+): TerminalSourceProjection {
+  return internalProjectTerminalSourceOffset(
+    prepared as never,
+    indexesOrSourceIndex as never,
+    lineIndexOrSourceOffset as never,
+    sourceOffsetOrOptions as never,
+    biasOrOptions as never,
+  ) as TerminalSourceProjection
+}
+
+export function projectTerminalCursor(
+  prepared: PreparedTerminalText,
+  indexes: TerminalProjectionIndexes,
+  cursor: TerminalCursor,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalCursor(
+  prepared: PreparedTerminalText,
+  sourceIndex: TerminalSourceOffsetIndex,
+  lineIndex: TerminalLineIndex,
+  cursor: TerminalCursor,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalCursor(
+  prepared: PreparedTerminalText,
+  indexesOrSourceIndex: TerminalProjectionIndexes | TerminalSourceOffsetIndex,
+  lineIndexOrCursor: TerminalLineIndex | TerminalCursor,
+  cursorOrOptions?: TerminalCursor | TerminalSourceProjectionOptions,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection {
+  return internalProjectTerminalCursor(
+    prepared as never,
+    indexesOrSourceIndex as never,
+    lineIndexOrCursor as never,
+    cursorOrOptions as never,
+    options as never,
+  ) as TerminalSourceProjection
+}
+
+export function projectTerminalRow(
+  prepared: PreparedTerminalText,
+  lineIndex: TerminalLineIndex,
+  row: number,
+): TerminalRowProjection | null {
+  return internalProjectTerminalRow(
+    prepared as never,
+    lineIndex as never,
+    row,
+  ) as TerminalRowProjection | null
 }

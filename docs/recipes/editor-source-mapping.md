@@ -17,11 +17,11 @@ Use this pattern when a host has its own source model and wants wrapped terminal
 - terminal-cell line ranges
 - source-offset lookup handles
 - mapping terminal rows to source ranges
-- mapping source offsets to terminal cursors
+- mapping source offsets and cursors to terminal row/column projections
 
 ## Incubating API Note
 
-This recipe uses source-offset indexes and sparse line indexes. They are public, host-neutral data APIs, but still incubating before the stable `0.1` contract.
+This recipe uses source-offset indexes, sparse line indexes, and coordinate projection helpers. They are public, host-neutral data APIs, but still incubating before the stable `0.1` contract.
 
 ## Public Imports
 
@@ -30,13 +30,15 @@ import {
   createTerminalLineIndex,
   createTerminalSourceOffsetIndex,
   getTerminalCursorForSourceOffset,
-  getTerminalLineRangeAtRow,
-  getTerminalSourceOffsetForCursor,
-  measureTerminalLineIndexRows,
   prepareTerminal,
+  projectTerminalCursor,
+  projectTerminalRow,
+  projectTerminalSourceOffset,
   type PreparedTerminalText,
+  type TerminalCoordinateProjection,
+  type TerminalCursor,
   type TerminalLineIndex,
-  type TerminalLineRange,
+  type TerminalRowProjection,
   type TerminalSourceOffsetIndex,
 } from 'pretext-tui'
 ```
@@ -60,42 +62,60 @@ function createSourceView(text: string, columns: number): SourceView {
 }
 ```
 
-## Source Offset To Wrapped Row
+## Source Offset To Terminal Coordinate
 
-The public source-offset index maps a source offset to a terminal cursor. The row lookup remains a fixed-width line-index concern.
+Use source offsets as the semantic anchor. The projection result gives the fixed-width terminal row, absolute terminal cell column, normalized source offset, opaque cursor, and containing line range.
 
 ```ts
-function findRowForSourceOffset(view: SourceView, sourceOffset: number): number {
-  const lookup = getTerminalCursorForSourceOffset(view.prepared, view.sourceIndex, sourceOffset, 'closest')
-  const normalizedOffset = getTerminalSourceOffsetForCursor(view.prepared, lookup.cursor, view.sourceIndex)
-  const rows = measureTerminalLineIndexRows(view.prepared, view.lineIndex)
+function projectSourceOffset(view: SourceView, sourceOffset: number): TerminalCoordinateProjection {
+  return projectTerminalSourceOffset(
+    view.prepared,
+    view.sourceIndex,
+    view.lineIndex,
+    sourceOffset,
+    'closest',
+  )
+}
+```
 
-  let low = 0
-  let high = Math.max(0, rows - 1)
+`projection.column` is a terminal-cell column, not a UTF-16 column. It includes `startColumn`, tab expansion, wide graphemes, and combining marks.
 
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2)
-    const line = getTerminalLineRangeAtRow(view.prepared, view.lineIndex, mid)
-    if (!line) break
+## Cursor To Terminal Coordinate
 
-    if (line.sourceEnd <= normalizedOffset) {
-      low = mid + 1
-    } else {
-      high = mid - 1
-    }
-  }
+If the host already stored a package cursor, project it through the same prepared/source/line handles.
 
-  return Math.min(low, Math.max(0, rows - 1))
+```ts
+function projectStoredCursor(view: SourceView, cursor: TerminalCursor): TerminalCoordinateProjection {
+  return projectTerminalCursor(view.prepared, view.sourceIndex, view.lineIndex, cursor)
+}
+```
+
+For cursor lookup from a raw source offset, continue to use the source index when you only need the cursor:
+
+```ts
+function cursorForDiagnosticStart(view: SourceView, sourceOffset: number): TerminalCursor {
+  return getTerminalCursorForSourceOffset(
+    view.prepared,
+    view.sourceIndex,
+    sourceOffset,
+    'closest',
+  ).cursor
 }
 ```
 
 ## Wrapped Row To Source Range
 
 ```ts
-function sourceRangeForWrappedRow(view: SourceView, row: number): Pick<TerminalLineRange, 'sourceStart' | 'sourceEnd'> | null {
-  const line = getTerminalLineRangeAtRow(view.prepared, view.lineIndex, row)
-  if (!line) return null
-  return { sourceStart: line.sourceStart, sourceEnd: line.sourceEnd }
+function sourceRangeForWrappedRow(
+  view: SourceView,
+  row: number,
+): Pick<TerminalRowProjection, 'sourceStart' | 'sourceEnd'> | null {
+  const projection = projectTerminalRow(view.prepared, view.lineIndex, row)
+  if (!projection) return null
+  return {
+    sourceStart: projection.sourceStart,
+    sourceEnd: projection.sourceEnd,
+  }
 }
 ```
 
@@ -127,8 +147,32 @@ function sourceOffsetFromHostPosition(text: string, position: HostSourcePosition
 
 For a production host, replace this simple helper with the host's own buffer index so edits and large files remain efficient.
 
+## Resize Reprojection
+
+Keep the source offset as the durable anchor, rebuild only the width-dependent line index, then project the same source offset into the new terminal width.
+
+```ts
+function reprojectAfterResize(
+  view: SourceView,
+  sourceOffset: number,
+  nextColumns: number,
+): TerminalCoordinateProjection {
+  const resized: SourceView = {
+    prepared: view.prepared,
+    sourceIndex: view.sourceIndex,
+    lineIndex: createTerminalLineIndex(view.prepared, {
+      columns: nextColumns,
+      anchorInterval: 64,
+    }),
+  }
+
+  return projectSourceOffset(resized, sourceOffset)
+}
+```
+
 ## Notes
 
 - Keep file and diagnostic metadata outside `pretext-TUI`; pass only visible text into the package.
 - Use `sourceStart` and `sourceEnd` as durable anchors for diagnostics, search hits, and copy ranges.
 - Rebuild the line index when `columns` changes. Rebuild the prepared text and source index when the visible source text changes.
+- Projection rejects forged or mismatched prepared/source/line handles through the same public capability boundaries as the underlying indexes.

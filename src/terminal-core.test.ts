@@ -12,6 +12,13 @@ import {
   type TerminalLayoutOptions,
   type TerminalLineRange,
 } from './terminal.js'
+import {
+  materializeTerminalLineSourceRange,
+} from './terminal-line-source.js'
+import {
+  resetTerminalPerformanceCounters,
+  snapshotTerminalPerformanceCounters,
+} from './terminal-performance-counters.js'
 
 function collectWalked(
   prepared: PreparedTerminalText,
@@ -98,6 +105,16 @@ describe('terminal core api', () => {
     expect(lines[0] && materializeTerminalLineRange(prepared, lines[0]).sourceText).toBe('a')
   })
 
+  test('materializing a hard-break row does not build geometry for the next segment', () => {
+    const prepared = prepareTerminal(`a\n${'x'.repeat(50_000)}`, { whiteSpace: 'pre-wrap' })
+    const firstLine = layoutNextTerminalLineRange(prepared, TERMINAL_START_CURSOR, { columns: 80 })!
+    resetTerminalPerformanceCounters()
+    expect(materializeTerminalLineRange(prepared, firstLine).text).toBe('a')
+    const counters = snapshotTerminalPerformanceCounters()
+    expect(counters.preparedGeometrySegments).toBe(0)
+    expect(counters.preparedGeometryGraphemes).toBe(0)
+  })
+
   test('zero-width-only pre-wrap chunks still emit empty rows', () => {
     const prepared = prepareTerminal('\u200B\n\u200B\n\u200B', { whiteSpace: 'pre-wrap' })
     const lines = collectWalked(prepared, { columns: 5 })
@@ -120,11 +137,35 @@ describe('terminal core api', () => {
     expect(line?.width).toBe(3)
   })
 
+  test('internal source-range materialization defaults to the source offset column for tabs', () => {
+    const prepared = prepareTerminal('A\tB', { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const [line] = collectWalked(prepared, { columns: 8 })
+    expect(line && materializeTerminalLineSourceRange(prepared, line, 1, 2)).toEqual({
+      text: '   ',
+      width: 3,
+    })
+  })
+
   test('startColumn and tabs fit against actual terminal columns', () => {
     const prepared = prepareTerminal('x\tz', { whiteSpace: 'pre-wrap', tabSize: 4 })
     const lines = collectWalked(prepared, { columns: 8, startColumn: 3 })
     expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).toEqual(['x    ', 'z'])
     expect(lines[0]?.overflow).toBeNull()
+  })
+
+  test('language boundaries after tabs keep later fitted text on the current row', () => {
+    const prepared = prepareTerminal('A\tB界e\u0301\u200Btail', { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const lines = collectWalked(prepared, { columns: 6, startColumn: 1 })
+    expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).toEqual([
+      'A  B',
+      '界e\u0301',
+      'tail',
+    ])
+    expect(lines.map(line => [line.sourceStart, line.sourceEnd])).toEqual([
+      [0, 3],
+      [3, 6],
+      [7, 11],
+    ])
   })
 
   test('startColumn can make a leading tab narrower than column-zero layout', () => {
@@ -153,6 +194,20 @@ describe('terminal core api', () => {
     const lines = collectWalked(prepared, { columns: 5 })
     const rendered = lines.map(line => materializeTerminalLineRange(prepared, line).text).join('')
     expect(rendered).toBe('alphabeta')
+  })
+
+  test('no-break glue stays inside the prepared text run before language boundary wraps', () => {
+    const cases = [
+      { text: 'foo\u00A0bar界', expected: ['foo\u00A0bar', '界'], columns: 8 },
+      { text: 'foo\u202Fbar界', expected: ['foo\u202Fbar', '界'], columns: 8 },
+      { text: 'foo\u2060bar界', expected: ['foobar', '界'], columns: 7 },
+      { text: 'foo\uFEFFbar界', expected: ['foobar', '界'], columns: 7 },
+    ]
+    for (const item of cases) {
+      const prepared = prepareTerminal(item.text, { whiteSpace: 'pre-wrap' })
+      const lines = collectWalked(prepared, { columns: item.columns })
+      expect(lines.map(line => materializeTerminalLineRange(prepared, line).text)).toEqual(item.expected)
+    }
   })
 
   test('normal wrap spaces are consumed but not painted', () => {

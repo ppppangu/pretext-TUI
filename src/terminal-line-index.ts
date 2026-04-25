@@ -57,6 +57,11 @@ export type TerminalLineIndexIdentity = Readonly<{
   startColumn: number
 }>
 
+export type TerminalLineIndexCursorProjection = Readonly<{
+  line: TerminalLineRange
+  row: number
+}>
+
 declare const terminalLineIndexBrand: unique symbol
 
 export type TerminalLineIndex = Readonly<{
@@ -182,12 +187,68 @@ export function getTerminalLineRangesAtRows(
   return lines
 }
 
+export function getTerminalLineRangeForCursor(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  cursor: TerminalCursor,
+  sourceOffset: number,
+): TerminalLineIndexCursorProjection | null {
+  const targetSourceOffset = normalizeSourceOffsetForLineProjection(prepared, sourceOffset)
+  const seek = seekTerminalLineIndexToSourceOffset(prepared, index, targetSourceOffset)
+  const internal = seek.internal
+  let currentCursor = seek.cursor
+  let startColumn = seek.startColumn
+  let currentRow = seek.currentRow
+  let replayRows = 0
+  let previous: TerminalLineIndexCursorProjection | null = null
+
+  while (true) {
+    const line = layoutNextTerminalLineRange(prepared, currentCursor, {
+      columns: internal.columns,
+      startColumn,
+    })
+    incrementRangeWalks(internal)
+    if (line === null) {
+      internal.rows = currentRow
+      recordReplayRows(internal, replayRows)
+      return previous
+    }
+
+    if (compareTerminalCursors(cursor, line.start) < 0) {
+      recordReplayRows(internal, replayRows)
+      return createCursorProjection(currentRow, line)
+    }
+
+    const endComparison = compareTerminalCursors(cursor, line.end)
+    if (endComparison < 0) {
+      recordReplayRows(internal, replayRows)
+      return createCursorProjection(currentRow, line)
+    }
+
+    previous = createCursorProjection(currentRow, line)
+    currentCursor = line.end
+    startColumn = 0
+    currentRow++
+    replayRows++
+    if (shouldStoreAnchor(internal, currentRow)) {
+      maybeStoreAnchor(internal, createAnchor(
+        currentRow,
+        currentCursor,
+        startColumn,
+        getTerminalSourceOffsetForCursor(prepared, currentCursor),
+      ))
+    }
+  }
+}
+
 type TerminalLineIndexSeekResult = {
   currentRow: number
   cursor: TerminalCursor
   internal: InternalTerminalLineIndex
   startColumn: number
 }
+
+type TerminalLineIndexSourceSeekResult = TerminalLineIndexSeekResult
 
 function seekTerminalLineIndexToRow(
   prepared: PreparedTerminalText,
@@ -237,6 +298,22 @@ function seekTerminalLineIndexToRow(
     cursor,
     internal,
     startColumn,
+  }
+}
+
+function seekTerminalLineIndexToSourceOffset(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  targetSourceOffset: number,
+): TerminalLineIndexSourceSeekResult {
+  const internal = internalLineIndex(index)
+  assertPreparedMatchesLineIndex(prepared, internal)
+  const anchor = findNearestAnchorBySourceOffset(internal.anchors, targetSourceOffset)
+  return {
+    currentRow: anchor.row,
+    cursor: anchor.cursor,
+    internal,
+    startColumn: anchor.startColumn,
   }
 }
 
@@ -363,6 +440,10 @@ function createAnchor(
   }
 }
 
+function createCursorProjection(row: number, line: TerminalLineRange): TerminalLineIndexCursorProjection {
+  return { row, line }
+}
+
 function createLineIndexLayoutKey(
   prepared: ReturnType<typeof getInternalPreparedTerminalText>,
   columns: number,
@@ -416,6 +497,11 @@ function hasAnchorAtRow(anchors: readonly TerminalRowAnchor[], row: number): boo
     else hi = mid
   }
   return anchors[lo]?.row === row
+}
+
+function compareTerminalCursors(a: TerminalCursor, b: TerminalCursor): number {
+  if (a.segmentIndex !== b.segmentIndex) return a.segmentIndex - b.segmentIndex
+  return a.graphemeIndex - b.graphemeIndex
 }
 
 function findNearestAnchorBySourceOffset(
@@ -494,6 +580,17 @@ function normalizeNonNegativeInteger(value: number, label: string): number {
     throw new Error(`${label} must be a non-negative integer, got ${value}`)
   }
   return value
+}
+
+function normalizeSourceOffsetForLineProjection(
+  prepared: PreparedTerminalText,
+  sourceOffset: number,
+): number {
+  if (!Number.isInteger(sourceOffset)) {
+    throw new Error(`Terminal source offset must be an integer, got ${sourceOffset}`)
+  }
+  const internal = getInternalPreparedTerminalText(prepared)
+  return Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
 }
 
 function assertPreparedMatchesLineIndex(

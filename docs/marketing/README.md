@@ -58,11 +58,11 @@ This copy describes workload patterns, not existing integrations. The package do
 
 ## Benchmark Reproduction
 
-Run from the repository, not from the installed npm package:
+Run report-shaped benchmark evidence from the repository, not from the installed npm package:
 
 ```sh
 bun install
-bun run benchmark:competitive:tui
+bun run benchmark:evidence:tui
 ```
 
-Before publishing a performance claim, rerun the benchmark and cite the emitted report id plus workload id. The JSON report carries generated timestamp, git commit, dirty state, OS, CPU, Bun/Node versions, exact comparator package versions, raw samples, statistics, and semantic caveats.
+Before publishing a performance claim, rerun the evidence command on a clean commit and cite the emitted report id plus workload id. The JSON report carries generated timestamp, git commit, dirty state, OS, CPU, Bun/Node versions, exact comparator package versions, raw samples, statistics, and semantic caveats.

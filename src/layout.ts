@@ -71,6 +71,7 @@ type PreparedCore = {
   simpleLineWalkFastPath: boolean // Normal text can use the simpler old line walker across all layout APIs
   segLevels: Int8Array | null // Rich-path bidi metadata for custom rendering; layout() never reads it
   breakableFitAdvances: (number[] | null)[] // Per-grapheme fit advances for breakable segments, else null
+  segmentBreaksAfter: boolean[] // Analysis-approved text segment boundary break candidates
   letterSpacing: number // Extra advance between rendered graphemes on the same line
   spacingGraphemeCounts: number[] // Rendered grapheme counts for letter-spacing gaps; empty when letterSpacing is 0
   discretionaryHyphenWidth: number // Visible width added when a soft hyphen is chosen as the break
@@ -148,7 +149,11 @@ type PreparedLineChunk = {
 
 // --- Public API ---
 
-function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | PreparedTextWithSegments {
+function createEmptyPrepared(
+  includeSegments: boolean,
+  widthProfile: TerminalWidthProfile,
+  tabStopAdvance: number,
+): InternalPreparedText | PreparedTextWithSegments {
   if (includeSegments) {
     return {
       widths: [],
@@ -158,15 +163,16 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
       simpleLineWalkFastPath: true,
       segLevels: null,
       breakableFitAdvances: [],
+      segmentBreaksAfter: [],
       letterSpacing: 0,
       spacingGraphemeCounts: [],
       discretionaryHyphenWidth: 0,
-      tabStopAdvance: 0,
+      tabStopAdvance,
       chunks: [],
       segments: [],
       sourceText: '',
       sourceStarts: [],
-      widthProfile: undefined as unknown as TerminalWidthProfile,
+      widthProfile,
     } as unknown as PreparedTextWithSegments
   }
   return {
@@ -177,12 +183,13 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
     simpleLineWalkFastPath: true,
     segLevels: null,
     breakableFitAdvances: [],
+    segmentBreaksAfter: [],
     letterSpacing: 0,
     spacingGraphemeCounts: [],
     discretionaryHyphenWidth: 0,
-    tabStopAdvance: 0,
+    tabStopAdvance,
     chunks: [],
-    widthProfile: undefined as unknown as TerminalWidthProfile,
+    widthProfile,
   } as unknown as InternalPreparedText
 }
 
@@ -342,6 +349,23 @@ function countRenderedSpacingGraphemes(
   return count
 }
 
+function isLanguageLikeTextSegment(text: string, wordLike: boolean): boolean {
+  return wordLike || isCJK(text)
+}
+
+function finalizeSegmentBreaksAfter(
+  kinds: readonly SegmentBreakKind[],
+  segmentBreaksAfter: boolean[],
+): void {
+  for (let i = 0; i < segmentBreaksAfter.length; i++) {
+    segmentBreaksAfter[i] =
+      kinds[i] === 'text' &&
+      kinds[i + 1] === 'text' &&
+      segmentBreaksAfter[i] === true &&
+      segmentBreaksAfter[i + 1] === true
+  }
+}
+
 function addInternalLetterSpacing(width: number, graphemeCount: number, letterSpacing: number): number {
   return graphemeCount > 1 ? width + (graphemeCount - 1) * letterSpacing : width
 }
@@ -362,7 +386,7 @@ function measureAnalysis(
   const tabStopAdvance = normalizeTerminalTabSize(tabSize, profile)
   const hasLetterSpacing = letterSpacing !== 0
 
-  if (analysis.len === 0) return createEmptyPrepared(includeSegments)
+  if (analysis.len === 0) return createEmptyPrepared(includeSegments, profile, tabStopAdvance)
 
   const widths: number[] = []
   const lineEndFitAdvances: number[] = []
@@ -371,6 +395,7 @@ function measureAnalysis(
   let simpleLineWalkFastPath = analysis.chunks.length <= 1 && !hasLetterSpacing
   const segStarts = includeSegments ? [] as number[] : null
   const breakableFitAdvances: (number[] | null)[] = []
+  const segmentBreaksAfter: boolean[] = []
   const spacingGraphemeCounts: number[] = []
   const segments = includeSegments ? [] as string[] : null
   const preparedStartByAnalysisIndex = Array.from<number>({ length: analysis.len })
@@ -383,6 +408,7 @@ function measureAnalysis(
     kind: SegmentBreakKind,
     start: number,
     breakableFitAdvance: number[] | null,
+    segmentBreakAfter: boolean,
     spacingGraphemeCount: number,
   ): void {
     if (kind !== 'text' && kind !== 'space' && kind !== 'zero-width-break') {
@@ -394,6 +420,7 @@ function measureAnalysis(
     kinds.push(kind)
     segStarts?.push(start)
     breakableFitAdvances.push(breakableFitAdvance)
+    segmentBreaksAfter.push(segmentBreakAfter)
     if (hasLetterSpacing) spacingGraphemeCounts.push(spacingGraphemeCount)
     if (segments !== null) segments.push(text)
   }
@@ -404,6 +431,7 @@ function measureAnalysis(
     start: number,
     wordLike: boolean,
     allowOverflowBreaks: boolean,
+    segmentBreakAfter: boolean,
   ): void {
     const textMetrics = getSegmentMetrics(text, cache)
     const spacingGraphemeCount = hasLetterSpacing
@@ -449,6 +477,7 @@ function measureAnalysis(
         kind,
         start,
         fitAdvances,
+        segmentBreakAfter,
         spacingGraphemeCount,
       )
       return
@@ -462,6 +491,7 @@ function measureAnalysis(
       kind,
       start,
       null,
+      segmentBreakAfter,
       spacingGraphemeCount,
     )
   }
@@ -482,13 +512,14 @@ function measureAnalysis(
         segKind,
         segStart,
         null,
+        false,
         0,
       )
       continue
     }
 
     if (segKind === 'hard-break') {
-      pushMeasuredSegment(segText, 0, 0, 0, segKind, segStart, null, 0)
+      pushMeasuredSegment(segText, 0, 0, 0, segKind, segStart, null, false, 0)
       continue
     }
 
@@ -501,6 +532,7 @@ function measureAnalysis(
         segKind,
         segStart,
         null,
+        false,
         hasLetterSpacing ? countRenderedSpacingGraphemes(segText, segKind) : 0,
       )
       continue
@@ -522,13 +554,23 @@ function measureAnalysis(
           segStart + unit.start,
           segWordLike,
           wordBreak === 'keep-all' || !isCJK(unit.text),
+          isLanguageLikeTextSegment(unit.text, segWordLike),
         )
       }
       continue
     }
 
-    pushMeasuredTextSegment(segText, segKind, segStart, segWordLike, true)
+    pushMeasuredTextSegment(
+      segText,
+      segKind,
+      segStart,
+      segWordLike,
+      true,
+      segKind === 'text' && isLanguageLikeTextSegment(segText, segWordLike),
+    )
   }
+
+  finalizeSegmentBreaksAfter(kinds, segmentBreaksAfter)
 
   const chunks = mapAnalysisChunksToPreparedChunks(analysis.chunks, preparedStartByAnalysisIndex, widths.length)
   const segLevels = segStarts === null ? null : computeSegmentLevels(analysis.normalized, segStarts)
@@ -541,6 +583,7 @@ function measureAnalysis(
       simpleLineWalkFastPath,
       segLevels,
       breakableFitAdvances,
+      segmentBreaksAfter,
       letterSpacing,
       spacingGraphemeCounts,
       discretionaryHyphenWidth,
@@ -560,6 +603,7 @@ function measureAnalysis(
     simpleLineWalkFastPath,
     segLevels,
     breakableFitAdvances,
+    segmentBreaksAfter,
     letterSpacing,
     spacingGraphemeCounts,
     discretionaryHyphenWidth,

@@ -1,6 +1,6 @@
 # Development
 
-This repository has a publishable terminal-cell text layout package baseline and is now hardening the host-neutral API, security posture, benchmark evidence, performance profile, and future chunked append storage.
+This repository has a publishable terminal-cell text layout package baseline. Active development keeps the API host-neutral while tightening security posture, benchmark evidence, performance telemetry, and future append-storage design.
 
 The active development target is terminal-cell layout. Browser-oriented source material remains out of the active package surface.
 
@@ -37,6 +37,7 @@ bun run typecheck:tui
 bun run typecheck:tui-validation
 bun run test:tui
 bun run tui-static-gate
+oxlint --type-aware src
 bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
@@ -60,6 +61,14 @@ bun run benchmark:competitive:tui
 
 This command is intentionally not part of `prepublishOnly`. It depends on dev-only comparison packages such as `wrap-ansi`, `string-width`, and `strip-ansi`, measures local wall-clock time, and compares text-layout primitives rather than complete application renderers or event loops.
 
+For report-shaped benchmark evidence that can be cited by report id and workload id, run:
+
+```sh
+bun run benchmark:evidence:tui
+```
+
+That command writes a local `pretext-tui-benchmark-evidence@1` JSON report under `docs/evidence/benchmark-reports/`. Dynamic timing numbers belong in the JSON report, not in README or marketing prose.
+
 ## Packaging Target
 
 The publishable package must expose terminal-first APIs only.
@@ -74,9 +83,9 @@ The final package smoke test must verify:
 - rich sidecar declarations do not expose full raw terminal input, unsafe `sequence` fields, or implicit `ansiText`
 - validation scripts stay typed and terminal-only
 
-## Source Of Truth
+## Reference Map
 
-Use these documents while post-publishability hardening is in progress:
+Use [docs/README.md](docs/README.md) for the fact-source hierarchy. Use these references for active development:
 
 - [README.md](README.md) — public package story
 - [STATUS.md](STATUS.md) — current migration state

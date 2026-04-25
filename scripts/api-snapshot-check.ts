@@ -2,6 +2,19 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import {
+  expectedPackageExportKeys,
+  expectedPackageExports,
+  expectedPackageFiles,
+  forbiddenPreparedHandleDeclarationTokens,
+  forbiddenPublicDeclarationTokens,
+  richPublicDeclarationExports,
+  richPublicDeclarationForbiddenPatterns,
+  richPublicDeclarationForbiddenTokens,
+  richPublicRuntimeExports,
+  terminalPublicDeclarationExports,
+  terminalPublicRuntimeExports,
+} from './public-api-contract.js'
 
 const root = process.cwd()
 const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')) as {
@@ -9,71 +22,38 @@ const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), '
   files?: string[]
 }
 
-const expectedExportKeys = ['.', './package.json', './terminal', './terminal-rich-inline']
 const actualExportKeys = Object.keys(packageJson.exports ?? {}).sort()
-assertJsonEqual(actualExportKeys, expectedExportKeys, 'package export keys')
+assertJsonEqual(actualExportKeys, expectedPackageExportKeys, 'package export keys')
+assertJsonEqual(packageJson.exports, expectedPackageExports, 'package export condition targets')
+assertJsonEqual([...(packageJson.files ?? [])].sort(), [...expectedPackageFiles].sort(), 'package files allowlist')
 
-const expectedFiles = [
-  'CHANGELOG.md',
-  'README.md',
-  'LICENSE',
-  'dist/index.js',
-  'dist/index.d.ts',
-  'dist/terminal.js',
-  'dist/terminal.d.ts',
-  'dist/terminal-rich-inline.js',
-  'dist/terminal-rich-inline.d.ts',
-  'dist/internal',
-]
-assertJsonEqual(packageJson.files ?? [], expectedFiles, 'package files allowlist')
+type RuntimeModule = Record<string, unknown>
 
-const rootRuntime = await import('../src/index.js') as Record<string, unknown>
-const richRuntime = await import('../src/terminal-rich-inline.js') as Record<string, unknown>
+const publicFacadeRuntime = await import('../src/public-index.js') as RuntimeModule
+const rootRuntime = await import('../src/index.js') as RuntimeModule
+const richRuntime = await import('../src/terminal-rich-inline.js') as RuntimeModule
 const builtRootRuntime = await importDistRuntime('index')
 const builtTerminalRuntime = await importDistRuntime('terminal')
 const builtRichRuntime = await importDistRuntime('terminal-rich-inline')
 
-const terminalRuntimeExports = [
-  'TERMINAL_START_CURSOR',
-  'appendTerminalCellFlow',
-  'createTerminalLineIndex',
-  'createTerminalPageCache',
-  'createTerminalSourceOffsetIndex',
-  'getTerminalCellFlowGeneration',
-  'getTerminalCellFlowPrepared',
-  'getTerminalCursorForSourceOffset',
-  'getTerminalLineIndexMetadata',
-  'getTerminalLineIndexStats',
-  'getTerminalLinePage',
-  'getTerminalLineRangeAtRow',
-  'getTerminalPageCacheStats',
-  'getTerminalSourceOffsetForCursor',
-  'invalidateTerminalLineIndex',
-  'invalidateTerminalPageCache',
-  'layoutNextTerminalLineRange',
-  'layoutTerminal',
-  'materializeTerminalLinePage',
-  'materializeTerminalLineRange',
-  'materializeTerminalLineRanges',
-  'measureTerminalLineIndexRows',
-  'measureTerminalLineStats',
-  'prepareTerminal',
-  'prepareTerminalCellFlow',
-  'walkTerminalLineRanges',
-].sort()
-
-const richRuntimeExports = [
-  'layoutNextTerminalRichLineRange',
-  'materializeTerminalRichLineRange',
-  'prepareTerminalRichInline',
-  'walkTerminalRichLineRanges',
-].sort()
-
-assertJsonEqual(Object.keys(rootRuntime).sort(), terminalRuntimeExports, 'root runtime exports')
-assertJsonEqual(Object.keys(builtRootRuntime).sort(), terminalRuntimeExports, 'built root runtime exports')
-assertJsonEqual(Object.keys(builtTerminalRuntime).sort(), terminalRuntimeExports, 'built terminal runtime exports')
-assertJsonEqual(Object.keys(richRuntime).sort(), richRuntimeExports, 'rich runtime exports')
-assertJsonEqual(Object.keys(builtRichRuntime).sort(), richRuntimeExports, 'built rich runtime exports')
+assertRuntimeExportNames(publicFacadeRuntime, terminalPublicRuntimeExports, 'canonical public facade runtime exports')
+assertRuntimeExportNames(rootRuntime, terminalPublicRuntimeExports, 'root runtime exports')
+assertRuntimeExportNames(builtRootRuntime, terminalPublicRuntimeExports, 'built root runtime exports')
+assertRuntimeExportNames(builtTerminalRuntime, terminalPublicRuntimeExports, 'built terminal runtime exports')
+assertRuntimeExportNames(richRuntime, richPublicRuntimeExports, 'rich runtime exports')
+assertRuntimeExportNames(builtRichRuntime, richPublicRuntimeExports, 'built rich runtime exports')
+assertSameRuntimeBindings(
+  rootRuntime,
+  publicFacadeRuntime,
+  terminalPublicRuntimeExports,
+  'src/index.ts must re-export the canonical src/public-index.ts facade',
+)
+assertSameRuntimeBindings(
+  builtTerminalRuntime,
+  builtRootRuntime,
+  terminalPublicRuntimeExports,
+  'dist/terminal.js must re-export dist/index.js without changing runtime bindings',
+)
 
 const indexDeclaration = await readDistDeclaration('index')
 const terminalDeclaration = await readDistDeclaration('terminal')
@@ -82,35 +62,45 @@ const richDeclaration = await readDistDeclaration('terminal-rich-inline')
 if (terminalDeclaration !== "export * from './index.js'\n") {
   throw new Error('dist/terminal.d.ts must re-export dist/index.d.ts so root and ./terminal share type identity')
 }
+assertNormalizedDeclarationEqual(
+  'canonical source facade and built root declaration',
+  await readSourceDeclaration('public-index'),
+  indexDeclaration,
+)
+assertNormalizedDeclarationEqual(
+  'canonical rich source facade and built rich declaration',
+  await readSourceDeclaration('public-terminal-rich-inline'),
+  richDeclaration,
+)
 
 for (const [name, declaration] of [
   ['index', indexDeclaration],
   ['terminal', terminalDeclaration],
   ['terminal-rich-inline', richDeclaration],
 ] as const) {
-  assertDoesNotContain(name, declaration, [
-    './internal/',
-    './layout.js',
-    './analysis.js',
-    './ansi-tokenize.js',
-    './terminal-grapheme-geometry.js',
-    './terminal-performance-counters.js',
-    './terminal-prepared-reader.js',
-    'PreparedTextWithSegments',
-    'segments: string',
-    'sourceStarts',
-    'kinds:',
-    'widths:',
-    'tabStopAdvance',
-    'getInternalPreparedTerminalText',
-    'createPreparedTerminalText',
-    'PreparedTerminalGeometry',
-    'TerminalPerformanceCounter',
-    'disableTerminalPerformanceCounters',
-    'resetTerminalPerformanceCounters',
-    'snapshotTerminalPerformanceCounters',
-  ])
+  assertDoesNotContain(name, declaration, forbiddenPublicDeclarationTokens)
 }
+
+assertDeclarationExports(indexDeclaration, terminalPublicDeclarationExports, 'index declaration exports')
+assertDeclarationExports(richDeclaration, richPublicDeclarationExports, 'terminal-rich-inline declaration exports')
+assertTypeBlockDoesNotContain(
+  'index PreparedTerminalText',
+  indexDeclaration,
+  'PreparedTerminalText',
+  forbiddenPreparedHandleDeclarationTokens,
+)
+assertTypeBlockContains(
+  'index MaterializedTerminalLine',
+  indexDeclaration,
+  'MaterializedTerminalLine',
+  ['sourceText: string'],
+)
+assertTypeBlockContains(
+  'terminal-rich-inline TerminalRichFragment',
+  richDeclaration,
+  'TerminalRichFragment',
+  ['sourceText: string'],
+)
 
 assertContains('index', indexDeclaration, [
   "kind: 'prepared-terminal-text@1'",
@@ -129,17 +119,8 @@ assertContains('terminal-rich-inline', richDeclaration, [
   'redacted: true',
 ])
 
-assertDoesNotContain('terminal-rich-inline', richDeclaration, [
-  'sequence: string',
-  'ansiText: string',
-  'text?: string',
-  './terminal-rich-policy.js',
-])
-assertDoesNotMatch('terminal-rich-inline', richDeclaration, [
-  /\brawText\s*:\s*string\s*[;}]/u,
-  /\bsequence\s*:\s*string\b/u,
-  /\bansiText\s*:\s*string\b/u,
-])
+assertDoesNotContain('terminal-rich-inline', richDeclaration, richPublicDeclarationForbiddenTokens)
+assertDoesNotMatch('terminal-rich-inline', richDeclaration, richPublicDeclarationForbiddenPatterns)
 
 console.log('API snapshot check passed')
 
@@ -147,8 +128,29 @@ async function readDistDeclaration(name: string): Promise<string> {
   return readFile(path.join(root, 'dist', `${name}.d.ts`), 'utf8')
 }
 
-async function importDistRuntime(name: string): Promise<Record<string, unknown>> {
-  return await import(pathToFileURL(path.join(root, 'dist', `${name}.js`)).href) as Record<string, unknown>
+async function readSourceDeclaration(name: string): Promise<string> {
+  return readFile(path.join(root, 'dist', 'internal', `${name}.d.ts`), 'utf8')
+}
+
+async function importDistRuntime(name: string): Promise<RuntimeModule> {
+  return await import(pathToFileURL(path.join(root, 'dist', `${name}.js`)).href) as RuntimeModule
+}
+
+function assertRuntimeExportNames(module: RuntimeModule, expected: readonly string[], label: string): void {
+  assertJsonEqual(Object.keys(module).sort(), expected, label)
+}
+
+function assertSameRuntimeBindings(
+  actual: RuntimeModule,
+  expected: RuntimeModule,
+  names: readonly string[],
+  label: string,
+): void {
+  for (const name of names) {
+    if (actual[name] !== expected[name]) {
+      throw new Error(`${label} binding mismatch: ${name}`)
+    }
+  }
 }
 
 function assertContains(label: string, content: string, needles: readonly string[]): void {
@@ -173,6 +175,87 @@ function assertDoesNotMatch(label: string, content: string, patterns: readonly R
       throw new Error(`${label} declaration matches forbidden pattern: ${pattern}`)
     }
   }
+}
+
+function assertDeclarationExports(content: string, expected: readonly string[], label: string): void {
+  const actual = declarationExportNames(content, label)
+  assertJsonEqual(actual, expected, label)
+}
+
+function declarationExportNames(content: string, label: string): string[] {
+  const names = new Set<string>()
+  const unsupported: string[] = []
+  for (const line of content.split(/\r?\n/u)) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith('export')) continue
+    if (/^export\s*\{\s*\}\s*;?$/u.test(trimmed)) continue
+
+    const declaration = trimmed.match(/^export\s+(?:declare\s+)?(?:type|interface|function|const|class|enum)\s+([A-Za-z0-9_]+)/u)
+    if (declaration !== null) {
+      names.add(declaration[1]!)
+      continue
+    }
+
+    const namedExport = trimmed.match(/^export\s*\{([^}]+)\}(?:\s+from\s+['"][^'"]+['"])?\s*;?$/u)
+    if (namedExport !== null) {
+      for (const item of namedExport[1]!.split(',')) {
+        const name = item.trim().replace(/^type\s+/u, '')
+        const alias = name.match(/^(?:[A-Za-z0-9_$]+)\s+as\s+([A-Za-z0-9_$]+)$/u)
+        names.add(alias?.[1] ?? name)
+      }
+      continue
+    }
+
+    unsupported.push(trimmed)
+  }
+
+  if (unsupported.length > 0) {
+    throw new Error(`${label} contains unsupported export declaration forms:\n${unsupported.join('\n')}`)
+  }
+  return [...names].sort()
+}
+
+function assertTypeBlockDoesNotContain(
+  label: string,
+  content: string,
+  typeName: string,
+  needles: readonly string[],
+): void {
+  const block = declarationTypeBlock(content, typeName)
+  assertDoesNotContain(label, block, needles)
+}
+
+function assertTypeBlockContains(
+  label: string,
+  content: string,
+  typeName: string,
+  needles: readonly string[],
+): void {
+  const block = declarationTypeBlock(content, typeName)
+  assertContains(label, block, needles)
+}
+
+function declarationTypeBlock(content: string, typeName: string): string {
+  const pattern = new RegExp(`export type ${typeName} = [\\s\\S]*?\\n(?:export (?:declare |type )|declare const |$)`, 'u')
+  const match = content.match(pattern)
+  if (match === null) {
+    throw new Error(`Missing declaration block for ${typeName}`)
+  }
+  return match[0]
+}
+
+function assertNormalizedDeclarationEqual(label: string, actual: string, expected: string): void {
+  const normalizedActual = normalizeDeclaration(actual)
+  const normalizedExpected = normalizeDeclaration(expected)
+  if (normalizedActual !== normalizedExpected) {
+    throw new Error(`${label} mismatch`)
+  }
+}
+
+function normalizeDeclaration(content: string): string {
+  return content
+    .replaceAll('./public-index.js', './index.js')
+    .replace(/\s+$/u, '')
 }
 
 function assertJsonEqual(actual: unknown, expected: unknown, label: string): void {

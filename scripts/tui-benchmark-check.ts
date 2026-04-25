@@ -14,9 +14,12 @@ import {
   getTerminalPageCacheStats,
   invalidateTerminalLineIndex,
   invalidateTerminalPageCache,
+  layoutNextTerminalLineRange,
   materializeTerminalLinePage,
+  materializeTerminalLineRange,
   prepareTerminal,
   prepareTerminalCellFlow,
+  TERMINAL_START_CURSOR,
   type TerminalLayoutOptions,
   type TerminalPrepareOptions,
 } from '../src/index.js'
@@ -40,7 +43,14 @@ type BenchmarkWorkload = {
   text?: string
   rawText?: string
   corpusFile?: string
+  repeatText?: {
+    prefix?: string
+    text: string
+    count: number
+    suffix?: string
+  }
   counterAssertions?: Record<string, CounterAssertion>
+  firstLineOnly?: boolean
   maxChars?: number
   rich?: boolean
   virtual?: boolean
@@ -157,6 +167,15 @@ function runWorkload(
 
     const prepared = prepareTerminal(input, workload.prepare)
     counters.prepareCalls++
+    if (workload.firstLineOnly) {
+      const line = layoutNextTerminalLineRange(prepared, TERMINAL_START_CURSOR, workload.layout)
+      assert(line !== null, `${workload.id} expected at least one line`)
+      counters.layoutPasses++
+      const materialized = materializeTerminalLineRange(prepared, line)
+      counters.materializedLines++
+      counters.materializedCodeUnits += materialized.text.length
+      continue
+    }
     const lines = collectTerminalLines(prepared, workload.layout)
     counters.layoutPasses += lines.length
     counters.materializedLines += lines.length
@@ -312,6 +331,9 @@ function counter(counters: Record<string, number>, key: string): number {
 async function loadInput(workload: BenchmarkWorkload): Promise<string> {
   if (workload.rawText !== undefined) return workload.rawText
   if (workload.text !== undefined) return workload.text
+  if (workload.repeatText !== undefined) {
+    return `${workload.repeatText.prefix ?? ''}${workload.repeatText.text.repeat(workload.repeatText.count)}${workload.repeatText.suffix ?? ''}`
+  }
   assert(workload.corpusFile !== undefined, `workload ${workload.id} missing input`)
   const text = await readFile(path.join(root, 'corpora', workload.corpusFile), 'utf8')
   return workload.maxChars === undefined ? text : text.slice(0, workload.maxChars)
@@ -331,9 +353,18 @@ function parseBenchmarkConfig(value: unknown): BenchmarkConfig {
     assert(
       typeof workload['text'] === 'string' ||
       typeof workload['rawText'] === 'string' ||
-      typeof workload['corpusFile'] === 'string',
-      `workloads[${index}] must define text, rawText, or corpusFile`,
+      typeof workload['corpusFile'] === 'string' ||
+      workload['repeatText'] !== undefined,
+      `workloads[${index}] must define text, rawText, corpusFile, or repeatText`,
     )
+    if (workload['repeatText'] !== undefined) {
+      const repeatText = expectRecord(workload['repeatText'], `workloads[${index}].repeatText`)
+      if (repeatText['prefix'] !== undefined) expectString(repeatText['prefix'], `workloads[${index}].repeatText.prefix`)
+      expectString(repeatText['text'], `workloads[${index}].repeatText.text`)
+      const repeatCount = expectNumber(repeatText['count'], `workloads[${index}].repeatText.count`)
+      assert(Number.isInteger(repeatCount) && repeatCount >= 0, `workloads[${index}].repeatText.count must be a non-negative integer`)
+      if (repeatText['suffix'] !== undefined) expectString(repeatText['suffix'], `workloads[${index}].repeatText.suffix`)
+    }
     expectRecord(workload['layout'], `workloads[${index}].layout`)
     if (workload['iterations'] !== undefined) expectNumber(workload['iterations'], `workloads[${index}].iterations`)
     if (workload['maxMilliseconds'] !== undefined) expectNumber(workload['maxMilliseconds'], `workloads[${index}].maxMilliseconds`)
