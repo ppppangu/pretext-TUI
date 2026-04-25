@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6A.1 增加 no-behavior-change internal reader 入口，现阶段仍由既有 prepared segment storage 作为唯一事实来源。
+// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6A.2 让 runtime geometry 通过 reader 构建，legacy prepared storage 仍作为当前 reader/debug 与 full-reprepare append invalidation 的事实来源。
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
 import {
@@ -94,7 +94,7 @@ export function getInternalPreparedTerminalGeometry(
   if (state.geometry !== null) {
     return state.geometry
   }
-  state.geometry = createPreparedTerminalGeometry(state.prepared)
+  state.geometry = createPreparedTerminalGeometry(state.reader)
   return state.geometry
 }
 

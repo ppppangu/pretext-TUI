@@ -248,6 +248,19 @@ describe('terminal core api', () => {
     expect(line && materializeTerminalLineRange(prepared, line).text).toBe('B-')
   })
 
+  test('materialized sourceText reconstructs source while rendered text expands terminal artifacts', () => {
+    const source = 'A\tB\u00ADCD\u200Btail'
+    const prepared = prepareTerminal(source, { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const materialized = collectWalked(prepared, { columns: 6 }).map(line =>
+      materializeTerminalLineRange(prepared, line),
+    )
+
+    expect(materialized.map(line => line.sourceText).join('')).toBe(source)
+    expect(materialized.map(line => line.text)).toEqual(['A   B-', 'CDtail'])
+    expect(materialized[0]?.break.kind).toBe('soft-hyphen')
+    expect(materialized[0]?.break.sourceOffset).toBe(4)
+  })
+
   test('keeps real leading hyphens', () => {
     const prepared = prepareTerminal('-abc', { whiteSpace: 'pre-wrap' })
     const [line] = collectWalked(prepared, { columns: 10 })

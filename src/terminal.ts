@@ -1,19 +1,20 @@
-// 补建说明：该文件为后续补建，用于暴露 pretext-TUI 的 terminal-first 公共 API facade；当前进度：Task 4 首版，基于现有 prepared/range walker 提供 columns/rows/source-offset 语义。
+// 补建说明：该文件为后续补建，用于暴露 pretext-TUI 的 terminal-first 公共 API facade；当前进度：Batch 6A.2 将 layout/range/materialization helper 迁移到 PreparedTerminalReader + geometry 读取面。
 import {
   prepareWithSegments,
   type LayoutCursor,
   type LayoutLineRange,
   type PrepareOptions,
-  type PreparedTextWithSegments,
 } from './layout.js'
 import {
   createPreparedTerminalText,
   getInternalPreparedTerminalGeometry,
-  getInternalPreparedTerminalText,
+  type PreparedTerminalReader,
   type PreparedTerminalText,
 } from './terminal-prepared-reader.js'
 import {
   materializePreparedTerminalSourceRange,
+  materializePreparedTerminalSourceTextRange,
+  selectedSoftHyphenSourceOffsetForRange,
   visibleStartCursorForRange,
 } from './terminal-line-source.js'
 import {
@@ -140,10 +141,10 @@ function canonicalizeLayoutCursor(
   geometry: PreparedTerminalGeometry,
   cursor: LayoutCursor,
 ): LayoutCursor {
-  const prepared = geometry.prepared
+  const reader = geometry.reader
   let segmentIndex = Math.max(0, cursor.segmentIndex)
   let graphemeIndex = Math.max(0, cursor.graphemeIndex)
-  while (segmentIndex < prepared.segments.length) {
+  while (segmentIndex < reader.segmentCount) {
     const graphemeCount = getTerminalSegmentGraphemeCount(geometry, segmentIndex)
     if (graphemeIndex < graphemeCount) break
     segmentIndex++
@@ -160,46 +161,43 @@ function sourceOffsetForCursor(
 }
 
 function visibleSourceStartForRange(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
 ): number {
-  const visibleStart = visibleStartCursorForRange(prepared, range)
+  const reader = geometry.reader
+  const visibleStart = visibleStartCursorForRange(reader, range)
   return sourceOffsetForCursor(geometry, visibleStart)
 }
 
 function breakForRange(
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
   range: LayoutLineRange,
-  sourceStart: number,
   sourceEnd: number,
+  visibleSoftHyphenOffset: number | null,
 ): TerminalLineBreak {
-  const previousKind = prepared.kinds[range.end.segmentIndex - 1]
+  const previousKind = reader.segmentKind(range.end.segmentIndex - 1)
   if (previousKind === 'hard-break') {
     return { kind: 'hard', sourceOffset: sourceEnd, materializedText: null }
   }
-  if (
-    previousKind === 'soft-hyphen' &&
-    prepared.sourceText.slice(sourceStart, sourceEnd).includes('\u00AD')
-  ) {
+  if (previousKind === 'soft-hyphen' && visibleSoftHyphenOffset !== null) {
     return { kind: 'soft-hyphen', sourceOffset: sourceEnd, materializedText: '-' }
   }
-  if (range.end.segmentIndex >= prepared.segments.length) {
+  if (range.end.segmentIndex >= reader.segmentCount) {
     return { kind: 'end', sourceOffset: sourceEnd, materializedText: null }
   }
   return { kind: 'wrap', sourceOffset: sourceEnd, materializedText: null }
 }
 
 function visibleSourceEndForRange(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
 ): number {
+  const reader = geometry.reader
   if (range.end.graphemeIndex > 0) {
     return sourceOffsetForCursor(geometry, range.end)
   }
   const previousIndex = range.end.segmentIndex - 1
-  const previousKind = prepared.kinds[previousIndex]
+  const previousKind = reader.segmentKind(previousIndex)
   if (
     previousKind === 'space' ||
     previousKind === 'zero-width-break' ||
@@ -214,23 +212,23 @@ function visibleSourceEndForRange(
 }
 
 function terminalWidthForRange(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
   startColumn: number,
   visibleSoftHyphenOffset: number | null,
   trimTrailingCollapsibleSpaces: boolean,
 ): number {
+  const reader = geometry.reader
   let width = 0
-  const visibleStart = visibleStartCursorForRange(prepared, range)
+  const visibleStart = visibleStartCursorForRange(reader, range)
   const lastSegmentIndex = range.end.graphemeIndex > 0
     ? range.end.segmentIndex
     : range.end.segmentIndex - 1
   for (let i = visibleStart.segmentIndex; i <= lastSegmentIndex; i++) {
-    if (i >= prepared.segments.length) break
-    const kind = prepared.kinds[i]
+    if (i >= reader.segmentCount) break
+    const kind = reader.segmentKind(i)
     if (kind === 'hard-break' || kind === 'zero-width-break') continue
-    const segment = prepared.segments[i] ?? ''
+    const segment = reader.segmentText(i) ?? ''
     const segmentGeometry = getTerminalSegmentGeometry(geometry, i)
     const graphemes = segmentGeometry.graphemes
     const start = i === visibleStart.segmentIndex ? visibleStart.graphemeIndex : 0
@@ -239,7 +237,7 @@ function terminalWidthForRange(
       : graphemes.length
 
     if (kind === 'soft-hyphen') {
-      const segmentStart = prepared.sourceStarts[i] ?? 0
+      const segmentStart = reader.segmentSourceStart(i)
       const segmentEnd = segmentStart + segment.length
       if (
         visibleSoftHyphenOffset !== null &&
@@ -251,7 +249,7 @@ function terminalWidthForRange(
       continue
     }
     if (kind === 'tab') {
-      width += terminalTabAdvance(startColumn + width, prepared.tabStopAdvance)
+      width += terminalTabAdvance(startColumn + width, reader.tabStopAdvance)
       continue
     }
     const rangeWidth = getTerminalSegmentWidthRange(geometry, i, start, end)
@@ -259,7 +257,7 @@ function terminalWidthForRange(
       width += rangeWidth
     } else {
       for (let g = start; g < end; g++) {
-        width += terminalGraphemeWidth(graphemes[g]!, prepared.widthProfile)
+        width += terminalGraphemeWidth(graphemes[g]!, reader.widthProfile)
       }
     }
   }
@@ -267,20 +265,20 @@ function terminalWidthForRange(
   if (trimTrailingCollapsibleSpaces && range.end.graphemeIndex === 0) {
     let trailingIndex = range.end.segmentIndex - 1
     while (trailingIndex >= visibleStart.segmentIndex) {
-      const kind = prepared.kinds[trailingIndex]
+      const kind = reader.segmentKind(trailingIndex)
       if (kind === 'hard-break' || kind === 'zero-width-break' || kind === 'soft-hyphen') {
         trailingIndex--
         continue
       }
       if (
         kind === 'glue' &&
-        terminalStringWidth(prepared.segments[trailingIndex] ?? '', prepared.widthProfile) === 0
+        terminalStringWidth(reader.segmentText(trailingIndex) ?? '', reader.widthProfile) === 0
       ) {
         trailingIndex--
         continue
       }
       if (kind !== 'space') break
-      width = Math.max(0, width - terminalStringWidth(prepared.segments[trailingIndex] ?? ' ', prepared.widthProfile))
+      width = Math.max(0, width - terminalStringWidth(reader.segmentText(trailingIndex) ?? ' ', reader.widthProfile))
       trailingIndex--
     }
   }
@@ -288,22 +286,26 @@ function terminalWidthForRange(
 }
 
 function toTerminalRange(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   range: LayoutLineRange,
   options: TerminalLayoutOptions,
 ): TerminalLineRange {
+  const reader = geometry.reader
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
-  const sourceStart = visibleSourceStartForRange(prepared, geometry, range)
-  const sourceEnd = Math.max(sourceStart, visibleSourceEndForRange(prepared, geometry, range))
-  const breakInfo = breakForRange(prepared, range, sourceStart, sourceEnd)
-  const visibleSoftHyphenOffset =
-    breakInfo.kind === 'soft-hyphen'
-      ? sourceStart + prepared.sourceText.slice(sourceStart, sourceEnd).lastIndexOf('\u00AD')
-      : null
+  const sourceStart = visibleSourceStartForRange(geometry, range)
+  const sourceEnd = Math.max(sourceStart, visibleSourceEndForRange(geometry, range))
+  const selectedSoftHyphenOffset = selectedSoftHyphenSourceOffsetForRange(
+    reader,
+    range,
+    sourceStart,
+    sourceEnd,
+  )
+  const breakInfo = breakForRange(reader, range, sourceEnd, selectedSoftHyphenOffset)
+  const visibleSoftHyphenOffset = breakInfo.kind === 'soft-hyphen'
+    ? selectedSoftHyphenOffset
+    : null
   const width = terminalWidthForRange(
-    prepared,
     geometry,
     range,
     startColumn,
@@ -326,7 +328,7 @@ function toTerminalRange(
 }
 
 function shouldTrimMaterializedTrailingSpaces(
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
   range: TerminalLineRange,
 ): boolean {
   if (range.break.kind !== 'wrap') return false
@@ -334,14 +336,14 @@ function shouldTrimMaterializedTrailingSpaces(
     ? range.end.segmentIndex
     : range.end.segmentIndex - 1
   while (segmentIndex >= range.start.segmentIndex) {
-    const kind = prepared.kinds[segmentIndex]
+    const kind = reader.segmentKind(segmentIndex)
     if (kind === 'hard-break' || kind === 'zero-width-break' || kind === 'soft-hyphen') {
       segmentIndex--
       continue
     }
     if (
       kind === 'glue' &&
-      terminalStringWidth(prepared.segments[segmentIndex] ?? '', prepared.widthProfile) === 0
+      terminalStringWidth(reader.segmentText(segmentIndex) ?? '', reader.widthProfile) === 0
     ) {
       segmentIndex--
       continue
@@ -362,11 +364,11 @@ function compareLayoutCursors(a: LayoutCursor, b: LayoutCursor): number {
 }
 
 function nextGraphemeCursor(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   cursor: LayoutCursor,
 ): LayoutCursor | null {
-  if (prepared.segments[cursor.segmentIndex] === undefined) return null
+  const reader = geometry.reader
+  if (cursor.segmentIndex >= reader.segmentCount) return null
   const graphemeCount = getTerminalSegmentGraphemeCount(geometry, cursor.segmentIndex)
   if (cursor.graphemeIndex >= graphemeCount) {
     return {
@@ -387,15 +389,15 @@ function nextGraphemeCursor(
 }
 
 function normalizeTerminalLineStart(
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
   cursor: LayoutCursor,
 ): LayoutCursor | null {
-  if (cursor.segmentIndex >= prepared.segments.length) return null
+  if (cursor.segmentIndex >= reader.segmentCount) return null
   if (cursor.graphemeIndex > 0) return { ...cursor }
 
   let segmentIndex = cursor.segmentIndex
-  while (segmentIndex < prepared.segments.length) {
-    const kind = prepared.kinds[segmentIndex]
+  while (segmentIndex < reader.segmentCount) {
+    const kind = reader.segmentKind(segmentIndex)
     if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen') break
     segmentIndex++
   }
@@ -414,20 +416,20 @@ function createInternalTerminalRange(
 }
 
 function layoutNextTerminalInternalRange(
-  prepared: PreparedTextWithSegments,
   geometry: PreparedTerminalGeometry,
   cursor: TerminalCursor,
   columns: number,
   startColumn: number,
 ): LayoutLineRange | null {
+  const reader = geometry.reader
   const rawStart = canonicalizeLayoutCursor(geometry, toLayoutCursor(cursor))
-  const visibleStart = normalizeTerminalLineStart(prepared, rawStart)
+  const visibleStart = normalizeTerminalLineStart(reader, rawStart)
   if (visibleStart === null) return null
-  const rangeStart = visibleStart.segmentIndex >= prepared.segments.length &&
-    rawStart.segmentIndex < prepared.segments.length
+  const rangeStart = visibleStart.segmentIndex >= reader.segmentCount &&
+    rawStart.segmentIndex < reader.segmentCount
     ? rawStart
     : visibleStart
-  if (visibleStart.segmentIndex >= prepared.segments.length) {
+  if (visibleStart.segmentIndex >= reader.segmentCount) {
     return createInternalTerminalRange(
       rangeStart,
       visibleStart,
@@ -435,7 +437,7 @@ function layoutNextTerminalInternalRange(
     )
   }
 
-  if (prepared.kinds[visibleStart.segmentIndex] === 'hard-break') {
+  if (reader.segmentKind(visibleStart.segmentIndex) === 'hard-break') {
     return createInternalTerminalRange(
       visibleStart,
       { segmentIndex: visibleStart.segmentIndex + 1, graphemeIndex: 0 },
@@ -448,8 +450,8 @@ function layoutNextTerminalInternalRange(
   let hasContent = false
   let lastBreak: TerminalBreakCandidate | null = null
 
-  while (position.segmentIndex < prepared.segments.length) {
-    const kind = prepared.kinds[position.segmentIndex]
+  while (position.segmentIndex < reader.segmentCount) {
+    const kind = reader.segmentKind(position.segmentIndex)
     const graphemeCount = getTerminalSegmentGraphemeCount(geometry, position.segmentIndex)
 
     if (kind === 'hard-break') {
@@ -465,7 +467,7 @@ function layoutNextTerminalInternalRange(
       continue
     }
 
-    const next = nextGraphemeCursor(prepared, geometry, position)
+    const next = nextGraphemeCursor(geometry, position)
     if (next === null) break
 
     if (kind === 'zero-width-break') {
@@ -484,7 +486,7 @@ function layoutNextTerminalInternalRange(
 
     let advance = 0
     if (kind === 'tab') {
-      advance = terminalTabAdvance(startColumn + width, prepared.tabStopAdvance)
+      advance = terminalTabAdvance(startColumn + width, reader.tabStopAdvance)
     } else {
       const measured = getTerminalSegmentWidthAt(
         geometry,
@@ -493,7 +495,7 @@ function layoutNextTerminalInternalRange(
       )
       advance = measured ?? terminalGraphemeWidth(
         getTerminalSegmentGrapheme(geometry, position.segmentIndex, position.graphemeIndex),
-        prepared.widthProfile,
+        reader.widthProfile,
       )
     }
 
@@ -520,8 +522,8 @@ function layoutNextTerminalInternalRange(
     } else if (
       kind === 'text' &&
       position.graphemeIndex === 0 &&
-      prepared.kinds[position.segmentIndex] === 'text' &&
-      prepared.segmentBreaksAfter[position.segmentIndex - 1] === true
+      reader.segmentKind(position.segmentIndex) === 'text' &&
+      reader.hasSegmentBreakAfter(position.segmentIndex - 1) === true
     ) {
       lastBreak = { end: position, width }
     }
@@ -575,7 +577,6 @@ export function walkTerminalLineRanges(
   options: TerminalLayoutOptions,
   onLine: (line: TerminalLineRange) => void,
 ): number {
-  const internal = getInternalPreparedTerminalText(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
@@ -584,14 +585,13 @@ export function walkTerminalLineRanges(
   let currentStartColumn = startColumn
   while (true) {
     const internalLine = layoutNextTerminalInternalRange(
-      internal,
       geometry,
       cursor,
       columns,
       currentStartColumn,
     )
     if (internalLine === null) break
-    const line = toTerminalRange(internal, geometry, internalLine, { columns, startColumn: currentStartColumn })
+    const line = toTerminalRange(geometry, internalLine, { columns, startColumn: currentStartColumn })
     rows++
     onLine(line)
     cursor = line.end
@@ -605,23 +605,25 @@ export function layoutNextTerminalLineRange(
   cursor: TerminalCursor,
   options: TerminalLayoutOptions,
 ): TerminalLineRange | null {
-  const internal = getInternalPreparedTerminalText(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
   const columns = validateColumns(options.columns)
   const startColumn = normalizeStartColumn(options.startColumn)
-  const line = layoutNextTerminalInternalRange(internal, geometry, cursor, columns, startColumn)
-  return line === null ? null : toTerminalRange(internal, geometry, line, { columns, startColumn })
+  const line = layoutNextTerminalInternalRange(geometry, cursor, columns, startColumn)
+  return line === null ? null : toTerminalRange(geometry, line, { columns, startColumn })
 }
 
 export function materializeTerminalLineRange(
   prepared: PreparedTerminalText,
   range: TerminalLineRange,
 ): MaterializedTerminalLine {
-  const internal = getInternalPreparedTerminalText(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
-  const sourceText = internal.sourceText.slice(range.sourceStart, range.sourceEnd)
+  const reader = geometry.reader
+  const sourceText = materializePreparedTerminalSourceTextRange(
+    reader,
+    range.sourceStart,
+    range.sourceEnd,
+  )
   const materialized = materializePreparedTerminalSourceRange(
-    internal,
     geometry,
     range,
     range.sourceStart,
@@ -630,7 +632,7 @@ export function materializeTerminalLineRange(
   )
   return {
     ...range,
-    text: shouldTrimMaterializedTrailingSpaces(internal, range)
+    text: shouldTrimMaterializedTrailingSpaces(reader, range)
       ? materialized.text.replace(/[ \u00AD\u200B\u2060\uFEFF]+$/g, '')
       : materialized.text,
     sourceText,

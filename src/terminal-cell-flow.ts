@@ -78,6 +78,9 @@ export function appendTerminalCellFlow(
   )
   const previousState = internalCellFlow(flow)
   const previousPrepared = previousState.prepared
+  // Batch 6A.2 intentional hold: append invalidation still compares full
+  // normalized source text until true chunked append adds a narrow source
+  // comparison capability without exposing sourceText/sourceSlice on readers.
   const previousInternal = getInternalPreparedTerminalText(previousPrepared)
   const nextFlow = createCellFlow(
     previousState.rawText + text,

@@ -1,5 +1,7 @@
 // 补建说明：该文件为后续补建，用于验证 Task 1 的通用 TUI 文本内核公共 API 边界；当前进度：首版覆盖 runtime export allowlist、opaque handle 形态与 forged handle 拒绝。
 import { describe, expect, test } from 'bun:test'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import {
   forbiddenRootRuntimeExports,
   richPublicRuntimeExports,
@@ -17,6 +19,7 @@ import type {
 } from '../../src/index.js'
 
 type RuntimeModule = Record<string, unknown>
+const repoRoot = path.resolve(import.meta.dir, '../..')
 
 describe('public API boundary', () => {
   test('root re-exports the canonical public facade and rich runtime exports stay intentionally host-neutral', () => {
@@ -32,6 +35,18 @@ describe('public API boundary', () => {
     for (const name of forbiddenRootRuntimeExports) {
       expect(root).not.toHaveProperty(name)
     }
+  })
+
+  test('source root stays a thin re-export of the canonical public facade', async () => {
+    const indexSource = await readFile(path.join(repoRoot, 'src/index.ts'), 'utf8')
+    const executableLines = indexSource
+      .split(/\r?\n/u)
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('//'))
+
+    expect(executableLines).toEqual(["export * from './public-index.js'"])
+    expect(indexSource).not.toMatch(/^import\s/mu)
+    expect(indexSource).not.toMatch(/^export\s+(?:declare\s+)?(?:type|interface|function|const|class|enum)\s+/mu)
   })
 
   test('public handles do not expose mutable prepared/index/cache storage', () => {

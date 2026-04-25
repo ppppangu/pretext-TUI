@@ -1,6 +1,7 @@
-// 补建说明：该文件为后续补建，用于提供 prepared terminal segment 的内部 grapheme/source geometry sidecar；当前进度：Task 5B 首版，统一缓存 UTF-16 grapheme 边界与非动态 cell width 前缀，保持公共 API 不变。
+// 补建说明：该文件为后续补建，用于提供 prepared terminal segment 的内部 grapheme/source geometry sidecar；当前进度：Batch 6A.2 改为由 PreparedTerminalReader 驱动，统一缓存 UTF-16 grapheme 边界与非动态 cell width 前缀。
 import type { SegmentBreakKind } from './analysis.js'
-import type { LayoutCursor, PreparedTextWithSegments } from './layout.js'
+import type { LayoutCursor } from './layout.js'
+import type { PreparedTerminalReader } from './terminal-prepared-reader.js'
 import { terminalGraphemeWidth } from './terminal-string-width.js'
 import {
   recordTerminalPerformanceCounter,
@@ -14,19 +15,19 @@ export type TerminalSegmentGeometry = Readonly<{
 }>
 
 export type PreparedTerminalGeometry = {
-  readonly prepared: PreparedTextWithSegments
+  readonly reader: PreparedTerminalReader
   readonly segmentGeometries: Array<TerminalSegmentGeometry | undefined>
 }
 
 let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 
 export function createPreparedTerminalGeometry(
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
 ): PreparedTerminalGeometry {
   recordTerminalPerformanceCounter('preparedGeometryBuilds')
   return {
-    prepared,
-    segmentGeometries: Array.from({ length: prepared.segments.length }),
+    reader,
+    segmentGeometries: Array.from({ length: reader.segmentCount }),
   }
 }
 
@@ -40,7 +41,7 @@ export function getTerminalSegmentGeometry(
     return cached
   }
 
-  const segment = geometry.prepared.segments[segmentIndex]
+  const segment = geometry.reader.segmentText(segmentIndex)
   if (segment === undefined) {
     throw new Error(`Terminal segment geometry index out of range: ${segmentIndex}`)
   }
@@ -57,9 +58,9 @@ export function getTerminalSegmentGeometry(
     localSourceOffsets.push(segment.length)
   }
 
-  const kind = geometry.prepared.kinds[segmentIndex]
+  const kind = geometry.reader.segmentKind(segmentIndex)
   const cellWidths = shouldMeasurePreparedGraphemeWidths(kind)
-    ? graphemes.map(grapheme => terminalGraphemeWidth(grapheme, geometry.prepared.widthProfile))
+    ? graphemes.map(grapheme => terminalGraphemeWidth(grapheme, geometry.reader.widthProfile))
     : null
   const widthPrefixes = cellWidths === null ? null : [0]
   if (cellWidths !== null && widthPrefixes !== null) {
@@ -133,13 +134,13 @@ export function getTerminalCursorSourceOffset(
   geometry: PreparedTerminalGeometry,
   cursor: LayoutCursor,
 ): number {
-  const prepared = geometry.prepared
-  if (cursor.segmentIndex >= prepared.segments.length) return prepared.sourceText.length
-  const segmentStart = prepared.sourceStarts[cursor.segmentIndex] ?? prepared.sourceText.length
+  const reader = geometry.reader
+  if (cursor.segmentIndex >= reader.segmentCount) return reader.sourceLength
+  const segmentStart = reader.segmentSourceStart(cursor.segmentIndex)
   if (cursor.graphemeIndex <= 0) return segmentStart
   const segment = getTerminalSegmentGeometry(geometry, cursor.segmentIndex)
   const localOffset = segment.localSourceOffsets[cursor.graphemeIndex] ?? segment.localSourceOffsets[segment.localSourceOffsets.length - 1] ?? 0
-  return Math.min(prepared.sourceText.length, segmentStart + localOffset)
+  return Math.min(reader.sourceLength, segmentStart + localOffset)
 }
 
 function shouldMeasurePreparedGraphemeWidths(kind: SegmentBreakKind | undefined): boolean {

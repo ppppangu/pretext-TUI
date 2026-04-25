@@ -8,8 +8,10 @@ import {
   getInternalPreparedTerminalReader,
   getInternalPreparedTerminalText,
   getInternalPreparedTerminalTextDebugSnapshot,
+  type PreparedTerminalReader,
   type PreparedTerminalText as InternalPreparedTerminalText,
 } from '../../src/terminal-prepared-reader.js'
+import { materializePreparedTerminalSourceTextRange } from '../../src/terminal-line-source.js'
 import type { PreparedTerminalText } from '../../src/index.js'
 
 const repoRoot = path.resolve(import.meta.dir, '../..')
@@ -63,6 +65,11 @@ describe('prepared reader capability boundary', () => {
       expect(reader).not.toHaveProperty('legacyPreparedForDebugSnapshot')
       expect(reader).not.toHaveProperty('sourceTextForDebugSnapshot')
       expect(reader).not.toHaveProperty('sourceSlice')
+      expect(reader).not.toHaveProperty('sourceTextRange')
+
+      const geometry = getInternalPreparedTerminalGeometry(prepared)
+      expect(geometry.reader).toBe(reader)
+      expect(geometry).not.toHaveProperty('prepared')
 
       for (let segmentIndex = 0; segmentIndex < live.segments.length; segmentIndex++) {
         expect(reader.segmentText(segmentIndex)).toBe(live.segments[segmentIndex])
@@ -145,6 +152,46 @@ describe('prepared reader capability boundary', () => {
     expect(snapshot.widthProfile.defaultTabSize).toBeGreaterThan(0)
   })
 
+  test('source text range reconstruction seeks near the requested source range', () => {
+    const base = root.prepareTerminal('x', { whiteSpace: 'pre-wrap' }) as unknown as InternalPreparedTerminalText
+    const baseReader = getInternalPreparedTerminalReader(base)
+    let segmentTextCalls = 0
+    const segmentCount = 1024
+    const reader = Object.freeze({
+      kind: 'prepared-terminal-reader@1',
+      get segmentCount() {
+        return segmentCount
+      },
+      get sourceLength() {
+        return segmentCount
+      },
+      get tabStopAdvance() {
+        return baseReader.tabStopAdvance
+      },
+      get widthProfile() {
+        return baseReader.widthProfile
+      },
+      hasSegmentBreakAfter() {
+        return false
+      },
+      segmentKind() {
+        return 'text'
+      },
+      segmentSourceStart(segmentIndex: number) {
+        return segmentIndex >= 0 && segmentIndex < segmentCount ? segmentIndex : segmentCount
+      },
+      segmentText(segmentIndex: number) {
+        segmentTextCalls++
+        return segmentIndex >= 0 && segmentIndex < segmentCount ? 'x' : undefined
+      },
+    }) satisfies PreparedTerminalReader
+
+    expect(materializePreparedTerminalSourceTextRange(reader, segmentCount - 2, segmentCount - 1)).toBe('x')
+    expect(segmentTextCalls).toBeLessThan(32)
+    expect(reader).not.toHaveProperty('sourceTextRange')
+    expect(reader).not.toHaveProperty('sourceSlice')
+  })
+
   test('WeakMap-gated reader APIs reject forged and cloned handles', () => {
     const prepared = root.prepareTerminal('valid', { whiteSpace: 'pre-wrap' })
     const forged = Object.freeze({ kind: 'prepared-terminal-text@1' }) as PreparedTerminalText
@@ -167,18 +214,29 @@ describe('prepared reader capability boundary', () => {
     }
   })
 
-  test('public runtime modules do not import or export the private prepared reader subpath', async () => {
+  test('public runtime modules do not import or export private prepared reader or geometry subpaths', async () => {
     const publicRuntimeFiles = [
       'src/index.ts',
       'src/public-index.ts',
       'src/public-terminal-rich-inline.ts',
     ]
+    const forbiddenPublicRuntimeTokens = [
+      "from './terminal-prepared-reader.js'",
+      "from './terminal-grapheme-geometry.js'",
+      'terminal-prepared-reader',
+      'terminal-grapheme-geometry',
+      'PreparedTerminalReader',
+      'PreparedTerminalGeometry',
+      'getInternalPreparedTerminalReader',
+      'getInternalPreparedTerminalGeometry',
+      'getInternalPreparedTerminalTextDebugSnapshot',
+    ]
+
     for (const file of publicRuntimeFiles) {
       const content = await readFile(path.join(repoRoot, file), 'utf8')
-      expect(content).not.toMatch(/from ['"]\.\/terminal-prepared-reader\.js['"]/)
-      expect(content).not.toContain('PreparedTerminalReader')
-      expect(content).not.toContain('getInternalPreparedTerminalReader')
-      expect(content).not.toContain('getInternalPreparedTerminalTextDebugSnapshot')
+      for (const token of forbiddenPublicRuntimeTokens) {
+        expect(content).not.toContain(token)
+      }
     }
 
     const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8')) as {
@@ -190,8 +248,9 @@ describe('prepared reader capability boundary', () => {
       './terminal',
       './terminal-rich-inline',
     ])
-    expect(JSON.stringify(packageJson.exports)).not.toContain('PreparedTerminalReader')
-    expect(JSON.stringify(packageJson.exports)).not.toContain('getInternalPreparedTerminalReader')
-    expect(JSON.stringify(packageJson.exports)).not.toContain('terminal-prepared-reader')
+    const packageExports = JSON.stringify(packageJson.exports)
+    for (const token of forbiddenPublicRuntimeTokens) {
+      expect(packageExports).not.toContain(token)
+    }
   })
 })
