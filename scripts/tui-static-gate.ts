@@ -1,6 +1,10 @@
-// 补建说明：该文件为后续补建，用于提供 Task 7 的 TUI-only 静态门禁；当前进度：首版扫描活跃源码、验证脚本、测试、package metadata 与 CI workflow，拒绝浏览器/DOM/Canvas/宿主 app 依赖。
+// 补建说明：该文件为后续补建，用于提供 Task 7 的 TUI-only 静态门禁；当前进度：Batch 6B.1 继续拒绝浏览器/DOM/宿主 app 依赖，并复用公共契约扫描 runtime reader-boundary 回退。
 import { readFile, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
+import {
+  findReaderBoundaryRuntimeFindings,
+  readerBoundaryRuntimeFiles,
+} from './public-api-contract.js'
 
 const root = process.cwd()
 const includeRoots = [
@@ -17,6 +21,7 @@ const includeRoots = [
 const ignoredDirs = new Set(['node_modules', 'dist', '.git'])
 const codeFileExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs'])
 const textFileExtensions = new Set(['.json', '.yml', '.yaml', '.md', '.txt'])
+const readerBoundaryRuntimeFileSet = new Set(readerBoundaryRuntimeFiles)
 
 type Finding = {
   file: string
@@ -87,6 +92,16 @@ function scanCode(file: string, raw: string): void {
   for (const [pattern, reason] of importPatterns) {
     for (const match of raw.matchAll(pattern)) {
       findings.push({ file, pattern: match[0]!, reason })
+    }
+  }
+
+  if (readerBoundaryRuntimeFileSet.has(file)) {
+    for (const finding of findReaderBoundaryRuntimeFindings(raw)) {
+      findings.push({
+        file,
+        pattern: finding.match,
+        reason: 'terminal runtime must use reader/geometry capability, not legacy prepared/debug storage',
+      })
     }
   }
 }

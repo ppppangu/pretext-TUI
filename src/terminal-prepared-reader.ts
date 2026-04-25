@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6A.2 让 runtime geometry 通过 reader 构建，legacy prepared storage 仍作为当前 reader/debug 与 full-reprepare append invalidation 的事实来源。
+// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6B.1 将 runtime access 改为 reader-first，默认 prepare 仍为 array-backed，legacy prepared storage 仅保留为兼容/debug 来源。
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
 import {
@@ -14,11 +14,23 @@ export type PreparedTerminalText = Readonly<{
   readonly [preparedTerminalTextBrand]: true
 }>
 
-type PreparedTerminalTextState = {
+type ArrayBackedPreparedTerminalTextState = {
+  kind: 'array-backed'
   geometry: PreparedTerminalGeometry | null
   prepared: PreparedTextWithSegments
   reader: PreparedTerminalReader
 }
+
+type ReaderBackedPreparedTerminalTextState = {
+  kind: 'reader-backed'
+  debugSnapshotProvider?: () => PreparedTerminalTextDebugSnapshot
+  geometry: PreparedTerminalGeometry | null
+  reader: PreparedTerminalReader
+}
+
+type PreparedTerminalTextState =
+  | ArrayBackedPreparedTerminalTextState
+  | ReaderBackedPreparedTerminalTextState
 
 export type PreparedTerminalReader = Readonly<{
   kind: 'prepared-terminal-reader@1'
@@ -68,6 +80,7 @@ export function createPreparedTerminalText(
     kind: 'prepared-terminal-text@1',
   }) as PreparedTerminalText
   preparedTerminalTextStates.set(handle, {
+    kind: 'array-backed',
     geometry: null,
     prepared,
     reader: createArrayPreparedTerminalReader(prepared),
@@ -75,10 +88,31 @@ export function createPreparedTerminalText(
   return handle
 }
 
+export function createPreparedTerminalTextFromReader(
+  reader: PreparedTerminalReader,
+  debugSnapshotProvider?: () => PreparedTerminalTextDebugSnapshot,
+): PreparedTerminalText {
+  const handle = Object.freeze({
+    kind: 'prepared-terminal-text@1',
+  }) as PreparedTerminalText
+  const state: ReaderBackedPreparedTerminalTextState = {
+    kind: 'reader-backed',
+    geometry: null,
+    reader,
+  }
+  if (debugSnapshotProvider !== undefined) state.debugSnapshotProvider = debugSnapshotProvider
+  preparedTerminalTextStates.set(handle, state)
+  return handle
+}
+
 export function getInternalPreparedTerminalText(
   prepared: PreparedTerminalText,
 ): PreparedTextWithSegments {
-  return internalPreparedTerminalTextState(prepared).prepared
+  const state = internalPreparedTerminalTextState(prepared)
+  if (state.kind !== 'array-backed') {
+    throw new Error('Prepared terminal text handle is reader-backed and has no legacy prepared storage')
+  }
+  return state.prepared
 }
 
 export function getInternalPreparedTerminalReader(
@@ -102,6 +136,12 @@ export function getInternalPreparedTerminalTextDebugSnapshot(
   prepared: PreparedTerminalText,
 ): PreparedTerminalTextDebugSnapshot {
   const state = internalPreparedTerminalTextState(prepared)
+  if (state.kind === 'reader-backed') {
+    if (state.debugSnapshotProvider === undefined) {
+      throw new Error('Prepared terminal text handle has no debug snapshot provider')
+    }
+    return copyPreparedTerminalTextDebugSnapshot(state.debugSnapshotProvider())
+  }
   return copyPreparedTerminalTextDebugSnapshot(state.prepared)
 }
 
@@ -114,7 +154,7 @@ function internalPreparedTerminalTextState(prepared: PreparedTerminalText): Prep
 }
 
 function copyPreparedTerminalTextDebugSnapshot(
-  prepared: PreparedTextWithSegments,
+  prepared: PreparedTextWithSegments | PreparedTerminalTextDebugSnapshot,
 ): PreparedTerminalTextDebugSnapshot {
   return {
     kind: 'prepared-terminal-text-debug-snapshot@1',

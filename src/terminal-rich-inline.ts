@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于提供终端 rich metadata/ANSI sidecar 公共 API；当前进度：Task 6 首版，仅支持 SGR/OSC8 metadata 和基于 terminal core 的逐行 materialization。
+// 补建说明：该文件为后续补建，用于提供终端 rich metadata/ANSI sidecar 公共 API；当前进度：Batch 6B.1 将 rich materialization 的宽度 fallback 迁移到 PreparedTerminalReader，避免依赖 legacy prepared arrays。
 import {
   materializeTerminalLineRange,
   prepareTerminal,
@@ -15,8 +15,10 @@ import {
   getTerminalLineSourceBoundaryOffsets,
   materializeTerminalLineSourceRange,
 } from './terminal-line-source.js'
-import type { PreparedTextWithSegments } from './layout.js'
-import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
+import {
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalReader,
+} from './terminal-prepared-reader.js'
 import { terminalStringWidth } from './terminal-string-width.js'
 import {
   tokenizeTerminalInlineAnsi,
@@ -215,7 +217,7 @@ export function materializeTerminalRichLineRange(
   line: TerminalLineRange,
   options: TerminalRichMaterializeOptions = {},
 ): MaterializedTerminalRichLine {
-  const internal = getInternalPreparedTerminalText(prepared.prepared)
+  const reader = getInternalPreparedTerminalReader(prepared.prepared)
   const base = materializeTerminalLineRange(prepared.prepared, line)
   const spans = overlappingSpans(prepared.spans, line.sourceStart, line.sourceEnd)
   const localBoundaries = getTerminalLineSourceBoundaryOffsets(prepared.prepared, line)
@@ -251,7 +253,7 @@ export function materializeTerminalRichLineRange(
     }
     const fragmentWidth = usedMaterializedWidth
       ? materialized.width
-      : measureTrimmedRichFragmentWidth(fragmentText, internal)
+      : measureTrimmedRichFragmentWidth(fragmentText, reader)
     const style = currentStyle(spans, sourceStart, sourceEnd)
     const link = currentLink(spans, sourceStart, sourceEnd)
     const fragment: TerminalRichFragment = {
@@ -290,8 +292,8 @@ export function materializeTerminalRichLineRange(
 
 function measureTrimmedRichFragmentWidth(
   text: string,
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
 ): number {
   recordTerminalPerformanceCounter('richFragmentWidthMeasurements')
-  return terminalStringWidth(text, prepared.widthProfile)
+  return terminalStringWidth(text, reader.widthProfile)
 }

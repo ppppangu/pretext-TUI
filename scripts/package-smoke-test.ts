@@ -7,6 +7,7 @@ import {
   expectedPackageExports,
   expectedPackageFiles,
   forbiddenPackageSubpaths,
+  forbiddenPreparedHandleDeclarationTokens,
   forbiddenRootTypeExports,
   requiredTarballFiles,
   richPublicRuntimeExports,
@@ -154,7 +155,17 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
       'for (const name of terminalRuntimeExports) {',
       "  if (root[name] !== terminal[name]) throw new Error(`root and ./terminal binding mismatch: ${name}`)",
       '}',
+      'function assertOpaqueHandle(label, handle, forbiddenFields = []) {',
+      "  if (!Object.isFrozen(handle)) throw new Error(`${label} handle is not frozen`)",
+      "  const keys = Reflect.ownKeys(handle)",
+      "  if (JSON.stringify(keys) !== JSON.stringify(['kind'])) throw new Error(`${label} handle leaked keys: ${JSON.stringify(keys)}`)",
+      '  for (const field of forbiddenFields) {',
+      "    if (field in handle) throw new Error(`${label} handle leaked ${field}`)",
+      '  }',
+      '}',
+      `const forbiddenPreparedFields = ${jsonForGeneratedSource(forbiddenPreparedHandleDeclarationTokens)}`,
       "const prepared = root.prepareTerminal('x\\t世界\\nz', { whiteSpace: 'pre-wrap', tabSize: 4, widthProfile: { ambiguousWidth: 'wide' } })",
+      "assertOpaqueHandle('prepared', prepared, forbiddenPreparedFields)",
       'const result = root.layoutTerminal(prepared, { columns: 8, startColumn: 2 })',
       "if (!Number.isInteger(result.rows) || result.rows < 1) throw new Error('bad rows')",
       'const stats = root.measureTerminalLineStats(prepared, { columns: 8, startColumn: 2 })',
@@ -167,16 +178,20 @@ async function smokeJavaScriptEsm(tarballPath: string): Promise<void> {
       'const materialized = root.materializeTerminalLineRange(prepared, next)',
       "if (typeof materialized.text !== 'string') throw new Error('bad materialization')",
       'const sourceIndex = root.createTerminalSourceOffsetIndex(prepared)',
+      "assertOpaqueHandle('source index', sourceIndex)",
       'const lookup = root.getTerminalCursorForSourceOffset(prepared, sourceIndex, 1)',
       "if (root.getTerminalSourceOffsetForCursor(prepared, lookup.cursor, sourceIndex) !== lookup.sourceOffset) throw new Error('bad source lookup')",
       'const lineIndex = root.createTerminalLineIndex(prepared, { columns: 8, startColumn: 2, anchorInterval: 2 })',
+      "assertOpaqueHandle('line index', lineIndex)",
       "if (root.getTerminalLineIndexMetadata(lineIndex).columns !== 8) throw new Error('bad line index metadata')",
       "if (root.getTerminalLineIndexStats(lineIndex).anchorCount < 1) throw new Error('bad line index stats')",
       'const pageCache = root.createTerminalPageCache(prepared, lineIndex, { pageSize: 2, maxPages: 2 })',
+      "assertOpaqueHandle('page cache', pageCache)",
       'const page = root.getTerminalLinePage(prepared, pageCache, lineIndex, { startRow: 0, rowCount: 2 })',
       "if (root.materializeTerminalLinePage(prepared, page).length !== page.lines.length) throw new Error('bad page materialization')",
       "if (root.materializeTerminalLineRanges(prepared, page.lines).length !== page.lines.length) throw new Error('bad range materialization')",
       "const flow = root.prepareTerminalCellFlow('hello\\nworld', { whiteSpace: 'pre-wrap' })",
+      "assertOpaqueHandle('cell flow', flow)",
       "const flowIndex = root.createTerminalLineIndex(root.getTerminalCellFlowPrepared(flow), { columns: 8, generation: root.getTerminalCellFlowGeneration(flow) })",
       "const flowCache = root.createTerminalPageCache(root.getTerminalCellFlowPrepared(flow), flowIndex, { pageSize: 2, maxPages: 2 })",
       "root.getTerminalLinePage(root.getTerminalCellFlowPrepared(flow), flowCache, flowIndex, { startRow: 0, rowCount: 2 })",
@@ -445,7 +460,7 @@ async function smokeTypeScript(tarballPath: string): Promise<void> {
   )
   expectBadTypeScript(projectDir, "Type 'string' is not assignable to type 'number'.")
 
-  for (const badPreparedField of ['segments', 'sourceText', 'sourceStarts', 'kinds', 'widths', 'tabStopAdvance']) {
+  for (const badPreparedField of forbiddenPreparedHandleDeclarationTokens) {
     await writeFile(
       path.join(projectDir, 'index.ts'),
       [

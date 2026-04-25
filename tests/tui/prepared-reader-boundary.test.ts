@@ -1,9 +1,10 @@
-// 补建说明：该文件为后续补建，用于验证 prepared reader 的内部 debug snapshot 与 public opaque handle 边界；当前进度：Batch 6A.1 扩展 internal reader parity、WeakMap forged rejection 与 public runtime import policy。
+// 补建说明：该文件为后续补建，用于验证 prepared reader 的内部 debug snapshot 与 public opaque handle 边界；当前进度：Batch 6B.1 增加 reader-only handle fixture 与 runtime legacy prepared 读取静态门禁。
 import { describe, expect, test } from 'bun:test'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import * as root from '../../src/index.js'
 import {
+  createPreparedTerminalTextFromReader,
   getInternalPreparedTerminalGeometry,
   getInternalPreparedTerminalReader,
   getInternalPreparedTerminalText,
@@ -13,6 +14,11 @@ import {
 } from '../../src/terminal-prepared-reader.js'
 import { materializePreparedTerminalSourceTextRange } from '../../src/terminal-line-source.js'
 import type { PreparedTerminalText } from '../../src/index.js'
+import {
+  findReaderBoundaryRuntimeFindings,
+  forbiddenReaderBoundaryRuntimeTokens,
+  readerBoundaryRuntimeFiles,
+} from '../../scripts/public-api-contract.js'
 
 const repoRoot = path.resolve(import.meta.dir, '../..')
 
@@ -192,6 +198,64 @@ describe('prepared reader capability boundary', () => {
     expect(reader).not.toHaveProperty('sourceSlice')
   })
 
+  test('reader-only handles support terminal runtime helpers without legacy prepared storage', () => {
+    const base = root.prepareTerminal('x', { whiteSpace: 'pre-wrap', tabSize: 4 }) as unknown as InternalPreparedTerminalText
+    const baseReader = getInternalPreparedTerminalReader(base)
+    const segments = ['A', '\t', 'B', '\n', 'C']
+    const kinds = ['text', 'tab', 'text', 'hard-break', 'text'] as const
+    const sourceStarts = [0, 1, 2, 3, 4]
+    const reader = Object.freeze({
+      kind: 'prepared-terminal-reader@1',
+      get segmentCount() {
+        return segments.length
+      },
+      get sourceLength() {
+        return 5
+      },
+      get tabStopAdvance() {
+        return baseReader.tabStopAdvance
+      },
+      get widthProfile() {
+        return baseReader.widthProfile
+      },
+      hasSegmentBreakAfter() {
+        return false
+      },
+      segmentKind(segmentIndex: number) {
+        return kinds[segmentIndex]
+      },
+      segmentSourceStart(segmentIndex: number) {
+        return sourceStarts[segmentIndex] ?? 5
+      },
+      segmentText(segmentIndex: number) {
+        return segments[segmentIndex]
+      },
+    }) satisfies PreparedTerminalReader
+    const prepared = createPreparedTerminalTextFromReader(reader) as unknown as PreparedTerminalText
+
+    expect(() => getInternalPreparedTerminalText(prepared as unknown as InternalPreparedTerminalText)).toThrow(
+      'reader-backed',
+    )
+    expect(root.layoutTerminal(prepared, { columns: 8 })).toEqual({ rows: 2 })
+
+    const first = root.layoutNextTerminalLineRange(prepared, root.TERMINAL_START_CURSOR, { columns: 8 })
+    expect(first).not.toBeNull()
+    expect(first && root.materializeTerminalLineRange(prepared, first).text).toBe('A   B')
+
+    const sourceIndex = root.createTerminalSourceOffsetIndex(prepared)
+    const lineIndex = root.createTerminalLineIndex(prepared, { columns: 8, anchorInterval: 1 })
+    const projection = root.projectTerminalSourceOffset(prepared, sourceIndex, lineIndex, 4, 'after')
+    expect(projection).toMatchObject({
+      row: 1,
+      column: 0,
+      sourceOffset: 4,
+    })
+    expect(root.projectTerminalRow(prepared, lineIndex, 1)).toMatchObject({
+      sourceStart: 4,
+      sourceEnd: 5,
+    })
+  })
+
   test('WeakMap-gated reader APIs reject forged and cloned handles', () => {
     const prepared = root.prepareTerminal('valid', { whiteSpace: 'pre-wrap' })
     const forged = Object.freeze({ kind: 'prepared-terminal-text@1' }) as PreparedTerminalText
@@ -252,5 +316,13 @@ describe('prepared reader capability boundary', () => {
     for (const token of forbiddenPublicRuntimeTokens) {
       expect(packageExports).not.toContain(token)
     }
+  })
+
+  test('active terminal runtime paths do not read legacy prepared arrays directly', async () => {
+    for (const file of readerBoundaryRuntimeFiles) {
+      const content = await readFile(path.join(repoRoot, file), 'utf8')
+      expect(findReaderBoundaryRuntimeFindings(content)).toEqual([])
+    }
+    expect(forbiddenReaderBoundaryRuntimeTokens).toContain('getInternalPreparedTerminalTextDebugSnapshot')
   })
 })

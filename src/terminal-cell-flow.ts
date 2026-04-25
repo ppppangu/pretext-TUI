@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于提供 Task 9 的 appendable terminal cell-flow generation boundary；当前进度：运行时 flow 已改为 WeakMap-backed opaque handle，append 语义明确为 full reprepare + bounded cache invalidation。
+// 补建说明：该文件为后续补建，用于提供 Task 9 的 appendable terminal cell-flow generation boundary；当前进度：Batch 6B.1 仍保持 full reprepare append 语义，但 invalidation 比较已通过 reader helper 而非 legacy prepared arrays。
 import {
   prepareTerminal,
   type PreparedTerminalText,
@@ -6,9 +6,11 @@ import {
 } from './terminal.js'
 import {
   getInternalPreparedTerminalGeometry,
-  getInternalPreparedTerminalText,
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalReader,
 } from './terminal-prepared-reader.js'
 import { getTerminalSegmentGeometry } from './terminal-grapheme-geometry.js'
+import { materializePreparedTerminalSourceTextRange } from './terminal-line-source.js'
 
 export type TerminalAppendStrategy =
   | 'full-reprepare-bounded-invalidation'
@@ -78,20 +80,20 @@ export function appendTerminalCellFlow(
   )
   const previousState = internalCellFlow(flow)
   const previousPrepared = previousState.prepared
-  // Batch 6A.2 intentional hold: append invalidation still compares full
-  // normalized source text until true chunked append adds a narrow source
-  // comparison capability without exposing sourceText/sourceSlice on readers.
-  const previousInternal = getInternalPreparedTerminalText(previousPrepared)
+  // Batch 6B.1 intentional hold: append still does a full reprepare, but
+  // invalidation now uses reader-only helpers so true chunked storage can
+  // replace this path without reintroducing legacy prepared array reads.
+  const previousReader = getInternalPreparedTerminalReader(previousPrepared)
   const nextFlow = createCellFlow(
     previousState.rawText + text,
     previousState.prepareOptions,
     previousState.generation + 1,
   )
   const nextPrepared = internalCellFlow(nextFlow).prepared
-  const nextInternal = getInternalPreparedTerminalText(nextPrepared)
-  const rawStablePrefix = commonPrefixLength(previousInternal.sourceText, nextInternal.sourceText)
+  const nextReader = getInternalPreparedTerminalReader(nextPrepared)
+  const rawStablePrefix = commonReaderSourcePrefixLength(previousReader, nextReader)
   const stablePrefixCodeUnits = snapToPreviousSourceBoundary(previousPrepared, rawStablePrefix)
-  const rawWindowStart = Math.max(0, previousInternal.sourceText.length - invalidationWindowCodeUnits)
+  const rawWindowStart = Math.max(0, previousReader.sourceLength - invalidationWindowCodeUnits)
   const windowStart = snapToPreviousSourceBoundary(previousPrepared, rawWindowStart)
   const firstInvalidSourceOffset = Math.min(stablePrefixCodeUnits, windowStart)
   const strategy = stablePrefixCodeUnits >= windowStart
@@ -107,8 +109,8 @@ export function appendTerminalCellFlow(
       appendedRawCodeUnits: text.length,
       stablePrefixCodeUnits,
       firstInvalidSourceOffset,
-      invalidatedSourceCodeUnits: Math.max(0, nextInternal.sourceText.length - firstInvalidSourceOffset),
-      reprepareSourceCodeUnits: nextInternal.sourceText.length,
+      invalidatedSourceCodeUnits: Math.max(0, nextReader.sourceLength - firstInvalidSourceOffset),
+      reprepareSourceCodeUnits: nextReader.sourceLength,
       strategy,
     },
   }
@@ -140,6 +142,16 @@ function clonePrepareOptions(options: TerminalPrepareOptions): TerminalPrepareOp
   return clone
 }
 
+function commonReaderSourcePrefixLength(
+  previousReader: PreparedTerminalReader,
+  nextReader: PreparedTerminalReader,
+): number {
+  return commonPrefixLength(
+    materializePreparedTerminalSourceTextRange(previousReader, 0, previousReader.sourceLength),
+    materializePreparedTerminalSourceTextRange(nextReader, 0, nextReader.sourceLength),
+  )
+}
+
 function commonPrefixLength(a: string, b: string): number {
   const max = Math.min(a.length, b.length)
   let index = 0
@@ -150,13 +162,13 @@ function commonPrefixLength(a: string, b: string): number {
 }
 
 function snapToPreviousSourceBoundary(prepared: PreparedTerminalText, sourceOffset: number): number {
-  const internal = getInternalPreparedTerminalText(prepared)
+  const reader = getInternalPreparedTerminalReader(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
-  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
+  const clamped = Math.max(0, Math.min(reader.sourceLength, sourceOffset))
   let best = 0
-  for (let segmentIndex = 0; segmentIndex < internal.segments.length; segmentIndex++) {
-    const segment = internal.segments[segmentIndex] ?? ''
-    const segmentStart = internal.sourceStarts[segmentIndex] ?? internal.sourceText.length
+  for (let segmentIndex = 0; segmentIndex < reader.segmentCount; segmentIndex++) {
+    const segment = reader.segmentText(segmentIndex) ?? ''
+    const segmentStart = reader.segmentSourceStart(segmentIndex)
     const segmentEnd = segmentStart + segment.length
     if (clamped < segmentStart) return best
     if (clamped >= segmentEnd) {

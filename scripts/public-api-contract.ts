@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于集中维护 validation-only 的公共 API 边界契约；当前进度：首版抽取 root/terminal runtime allowlist、声明禁用 token 与私有 subpath token。
+// 补建说明：该文件为后续补建，用于集中维护 validation-only 的公共 API/reader 边界契约；当前进度：Batch 6B.1 统一 public API、package smoke 与 runtime reader-boundary 静态门禁常量。
 export const expectedPackageExports = {
   '.': {
     types: './dist/index.d.ts',
@@ -175,6 +175,21 @@ export const richPublicDeclarationExports = Object.freeze([...new Set([
 ])].sort())
 
 export const forbiddenPreparedHandleDeclarationTokens = Object.freeze([
+  'breakableFitAdvances',
+  'chunks',
+  'discretionaryHyphenWidth',
+  'geometry',
+  'hasSegmentBreakAfter',
+  'letterSpacing',
+  'lineEndFitAdvances',
+  'lineEndPaintAdvances',
+  'reader',
+  'segLevels',
+  'segmentBreaksAfter',
+  'segmentKind',
+  'segmentSourceStart',
+  'segmentText',
+  'simpleLineWalkFastPath',
   'sourceText',
   'sourceLength',
   'sourceSlice',
@@ -182,12 +197,56 @@ export const forbiddenPreparedHandleDeclarationTokens = Object.freeze([
   'segments',
   'segmentCount',
   'sourceStarts',
+  'spacingGraphemeCounts',
   'kinds',
+  'widthProfile',
   'widths',
   'tabStopAdvance',
   'legacyPreparedForDebugSnapshot',
   'sourceTextForDebugSnapshot',
 ])
+
+export const readerBoundaryRuntimeFiles = Object.freeze([
+  'src/terminal.ts',
+  'src/terminal-cell-flow.ts',
+  'src/terminal-coordinate-projection.ts',
+  'src/terminal-grapheme-geometry.ts',
+  'src/terminal-line-index.ts',
+  'src/terminal-line-source.ts',
+  'src/terminal-materialize.ts',
+  'src/terminal-page-cache.ts',
+  'src/terminal-rich-inline.ts',
+  'src/terminal-source-offset-index.ts',
+])
+
+export const forbiddenReaderBoundaryRuntimeTokens = Object.freeze([
+  'getInternalPreparedTerminalText',
+  'getInternalPreparedTerminalTextDebugSnapshot',
+  'PreparedTextWithSegments',
+  'PreparedTerminalTextDebugSnapshot',
+  'legacyPreparedForDebugSnapshot',
+  'sourceTextForDebugSnapshot',
+])
+
+export type ReaderBoundaryRuntimeFinding = Readonly<{
+  match: string
+  token: string
+}>
+
+export function findReaderBoundaryRuntimeFindings(source: string): ReaderBoundaryRuntimeFinding[] {
+  const stripped = stripCommentsAndStrings(source)
+  const findings: ReaderBoundaryRuntimeFinding[] = []
+  for (const token of forbiddenReaderBoundaryRuntimeTokens) {
+    const pattern = new RegExp(`\\b${escapeRegExp(token)}\\b`, 'g')
+    for (const match of stripped.matchAll(pattern)) {
+      findings.push({
+        match: match[0]!,
+        token,
+      })
+    }
+  }
+  return findings
+}
 
 export const forbiddenPublicDeclarationTokens = Object.freeze([
   './internal/',
@@ -200,7 +259,13 @@ export const forbiddenPublicDeclarationTokens = Object.freeze([
   './terminal-performance-counters.js',
   './terminal-prepared-reader.js',
   'terminal-line-source',
+  'PreparedTerminalTextState',
+  'PreparedTerminalTextChunkDebugSnapshot',
   'PreparedTextWithSegments',
+  'TerminalSegmentGeometry',
+  'discretionaryHyphenWidth',
+  'letterSpacing',
+  'simpleLineWalkFastPath',
   'segments: string',
   'sourceStarts',
   'sourceLength',
@@ -219,7 +284,18 @@ export const forbiddenPublicDeclarationTokens = Object.freeze([
   'getInternalPreparedTerminalTextDebugSnapshot',
   'getInternalPreparedTerminalText',
   'createPreparedTerminalText',
+  'createPreparedTerminalTextFromReader',
+  'createArrayPreparedTerminalReader',
+  'internalPreparedTerminalTextState',
+  'copyPreparedTerminalTextDebugSnapshot',
   'PreparedTerminalGeometry',
+  'createPreparedTerminalGeometry',
+  'getTerminalSegmentGeometry',
+  'getTerminalCursorSourceOffset',
+  'getTerminalSegmentGrapheme',
+  'getTerminalSegmentGraphemeCount',
+  'getTerminalSegmentWidthAt',
+  'getTerminalSegmentWidthRange',
   'TerminalPerformanceCounter',
   'disableTerminalPerformanceCounters',
   'resetTerminalPerformanceCounters',
@@ -305,7 +381,12 @@ export const forbiddenPackageSubpaths = Object.freeze([
   'public-terminal-rich-inline',
   'terminal-control-policy',
   'dist/internal/index.js',
+  'dist/internal/terminal.js',
   'dist/internal/terminal-prepared-reader.js',
+  'dist/internal/terminal-grapheme-geometry.js',
+  'dist/internal/terminal-line-source.js',
+  'dist/internal/terminal-coordinate-projection.js',
+  'dist/internal/terminal-cell-flow.js',
   'dist/layout.js',
   'dist/ansi-tokenize.js',
   'src/index.ts',
@@ -325,3 +406,56 @@ export const forbiddenPackageSubpaths = Object.freeze([
   'react',
   'browser',
 ])
+
+function stripCommentsAndStrings(source: string): string {
+  let output = ''
+  let i = 0
+  while (i < source.length) {
+    const ch = source[i]!
+    const next = source[i + 1]
+    if (ch === '/' && next === '/') {
+      while (i < source.length && source[i] !== '\n') {
+        output += ' '
+        i++
+      }
+      continue
+    }
+    if (ch === '/' && next === '*') {
+      output += '  '
+      i += 2
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
+        output += source[i] === '\n' ? '\n' : ' '
+        i++
+      }
+      if (i < source.length) {
+        output += '  '
+        i += 2
+      }
+      continue
+    }
+    if (ch === '"' || ch === '\'' || ch === '`') {
+      const quote = ch
+      output += ' '
+      i++
+      while (i < source.length) {
+        if (source[i] === '\\') {
+          output += '  '
+          i += 2
+          continue
+        }
+        const current = source[i]!
+        output += current === '\n' ? '\n' : ' '
+        i++
+        if (current === quote) break
+      }
+      continue
+    }
+    output += ch
+    i++
+  }
+  return output
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}

@@ -1,5 +1,4 @@
-// 补建说明：该文件为后续补建，用于提供 host-neutral terminal row/column 与 source/cursor projection；当前进度：Task 4 runtime 首版，复用现有 line/source indexes 且不 materialize 行文本。
-import type { PreparedTextWithSegments } from './layout.js'
+// 补建说明：该文件为后续补建，用于提供 host-neutral terminal row/column 与 source/cursor projection；当前进度：Batch 6B.1 将 runtime projection 迁移到 PreparedTerminalReader + geometry，避免依赖 legacy prepared arrays。
 import type {
   PreparedTerminalText,
   TerminalCursor,
@@ -7,7 +6,8 @@ import type {
 } from './terminal.js'
 import {
   getInternalPreparedTerminalGeometry,
-  getInternalPreparedTerminalText,
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalReader,
 } from './terminal-prepared-reader.js'
 import {
   getTerminalSegmentGeometry,
@@ -31,6 +31,9 @@ import {
   terminalGraphemeWidth,
   terminalTabAdvance,
 } from './terminal-string-width.js'
+import {
+  selectedSoftHyphenSourceOffsetForRange,
+} from './terminal-line-source.js'
 
 export type TerminalProjectionIndexes = Readonly<{
   lineIndex: TerminalLineIndex
@@ -111,7 +114,7 @@ function projectTerminalSourceOffsetWithIndexes(
   sourceOffset: number,
   options: TerminalSourceProjectionOptions,
 ): TerminalSourceProjection {
-  getInternalPreparedTerminalText(prepared)
+  getInternalPreparedTerminalReader(prepared)
   const lookup = getTerminalCursorForSourceOffset(
     prepared,
     indexes.sourceIndex,
@@ -168,7 +171,7 @@ function projectTerminalCursorWithIndexes(
   cursor: TerminalCursor,
   options: TerminalSourceProjectionOptions,
 ): TerminalSourceProjection {
-  getInternalPreparedTerminalText(prepared)
+  getInternalPreparedTerminalReader(prepared)
   const sourceOffset = getTerminalSourceOffsetForCursor(prepared, cursor, indexes.sourceIndex)
   if (options.bias !== undefined) {
     const lookup = getTerminalCursorForSourceOffset(
@@ -306,6 +309,7 @@ function projectResolvedTerminalCursor(
   sourceOffset: number,
   exact: boolean,
 ): TerminalSourceProjection {
+  const reader = getInternalPreparedTerminalReader(prepared)
   const rowProjection = getTerminalLineRangeForCursor(
     prepared,
     indexes.lineIndex,
@@ -326,7 +330,7 @@ function projectResolvedTerminalCursor(
       exact,
     }
   }
-  const terminalEndpoint = projectFinalHardBreakEndpoint(prepared, rowProjection, sourceOffset)
+  const terminalEndpoint = projectFinalHardBreakEndpoint(reader, rowProjection, sourceOffset)
   if (terminalEndpoint !== null) {
     return {
       kind: 'terminal-coordinate-projection@1',
@@ -344,7 +348,7 @@ function projectResolvedTerminalCursor(
 
   const column = projectTerminalColumn(prepared, rowProjection.line, cursor)
   const atEnd = compareTerminalCursors(cursor, rowProjection.line.end) >= 0 ||
-    isTerminalSourceEnd(prepared, sourceOffset)
+    isTerminalSourceEnd(reader, sourceOffset)
   return {
     kind: 'terminal-coordinate-projection@1',
     atEnd,
@@ -362,18 +366,17 @@ function projectResolvedTerminalCursor(
   }
 }
 
-function isTerminalSourceEnd(prepared: PreparedTerminalText, sourceOffset: number): boolean {
-  return sourceOffset === getInternalPreparedTerminalText(prepared).sourceText.length
+function isTerminalSourceEnd(reader: PreparedTerminalReader, sourceOffset: number): boolean {
+  return sourceOffset === reader.sourceLength
 }
 
 function projectFinalHardBreakEndpoint(
-  prepared: PreparedTerminalText,
+  reader: PreparedTerminalReader,
   rowProjection: { line: TerminalLineRange, row: number },
   sourceOffset: number,
 ): TerminalCellCoordinate | null {
-  const internal = getInternalPreparedTerminalText(prepared)
-  if (sourceOffset !== internal.sourceText.length) return null
-  if (!internal.sourceText.endsWith('\n')) return null
+  if (sourceOffset !== reader.sourceLength) return null
+  if (!hasFinalHardBreakSegment(reader)) return null
   if (rowProjection.line.break.kind !== 'hard') return null
   return {
     row: rowProjection.row + 1,
@@ -389,25 +392,32 @@ function projectTerminalColumn(
   if (compareTerminalCursors(cursor, line.start) <= 0) return line.startColumn
   if (compareTerminalCursors(cursor, line.end) >= 0) return line.startColumn + line.width
 
-  const internal = getInternalPreparedTerminalText(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
-  const selectedSoftHyphenSegmentIndex = selectedSoftHyphenSegment(internal, line)
+  const reader = geometry.reader
+  const selectedSoftHyphenOffset = line.break.kind === 'soft-hyphen'
+    ? selectedSoftHyphenSourceOffsetForRange(
+      reader,
+      line,
+      line.sourceStart,
+      line.sourceEnd,
+    )
+    : null
   const width = terminalWidthBetweenCursors(
-    internal,
+    reader,
     geometry,
     line,
     cursor,
-    selectedSoftHyphenSegmentIndex,
+    selectedSoftHyphenOffset,
   )
   return line.startColumn + Math.min(line.width, Math.max(0, width))
 }
 
 function terminalWidthBetweenCursors(
-  prepared: PreparedTextWithSegments,
+  reader: PreparedTerminalReader,
   geometry: PreparedTerminalGeometry,
   line: TerminalLineRange,
   cursor: TerminalCursor,
-  selectedSoftHyphenSegmentIndex: number | null,
+  selectedSoftHyphenOffset: number | null,
 ): number {
   let width = 0
   const endSegmentIndex = cursor.graphemeIndex > 0
@@ -415,7 +425,7 @@ function terminalWidthBetweenCursors(
     : cursor.segmentIndex - 1
 
   for (let segmentIndex = line.start.segmentIndex; segmentIndex <= endSegmentIndex; segmentIndex++) {
-    if (segmentIndex < 0 || segmentIndex >= prepared.segments.length) continue
+    if (segmentIndex < 0 || segmentIndex >= reader.segmentCount) continue
     const segmentGeometry = getTerminalSegmentGeometry(geometry, segmentIndex)
     const startGraphemeIndex = segmentIndex === line.start.segmentIndex
       ? clampGraphemeIndex(line.start.graphemeIndex, segmentGeometry.graphemes.length)
@@ -425,14 +435,26 @@ function terminalWidthBetweenCursors(
       : segmentGeometry.graphemes.length
     if (endGraphemeIndex <= startGraphemeIndex) continue
 
-    const kind = prepared.kinds[segmentIndex]
+    const kind = reader.segmentKind(segmentIndex)
     if (kind === 'hard-break' || kind === 'zero-width-break') continue
     if (kind === 'soft-hyphen') {
-      if (selectedSoftHyphenSegmentIndex === segmentIndex) width += 1
+      if (
+        selectedSoftHyphenOffset !== null &&
+        isSourceOffsetInGraphemeRange(
+          reader,
+          segmentGeometry,
+          segmentIndex,
+          selectedSoftHyphenOffset,
+          startGraphemeIndex,
+          endGraphemeIndex,
+        )
+      ) {
+        width += 1
+      }
       continue
     }
     if (kind === 'tab') {
-      width += terminalTabAdvance(line.startColumn + width, prepared.tabStopAdvance)
+      width += terminalTabAdvance(line.startColumn + width, reader.tabStopAdvance)
       continue
     }
 
@@ -451,31 +473,12 @@ function terminalWidthBetweenCursors(
       const measured = getTerminalSegmentWidthAt(geometry, segmentIndex, graphemeIndex)
       width += measured ?? terminalGraphemeWidth(
         getTerminalSegmentGrapheme(geometry, segmentIndex, graphemeIndex),
-        prepared.widthProfile,
+        reader.widthProfile,
       )
     }
   }
 
   return width
-}
-
-function selectedSoftHyphenSegment(
-  prepared: PreparedTextWithSegments,
-  line: TerminalLineRange,
-): number | null {
-  if (line.break.kind !== 'soft-hyphen') return null
-  let selected: number | null = null
-  const endSegmentIndex = line.end.graphemeIndex > 0
-    ? line.end.segmentIndex
-    : line.end.segmentIndex - 1
-  for (let segmentIndex = line.start.segmentIndex; segmentIndex <= endSegmentIndex; segmentIndex++) {
-    if (prepared.kinds[segmentIndex] !== 'soft-hyphen') continue
-    const sourceStart = prepared.sourceStarts[segmentIndex] ?? prepared.sourceText.length
-    if (sourceStart >= line.sourceStart && sourceStart < line.sourceEnd) {
-      selected = segmentIndex
-    }
-  }
-  return selected
 }
 
 function compareTerminalCursors(a: TerminalCursor, b: TerminalCursor): number {
@@ -495,4 +498,28 @@ function copyTerminalCursor(cursor: TerminalCursor): TerminalCursor {
     segmentIndex: cursor.segmentIndex,
     graphemeIndex: cursor.graphemeIndex,
   })
+}
+
+function hasFinalHardBreakSegment(reader: PreparedTerminalReader): boolean {
+  const segmentIndex = reader.segmentCount - 1
+  if (segmentIndex < 0) return false
+  if (reader.segmentKind(segmentIndex) !== 'hard-break') return false
+  const segment = reader.segmentText(segmentIndex) ?? ''
+  return reader.segmentSourceStart(segmentIndex) + segment.length === reader.sourceLength
+}
+
+function isSourceOffsetInGraphemeRange(
+  reader: PreparedTerminalReader,
+  segmentGeometry: ReturnType<typeof getTerminalSegmentGeometry>,
+  segmentIndex: number,
+  sourceOffset: number,
+  startGraphemeIndex: number,
+  endGraphemeIndex: number,
+): boolean {
+  const segmentStart = reader.segmentSourceStart(segmentIndex)
+  const localStart = segmentGeometry.localSourceOffsets[startGraphemeIndex] ?? 0
+  const localEnd = segmentGeometry.localSourceOffsets[endGraphemeIndex] ??
+    segmentGeometry.localSourceOffsets[segmentGeometry.localSourceOffsets.length - 1] ??
+    localStart
+  return sourceOffset >= segmentStart + localStart && sourceOffset < segmentStart + localEnd
 }

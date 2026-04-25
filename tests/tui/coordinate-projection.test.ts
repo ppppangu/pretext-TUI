@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于锁定 coordinate projection public API 的运行时与类型边界；当前进度：Task 4 已落地，覆盖 source/cursor/row/resize/Unicode/handle 边界。
+// 补建说明：该文件为后续补建，用于锁定 coordinate projection public API 的运行时与类型边界；当前进度：Batch 6B.1 在 Task 4 覆盖基础上增加 reader-derived EOF/soft-hyphen/tab projection 回归。
 import { describe, expect, test } from 'bun:test'
 import {
   createTerminalLineIndex,
@@ -466,6 +466,128 @@ describe('coordinate projection public API', () => {
       row: 0,
       sourceOffset: 0,
     })
+  })
+
+  test('projects final hard-break EOF through reader-derived segment boundaries', () => {
+    for (const [text, expectedRow] of [
+      ['abc\n\n', 2],
+      ['abc\r\n', 1],
+      ['abc\r', 1],
+      ['abc\f', 1],
+    ] as const) {
+      const view = createProjectionView(text, 8)
+      expect(coordinateSignature(
+        view,
+        projectTerminalSourceOffset(
+          view.prepared,
+          view.sourceIndex,
+          view.lineIndex,
+          999,
+          'after',
+        ),
+      )).toMatchObject({
+        atEnd: true,
+        column: 0,
+        lineSourceRange: null,
+        lineText: null,
+        row: expectedRow,
+      })
+      expect(projectTerminalRow(view.prepared, view.lineIndex, expectedRow)).toBeNull()
+    }
+
+    for (const text of ['abc\n\u200B', 'abc\n ']) {
+      const view = createProjectionView(text, 8)
+      const signature = coordinateSignature(
+        view,
+        projectTerminalSourceOffset(
+          view.prepared,
+          view.sourceIndex,
+          view.lineIndex,
+          999,
+          'after',
+        ),
+      )
+      expect(signature).toMatchObject({
+        atEnd: true,
+        row: 1,
+      })
+      expect(signature.lineSourceRange).not.toBeNull()
+    }
+  })
+
+  test('projects selected soft hyphen width by source offset', () => {
+    const doubleSoftHyphen = createProjectionView('B\u00AD\u00ADB', 1)
+
+    expect(coordinateSignature(
+      doubleSoftHyphen,
+      projectTerminalSourceOffset(
+        doubleSoftHyphen.prepared,
+        doubleSoftHyphen.sourceIndex,
+        doubleSoftHyphen.lineIndex,
+        2,
+        'after',
+      ),
+    )).toMatchObject({
+      row: 0,
+      column: 1,
+      sourceOffset: 2,
+    })
+    expect(coordinateSignature(
+      doubleSoftHyphen,
+      projectTerminalSourceOffset(
+        doubleSoftHyphen.prepared,
+        doubleSoftHyphen.sourceIndex,
+        doubleSoftHyphen.lineIndex,
+        3,
+        'after',
+      ),
+    )).toMatchObject({
+      row: 1,
+      column: 0,
+      sourceOffset: 3,
+    })
+
+    const softThenHyphen = createProjectionView('a\u00AD-b', 2)
+    expect(coordinateSignature(
+      softThenHyphen,
+      projectTerminalSourceOffset(
+        softThenHyphen.prepared,
+        softThenHyphen.sourceIndex,
+        softThenHyphen.lineIndex,
+        2,
+        'after',
+      ),
+    )).toMatchObject({
+      row: 1,
+      column: 0,
+    })
+    expect(coordinateSignature(
+      softThenHyphen,
+      projectTerminalSourceOffset(
+        softThenHyphen.prepared,
+        softThenHyphen.sourceIndex,
+        softThenHyphen.lineIndex,
+        3,
+        'after',
+      ),
+    )).toMatchObject({
+      row: 1,
+      column: 1,
+    })
+  })
+
+  test('projects tab columns with dynamic terminal stops after reader migration', () => {
+    const view = createProjectionView(
+      'A\t界\tB',
+      20,
+      { whiteSpace: 'pre-wrap', tabSize: 4 },
+      1,
+    )
+    const projectedColumns = [0, 1, 2, 3, 4, 5].map(offset =>
+      projectTerminalSourceOffset(view.prepared, view.sourceIndex, view.lineIndex, offset, 'after').column,
+    )
+
+    expect(projectedColumns).toEqual([1, 2, 4, 6, 8, 9])
   })
 
   test('rejects invalid runtime source-offset bias across projection overloads', () => {
