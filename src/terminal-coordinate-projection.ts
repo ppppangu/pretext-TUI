@@ -278,8 +278,10 @@ function resolveCursorProjectionArgs(
 function normalizeProjectionOptions(
   options: TerminalSourceOffsetBias | TerminalSourceProjectionOptions | TerminalCursor | number | undefined,
 ): TerminalSourceProjectionOptions {
-  if (options === undefined || typeof options === 'number' || isTerminalCursor(options)) return {}
+  if (options === undefined) return {}
   if (typeof options === 'string') return { bias: options }
+  if (typeof options !== 'object' || options === null) return { bias: options as never }
+  if (isTerminalCursor(options)) return {}
   return options
 }
 
@@ -324,7 +326,7 @@ function projectResolvedTerminalCursor(
       exact,
     }
   }
-  const terminalEndpoint = projectFinalHardBreakEndpoint(prepared, rowProjection, cursor, sourceOffset)
+  const terminalEndpoint = projectFinalHardBreakEndpoint(prepared, rowProjection, sourceOffset)
   if (terminalEndpoint !== null) {
     return {
       kind: 'terminal-coordinate-projection@1',
@@ -341,9 +343,11 @@ function projectResolvedTerminalCursor(
   }
 
   const column = projectTerminalColumn(prepared, rowProjection.line, cursor)
+  const atEnd = compareTerminalCursors(cursor, rowProjection.line.end) >= 0 ||
+    isTerminalSourceEnd(prepared, sourceOffset)
   return {
     kind: 'terminal-coordinate-projection@1',
-    atEnd: compareTerminalCursors(cursor, rowProjection.line.end) >= 0,
+    atEnd,
     row: rowProjection.row,
     column,
     coordinate: {
@@ -358,17 +362,19 @@ function projectResolvedTerminalCursor(
   }
 }
 
+function isTerminalSourceEnd(prepared: PreparedTerminalText, sourceOffset: number): boolean {
+  return sourceOffset === getInternalPreparedTerminalText(prepared).sourceText.length
+}
+
 function projectFinalHardBreakEndpoint(
   prepared: PreparedTerminalText,
   rowProjection: { line: TerminalLineRange, row: number },
-  cursor: TerminalCursor,
   sourceOffset: number,
 ): TerminalCellCoordinate | null {
   const internal = getInternalPreparedTerminalText(prepared)
   if (sourceOffset !== internal.sourceText.length) return null
   if (!internal.sourceText.endsWith('\n')) return null
   if (rowProjection.line.break.kind !== 'hard') return null
-  if (compareTerminalCursors(cursor, rowProjection.line.end) < 0) return null
   return {
     row: rowProjection.row + 1,
     column: 0,

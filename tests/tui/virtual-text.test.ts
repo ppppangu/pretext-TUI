@@ -244,6 +244,66 @@ describe('tui virtual text primitives', () => {
     expect(replayed && materializeTerminalLineRange(hardBreakPrepared, replayed).text).toBe('b')
   })
 
+  test('source offset lookup reports exactness for the requested offset before clamping', () => {
+    const prepared = prepareTerminal('abc', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalSourceOffsetIndex(prepared)
+    const sourceLength = readInternalPreparedTerminalText(prepared).sourceText.length
+
+    expect(getTerminalCursorForSourceOffset(prepared, index, -1)).toMatchObject({
+      exact: false,
+      requestedSourceOffset: -1,
+      sourceOffset: 0,
+    })
+    expect(getTerminalCursorForSourceOffset(prepared, index, sourceLength)).toMatchObject({
+      exact: true,
+      requestedSourceOffset: sourceLength,
+      sourceOffset: sourceLength,
+    })
+    expect(getTerminalCursorForSourceOffset(prepared, index, sourceLength + 1)).toMatchObject({
+      exact: false,
+      requestedSourceOffset: sourceLength + 1,
+      sourceOffset: sourceLength,
+    })
+
+    const empty = prepareTerminal('', { whiteSpace: 'pre-wrap' })
+    const emptyIndex = createTerminalSourceOffsetIndex(empty)
+    expect(getTerminalCursorForSourceOffset(empty, emptyIndex, 0)).toMatchObject({
+      exact: true,
+      requestedSourceOffset: 0,
+      sourceOffset: 0,
+    })
+    expect(getTerminalCursorForSourceOffset(empty, emptyIndex, 1)).toMatchObject({
+      exact: false,
+      requestedSourceOffset: 1,
+      sourceOffset: 0,
+    })
+  })
+
+  test('source offset lookup rejects invalid runtime bias and keeps duplicate-offset tie policy explicit', () => {
+    const prepared = prepareTerminal('A\nB', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalSourceOffsetIndex(prepared)
+
+    expect(() => getTerminalCursorForSourceOffset(prepared, index, 0, 'sideways' as never)).toThrow(
+      'Terminal source offset bias',
+    )
+    expect(() => getTerminalCursorForSourceOffset(prepared, index, 0, null as never)).toThrow(
+      'Terminal source offset bias',
+    )
+    expect(() => getTerminalCursorForSourceOffset(prepared, index, 0, 1 as never)).toThrow(
+      'Terminal source offset bias',
+    )
+
+    const before = getTerminalCursorForSourceOffset(prepared, index, 2, 'before')
+    const after = getTerminalCursorForSourceOffset(prepared, index, 2, 'after')
+    const closest = getTerminalCursorForSourceOffset(prepared, index, 2, 'closest')
+
+    expect(before).toMatchObject({ exact: true, requestedSourceOffset: 2, sourceOffset: 2 })
+    expect(after).toMatchObject({ exact: true, requestedSourceOffset: 2, sourceOffset: 2 })
+    expect(closest).toMatchObject({ exact: true, requestedSourceOffset: 2, sourceOffset: 2 })
+    expect(before.cursor).not.toEqual(after.cursor)
+    expect(closest.cursor).toEqual(after.cursor)
+  })
+
   test('source offset cursors replay from canonical segment boundaries', () => {
     for (const item of [
       {
@@ -330,6 +390,15 @@ describe('tui virtual text primitives', () => {
       expect(sourceCounters.preparedGeometryBuilds).toBe(1)
       expect(sourceCounters.preparedGeometrySegments).toBe(internal.segments.length)
       expect(getTerminalSourceOffsetForCursor(prepared, TERMINAL_START_CURSOR, sourceIndex)).toBe(0)
+
+      resetTerminalPerformanceCounters()
+      const indexedLookup = getTerminalCursorForSourceOffset(prepared, sourceIndex, 2, 'after')
+      expect(getTerminalSourceOffsetForCursor(prepared, indexedLookup.cursor, sourceIndex)).toBe(
+        indexedLookup.sourceOffset,
+      )
+      const indexedLookupCounters = snapshotTerminalPerformanceCounters()
+      expect(indexedLookupCounters.preparedGeometryBuilds).toBe(0)
+      expect(indexedLookupCounters.preparedGeometrySegments).toBe(0)
 
       resetTerminalPerformanceCounters()
       let cursor = TERMINAL_START_CURSOR

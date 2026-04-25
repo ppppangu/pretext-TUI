@@ -126,15 +126,17 @@ export function getTerminalCursorForSourceOffset(
   if (!Number.isInteger(sourceOffset)) {
     throw new Error(`Terminal source offset must be an integer, got ${sourceOffset}`)
   }
+  const normalizedBias = normalizeTerminalSourceOffsetBias(bias)
   const reader = getInternalPreparedTerminalReader(prepared)
   const requestedSourceOffset = sourceOffset
   const clamped = Math.max(0, Math.min(reader.sourceLength, sourceOffset))
   const boundaries = internalSourceIndex(index).boundaries
   const after = lowerBoundSourceOffset(boundaries, clamped)
-  const exact = boundaries[after]?.sourceOffset === clamped
-  const chosen = exact
-    ? chooseExactBoundary(boundaries, after, upperBoundSourceOffset(boundaries, clamped), bias)
-    : chooseBoundary(boundaries, after, clamped, bias)
+  const boundaryExact = boundaries[after]?.sourceOffset === clamped
+  const exact = requestedSourceOffset === clamped && boundaryExact
+  const chosen = boundaryExact
+    ? chooseExactBoundary(boundaries, after, upperBoundSourceOffset(boundaries, clamped), normalizedBias)
+    : chooseBoundary(boundaries, after, clamped, normalizedBias)
 
   return {
     kind: 'terminal-source-lookup@1',
@@ -143,6 +145,27 @@ export function getTerminalCursorForSourceOffset(
     requestedSourceOffset,
     sourceOffset: chosen.sourceOffset,
   }
+}
+
+export function normalizeTerminalSourceOffsetBias(
+  bias: unknown,
+): TerminalSourceOffsetBias {
+  if (bias === undefined || bias === 'closest' || bias === 'before' || bias === 'after') {
+    return bias ?? 'closest'
+  }
+  throw new Error(
+    `Terminal source offset bias must be "before", "after", or "closest", got ${
+      formatTerminalSourceOffsetBias(bias)
+    }`,
+  )
+}
+
+function formatTerminalSourceOffsetBias(bias: unknown): string {
+  if (typeof bias === 'string') return JSON.stringify(bias)
+  if (bias === null || bias === undefined || typeof bias === 'number' || typeof bias === 'boolean') {
+    return String(bias)
+  }
+  return Object.prototype.toString.call(bias)
 }
 
 function chooseExactBoundary(

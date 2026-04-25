@@ -222,6 +222,8 @@ Prepared data must retain enough mapping for:
 
 Terminal cursors are package-owned replay tokens with segment/grapheme fields. Hosts may store and pass them back to package APIs, but should not treat those fields as raw source offsets or mutable implementation state.
 
+Source-offset lookup results distinguish the original requested UTF-16 offset from the normalized boundary offset. Out-of-range requests may clamp to `0` or EOF, but `exact` is true only when the original requested offset was already a projectable source boundary. Runtime bias values must be one of `before`, `after`, or `closest`; invalid JavaScript values must be rejected.
+
 Ranges expose:
 
 - visible start/end
@@ -264,6 +266,10 @@ A coordinate projection result must include:
 - `cursor`: the opaque terminal cursor for replay
 - `line`: the projected row's `TerminalLineRange`, or `null` for empty-source EOF and EOF endpoints after a final hard break. When a zero-width break, collapsed space, or other wrap delimiter is consumed as the boundary between rows, the projected coordinate may land on the next visible row while `sourceOffset` still denotes the consumed delimiter before that row's visible `sourceStart`.
 
+`exact` is evaluated against the original requested source offset before clamping or boundary normalization. Out-of-range requests may clamp `sourceOffset` to `0` or EOF, but must report `exact: false`.
+
+Runtime bias values must be one of `before`, `after`, or `closest`; invalid JavaScript values must be rejected. When multiple replay cursors share the same source offset, `before` selects the earliest cursor at that offset, while `after` and `closest` select the latest replay-safe cursor.
+
 A row projection result must include:
 
 - `kind: "terminal-row-projection@1"`
@@ -276,7 +282,7 @@ Projection columns are terminal-cell columns, not UTF-16 columns. Tabs expand fr
 
 Source offsets inside a grapheme cluster must honor the requested bias (`before`, `after`, or `closest`) and project to an adjacent canonical boundary. Source offsets at or after consumed wrap delimiters may project to the next visible row when that delimiter was used as a wrap boundary.
 
-EOF projection must be explicit. For ordinary text, EOF projects to the end column of the final emitted line. For text ending in a final LF, EOF projects to `{ row: rows, column: 0, line: null, atEnd: true }`; this must not fabricate an extra materialized row.
+EOF projection must be explicit. For ordinary text, EOF projects to the end column of the final emitted line. For text ending in a final LF, EOF projects to `{ row: rows, column: 0, line: null, atEnd: true }` after source-offset normalization, even when `before` selects an earlier replay cursor at the same EOF source offset; this must not fabricate an extra materialized row.
 
 Resize is handled by rebuilding the width-dependent `TerminalLineIndex` for the new `columns` and projecting the same source offset through the new index. The prepared text and source-offset index remain width-independent unless the visible source text or prepare-time identity changes.
 

@@ -329,7 +329,61 @@ describe('coordinate projection public API', () => {
       lineSourceRange: [0, 3],
       lineText: 'abc',
       row: 0,
+      exact: true,
+      requestedSourceOffset: 3,
       sourceOffset: 3,
+    })
+    expect(coordinateSignature(
+      inline,
+      projectTerminalSourceOffset(inline.prepared, inline.sourceIndex, inline.lineIndex, 3, 'before'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 3,
+      exact: true,
+      lineSourceRange: [0, 3],
+      lineText: 'abc',
+      requestedSourceOffset: 3,
+      row: 0,
+      sourceOffset: 3,
+    })
+    expect(coordinateSignature(
+      inline,
+      projectTerminalSourceOffset(inline.prepared, inline.sourceIndex, inline.lineIndex, 4, 'after'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 3,
+      exact: false,
+      lineSourceRange: [0, 3],
+      lineText: 'abc',
+      requestedSourceOffset: 4,
+      row: 0,
+      sourceOffset: 3,
+    })
+    expect(coordinateSignature(
+      inline,
+      projectTerminalSourceOffset(inline.prepared, inline.sourceIndex, inline.lineIndex, 4, 'before'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 3,
+      exact: false,
+      lineSourceRange: [0, 3],
+      lineText: 'abc',
+      requestedSourceOffset: 4,
+      row: 0,
+      sourceOffset: 3,
+    })
+    expect(coordinateSignature(
+      inline,
+      projectTerminalSourceOffset(inline.prepared, inline.sourceIndex, inline.lineIndex, -1, 'before'),
+    )).toMatchObject({
+      atEnd: false,
+      column: 0,
+      exact: false,
+      lineSourceRange: [0, 3],
+      lineText: 'abc',
+      requestedSourceOffset: -1,
+      row: 0,
+      sourceOffset: 0,
     })
     expect(coordinateSignature(
       finalBreak,
@@ -337,12 +391,127 @@ describe('coordinate projection public API', () => {
     )).toMatchObject({
       atEnd: true,
       column: 0,
+      exact: true,
       lineSourceRange: null,
       lineText: null,
+      requestedSourceOffset: 4,
+      row: 1,
+      sourceOffset: 4,
+    })
+    expect(coordinateSignature(
+      finalBreak,
+      projectTerminalSourceOffset(finalBreak.prepared, finalBreak.sourceIndex, finalBreak.lineIndex, 4, 'before'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 0,
+      exact: true,
+      lineSourceRange: null,
+      lineText: null,
+      requestedSourceOffset: 4,
+      row: 1,
+      sourceOffset: 4,
+    })
+    expect(coordinateSignature(
+      finalBreak,
+      projectTerminalSourceOffset(finalBreak.prepared, finalBreak.sourceIndex, finalBreak.lineIndex, 5, 'after'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 0,
+      exact: false,
+      lineSourceRange: null,
+      lineText: null,
+      requestedSourceOffset: 5,
+      row: 1,
+      sourceOffset: 4,
+    })
+    expect(coordinateSignature(
+      finalBreak,
+      projectTerminalSourceOffset(finalBreak.prepared, finalBreak.sourceIndex, finalBreak.lineIndex, 5, 'before'),
+    )).toMatchObject({
+      atEnd: true,
+      column: 0,
+      exact: false,
+      lineSourceRange: null,
+      lineText: null,
+      requestedSourceOffset: 5,
       row: 1,
       sourceOffset: 4,
     })
     expect(projectTerminalRow(finalBreak.prepared, finalBreak.lineIndex, 1)).toBeNull()
+
+    const empty = createProjectionView('', 8)
+    expect(coordinateSignature(
+      empty,
+      projectTerminalSourceOffset(empty.prepared, empty.sourceIndex, empty.lineIndex, 0),
+    )).toMatchObject({
+      atEnd: true,
+      column: 0,
+      exact: true,
+      lineSourceRange: null,
+      lineText: null,
+      requestedSourceOffset: 0,
+      row: 0,
+      sourceOffset: 0,
+    })
+    expect(coordinateSignature(
+      empty,
+      projectTerminalSourceOffset(empty.prepared, empty.sourceIndex, empty.lineIndex, 1),
+    )).toMatchObject({
+      atEnd: true,
+      column: 0,
+      exact: false,
+      lineSourceRange: null,
+      lineText: null,
+      requestedSourceOffset: 1,
+      row: 0,
+      sourceOffset: 0,
+    })
+  })
+
+  test('rejects invalid runtime source-offset bias across projection overloads', () => {
+    const view = createProjectionView('hello world', 8)
+    const indexes = { sourceIndex: view.sourceIndex, lineIndex: view.lineIndex }
+    const cursor = projectTerminalSourceOffset(view.prepared, indexes, 0).cursor
+
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      view.sourceIndex,
+      view.lineIndex,
+      0,
+      'sideways' as never,
+    )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      view.sourceIndex,
+      view.lineIndex,
+      0,
+      null as never,
+    )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      view.sourceIndex,
+      view.lineIndex,
+      0,
+      1 as never,
+    )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      indexes,
+      0,
+      { bias: 1 as never },
+    )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      indexes,
+      0,
+      1 as never,
+    )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalCursor(
+      view.prepared,
+      indexes,
+      cursor,
+      { bias: 'sideways' as never },
+    )).toThrow('Terminal source offset bias')
   })
 
   test('rejects forged or mismatched prepared, source-index, and line-index handles', () => {
@@ -363,6 +532,13 @@ describe('coordinate projection public API', () => {
       forgedSourceIndex,
       view.lineIndex,
       0,
+    )).toThrow('Invalid terminal source offset index handle')
+    expect(() => projectTerminalSourceOffset(
+      view.prepared,
+      forgedSourceIndex,
+      view.lineIndex,
+      0,
+      1 as never,
     )).toThrow('Invalid terminal source offset index handle')
     expect(() => projectTerminalSourceOffset(
       view.prepared,
