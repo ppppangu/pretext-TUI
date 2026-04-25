@@ -68,13 +68,28 @@ describe('public API boundary', () => {
     expect(() => root.getTerminalCellFlowPrepared(forgedFlow)).toThrow('Invalid terminal cell flow handle')
   })
 
-  test('line index invalidation rejects prepared text with a different layout identity', () => {
-    const prepared = root.prepareTerminal('hello', { whiteSpace: 'pre-wrap', tabSize: 4 })
-    const differentTabSize = root.prepareTerminal('hello world', { whiteSpace: 'pre-wrap', tabSize: 8 })
-    const lineIndex = root.createTerminalLineIndex(prepared, { columns: 8 })
+  test('line index invalidation accepts matching source identity and rejects different layout identity', () => {
+    const prepared = root.prepareTerminal('Ωa', { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const sameIdentityDifferentSource = root.prepareTerminal('Ωb', { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const differentTabSize = root.prepareTerminal('Ωa', { whiteSpace: 'pre-wrap', tabSize: 8 })
+    const differentWidthProfile = root.prepareTerminal('Ωa', {
+      whiteSpace: 'pre-wrap',
+      tabSize: 4,
+      widthProfile: { ambiguousWidth: 'wide' },
+    })
+    const lineIndex = root.createTerminalLineIndex(prepared, { columns: 2, generation: 0 })
 
     expect(() => root.invalidateTerminalLineIndex(differentTabSize, lineIndex, { generation: 1 })).toThrow(
       'different layout identity',
     )
+    expect(root.getTerminalLineIndexMetadata(lineIndex).generation).toBe(0)
+    expect(() => root.invalidateTerminalLineIndex(differentWidthProfile, lineIndex, { generation: 1 })).toThrow(
+      'different layout identity',
+    )
+    expect(root.getTerminalLineIndexMetadata(lineIndex).generation).toBe(0)
+    expect(root.invalidateTerminalLineIndex(sameIdentityDifferentSource, lineIndex, { generation: 1 })).toEqual({
+      kind: 'terminal-line-index-invalidation@1',
+      generation: 1,
+    })
   })
 })
