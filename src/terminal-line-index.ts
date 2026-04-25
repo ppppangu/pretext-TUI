@@ -7,7 +7,10 @@ import {
   type TerminalLayoutOptions,
   type TerminalLineRange,
 } from './terminal.js'
-import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
+import {
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalReader,
+} from './terminal-prepared-reader.js'
 import { getTerminalSourceOffsetForCursor } from './terminal-source-offset-index.js'
 
 export type TerminalFixedLayoutOptions = TerminalLayoutOptions & {
@@ -94,7 +97,7 @@ export function createTerminalLineIndex(
   prepared: PreparedTerminalText,
   options: TerminalFixedLayoutOptions,
 ): TerminalLineIndex {
-  const internal = getInternalPreparedTerminalText(prepared)
+  const reader = getInternalPreparedTerminalReader(prepared)
   const columns = normalizePositiveInteger(options.columns, 'Terminal line index columns')
   const startColumn = normalizeNonNegativeInteger(options.startColumn ?? 0, 'Terminal line index startColumn')
   const anchorInterval = normalizePositiveInteger(
@@ -110,7 +113,7 @@ export function createTerminalLineIndex(
     startColumn,
     anchorInterval,
     generation: options.generation ?? 0,
-    layoutKey: createLineIndexLayoutKey(internal, columns, startColumn),
+    layoutKey: createLineIndexLayoutKey(reader, columns, startColumn),
     prepared,
     anchors,
     rows: null,
@@ -357,8 +360,8 @@ export function invalidateTerminalLineIndex(
   invalidation: TerminalLineIndexInvalidation,
 ): TerminalLineIndexInvalidationResult {
   const internal = internalLineIndex(index)
-  const nextPrepared = getInternalPreparedTerminalText(prepared)
-  const nextLayoutKey = createLineIndexLayoutKey(nextPrepared, internal.columns, internal.startColumn)
+  const nextReader = getInternalPreparedTerminalReader(prepared)
+  const nextLayoutKey = createLineIndexLayoutKey(nextReader, internal.columns, internal.startColumn)
   if (nextLayoutKey !== internal.layoutKey) {
     throw new Error('Terminal line index cannot be invalidated with prepared text that has a different layout identity')
   }
@@ -445,13 +448,13 @@ function createCursorProjection(row: number, line: TerminalLineRange): TerminalL
 }
 
 function createLineIndexLayoutKey(
-  prepared: ReturnType<typeof getInternalPreparedTerminalText>,
+  reader: PreparedTerminalReader,
   columns: number,
   startColumn: number,
 ): string {
   return [
-    prepared.widthProfile.cacheKey,
-    `tab=${prepared.tabStopAdvance}`,
+    reader.widthProfile.cacheKey,
+    `tab=${reader.tabStopAdvance}`,
     `columns=${columns}`,
     `start=${startColumn}`,
   ].join('|')
@@ -525,8 +528,8 @@ function findFirstInvalidRowForSourceOffset(
   sourceOffset: number,
 ): number {
   const prepared = index.prepared
-  const internal = getInternalPreparedTerminalText(prepared)
-  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
+  const reader = getInternalPreparedTerminalReader(prepared)
+  const clamped = Math.max(0, Math.min(reader.sourceLength, sourceOffset))
   const anchor = findNearestAnchorBySourceOffset(index.anchors, clamped)
   let cursor = anchor.cursor
   let startColumn = anchor.startColumn
@@ -589,8 +592,8 @@ function normalizeSourceOffsetForLineProjection(
   if (!Number.isInteger(sourceOffset)) {
     throw new Error(`Terminal source offset must be an integer, got ${sourceOffset}`)
   }
-  const internal = getInternalPreparedTerminalText(prepared)
-  return Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
+  const reader = getInternalPreparedTerminalReader(prepared)
+  return Math.max(0, Math.min(reader.sourceLength, sourceOffset))
 }
 
 function assertPreparedMatchesLineIndex(

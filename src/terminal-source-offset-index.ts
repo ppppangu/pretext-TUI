@@ -2,7 +2,7 @@
 import type { PreparedTerminalText, TerminalCursor } from './terminal.js'
 import {
   getInternalPreparedTerminalGeometry,
-  getInternalPreparedTerminalText,
+  getInternalPreparedTerminalReader,
 } from './terminal-prepared-reader.js'
 import {
   getTerminalCursorSourceOffset,
@@ -43,7 +43,7 @@ const sourceOffsetIndexStates = new WeakMap<TerminalSourceOffsetIndex, TerminalS
 export function createTerminalSourceOffsetIndex(
   prepared: PreparedTerminalText,
 ): TerminalSourceOffsetIndex {
-  const internal = getInternalPreparedTerminalText(prepared)
+  const reader = getInternalPreparedTerminalReader(prepared)
   const geometry = getInternalPreparedTerminalGeometry(prepared)
   const boundaries: SourceBoundary[] = []
   const cursorOffsets = new Map<string, number>()
@@ -58,8 +58,8 @@ export function createTerminalSourceOffsetIndex(
   }
 
   pushBoundary(createTerminalCursor(0, 0), 0)
-  for (let segmentIndex = 0; segmentIndex < internal.segments.length; segmentIndex++) {
-    const segmentStart = internal.sourceStarts[segmentIndex] ?? internal.sourceText.length
+  for (let segmentIndex = 0; segmentIndex < reader.segmentCount; segmentIndex++) {
+    const segmentStart = reader.segmentSourceStart(segmentIndex)
     const segmentGeometry = getTerminalSegmentGeometry(geometry, segmentIndex)
     pushBoundary(createTerminalCursor(segmentIndex, 0), segmentStart)
     for (
@@ -73,7 +73,7 @@ export function createTerminalSourceOffsetIndex(
       )
     }
   }
-  pushBoundary(createTerminalCursor(internal.segments.length, 0), internal.sourceText.length)
+  pushBoundary(createTerminalCursor(reader.segmentCount, 0), reader.sourceLength)
 
   boundaries.sort((a, b) => {
     if (a.sourceOffset !== b.sourceOffset) return a.sourceOffset - b.sourceOffset
@@ -126,9 +126,9 @@ export function getTerminalCursorForSourceOffset(
   if (!Number.isInteger(sourceOffset)) {
     throw new Error(`Terminal source offset must be an integer, got ${sourceOffset}`)
   }
-  const internal = getInternalPreparedTerminalText(prepared)
+  const reader = getInternalPreparedTerminalReader(prepared)
   const requestedSourceOffset = sourceOffset
-  const clamped = Math.max(0, Math.min(internal.sourceText.length, sourceOffset))
+  const clamped = Math.max(0, Math.min(reader.sourceLength, sourceOffset))
   const boundaries = internalSourceIndex(index).boundaries
   const after = lowerBoundSourceOffset(boundaries, clamped)
   const exact = boundaries[after]?.sourceOffset === clamped

@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Task 1 首版，先把现有 prepared segments 存储收进 WeakMap，后续 chunked reader 可在同一边界内替换实现。
+// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6A.1 增加 no-behavior-change internal reader 入口，现阶段仍由既有 prepared segment storage 作为唯一事实来源。
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
 import {
@@ -17,7 +17,20 @@ export type PreparedTerminalText = Readonly<{
 type PreparedTerminalTextState = {
   geometry: PreparedTerminalGeometry | null
   prepared: PreparedTextWithSegments
+  reader: PreparedTerminalReader
 }
+
+export type PreparedTerminalReader = Readonly<{
+  kind: 'prepared-terminal-reader@1'
+  hasSegmentBreakAfter(segmentIndex: number): boolean
+  segmentCount: number
+  segmentKind(segmentIndex: number): SegmentBreakKind | undefined
+  segmentSourceStart(segmentIndex: number): number
+  segmentText(segmentIndex: number): string | undefined
+  sourceLength: number
+  tabStopAdvance: number
+  widthProfile: TerminalWidthProfile
+}>
 
 export type PreparedTerminalTextDebugSnapshot = Readonly<{
   kind: 'prepared-terminal-text-debug-snapshot@1'
@@ -57,6 +70,7 @@ export function createPreparedTerminalText(
   preparedTerminalTextStates.set(handle, {
     geometry: null,
     prepared,
+    reader: createArrayPreparedTerminalReader(prepared),
   })
   return handle
 }
@@ -65,6 +79,12 @@ export function getInternalPreparedTerminalText(
   prepared: PreparedTerminalText,
 ): PreparedTextWithSegments {
   return internalPreparedTerminalTextState(prepared).prepared
+}
+
+export function getInternalPreparedTerminalReader(
+  prepared: PreparedTerminalText,
+): PreparedTerminalReader {
+  return internalPreparedTerminalTextState(prepared).reader
 }
 
 export function getInternalPreparedTerminalGeometry(
@@ -118,4 +138,36 @@ function copyPreparedTerminalTextDebugSnapshot(
     widthProfile: { ...prepared.widthProfile },
     widths: [...prepared.widths],
   }
+}
+
+function createArrayPreparedTerminalReader(
+  prepared: PreparedTextWithSegments,
+): PreparedTerminalReader {
+  return Object.freeze({
+    kind: 'prepared-terminal-reader@1',
+    get segmentCount() {
+      return prepared.segments.length
+    },
+    get sourceLength() {
+      return prepared.sourceText.length
+    },
+    get tabStopAdvance() {
+      return prepared.tabStopAdvance
+    },
+    get widthProfile() {
+      return prepared.widthProfile
+    },
+    hasSegmentBreakAfter(segmentIndex: number): boolean {
+      return prepared.segmentBreaksAfter[segmentIndex] ?? false
+    },
+    segmentKind(segmentIndex: number): SegmentBreakKind | undefined {
+      return prepared.kinds[segmentIndex]
+    },
+    segmentSourceStart(segmentIndex: number): number {
+      return prepared.sourceStarts[segmentIndex] ?? prepared.sourceText.length
+    },
+    segmentText(segmentIndex: number): string | undefined {
+      return prepared.segments[segmentIndex]
+    },
+  })
 }

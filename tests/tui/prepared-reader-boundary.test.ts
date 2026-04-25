@@ -1,9 +1,11 @@
-// 补建说明：该文件为后续补建，用于验证 prepared reader 的内部 debug snapshot 与 public opaque handle 边界；当前进度：首版覆盖 frozen handle、WeakMap forged rejection、snapshot copy 语义和 public runtime import policy。
+// 补建说明：该文件为后续补建，用于验证 prepared reader 的内部 debug snapshot 与 public opaque handle 边界；当前进度：Batch 6A.1 扩展 internal reader parity、WeakMap forged rejection 与 public runtime import policy。
 import { describe, expect, test } from 'bun:test'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import * as root from '../../src/index.js'
 import {
+  getInternalPreparedTerminalGeometry,
+  getInternalPreparedTerminalReader,
   getInternalPreparedTerminalText,
   getInternalPreparedTerminalTextDebugSnapshot,
   type PreparedTerminalText as InternalPreparedTerminalText,
@@ -25,6 +27,55 @@ describe('prepared reader capability boundary', () => {
     expect(prepared).not.toHaveProperty('sourceText')
     expect(prepared).not.toHaveProperty('segments')
     expect(prepared).not.toHaveProperty('widths')
+  })
+
+  test('internal reader mirrors legacy prepared storage through a narrow runtime surface', () => {
+    for (const fixture of [
+      {
+        text: ' alpha\t beta\r\n gamma ',
+        options: { whiteSpace: 'normal' },
+      },
+      {
+        text: 'alpha\r\nbeta\rgamma\fomega\n',
+        options: { whiteSpace: 'pre-wrap', tabSize: 4 },
+      },
+      {
+        text: 'tab\tsoft\u00ADzero\u200Bword\u2060join\uFEFFtail',
+        options: { whiteSpace: 'pre-wrap', tabSize: 8 },
+      },
+      {
+        text: 'e\u0301 👩‍💻 🇺🇸 Ω',
+        options: { whiteSpace: 'pre-wrap', widthProfile: { ambiguousWidth: 'wide' } },
+      },
+    ] as const) {
+      const prepared = root.prepareTerminal(
+        fixture.text,
+        fixture.options,
+      ) as unknown as InternalPreparedTerminalText
+      const live = getInternalPreparedTerminalText(prepared)
+      const reader = getInternalPreparedTerminalReader(prepared)
+
+      expect(reader.kind).toBe('prepared-terminal-reader@1')
+      expect(reader.segmentCount).toBe(live.segments.length)
+      expect(reader.sourceLength).toBe(live.sourceText.length)
+      expect(reader.tabStopAdvance).toBe(live.tabStopAdvance)
+      expect(reader.widthProfile).toEqual(live.widthProfile)
+      expect(reader).not.toHaveProperty('legacyPreparedForDebugSnapshot')
+      expect(reader).not.toHaveProperty('sourceTextForDebugSnapshot')
+      expect(reader).not.toHaveProperty('sourceSlice')
+
+      for (let segmentIndex = 0; segmentIndex < live.segments.length; segmentIndex++) {
+        expect(reader.segmentText(segmentIndex)).toBe(live.segments[segmentIndex])
+        expect(reader.segmentKind(segmentIndex)).toBe(live.kinds[segmentIndex])
+        expect(reader.segmentSourceStart(segmentIndex)).toBe(live.sourceStarts[segmentIndex] ?? live.sourceText.length)
+        expect(reader.hasSegmentBreakAfter(segmentIndex)).toBe(live.segmentBreaksAfter[segmentIndex] ?? false)
+      }
+
+      expect(reader.segmentText(live.segments.length)).toBeUndefined()
+      expect(reader.segmentKind(live.segments.length)).toBeUndefined()
+      expect(reader.segmentSourceStart(live.segments.length)).toBe(live.sourceText.length)
+      expect(reader.hasSegmentBreakAfter(live.segments.length)).toBe(false)
+    }
   })
 
   test('debug snapshots are copied structural data, not live prepared storage', () => {
@@ -104,6 +155,12 @@ describe('prepared reader capability boundary', () => {
       expect(() => getInternalPreparedTerminalText(handle as unknown as InternalPreparedTerminalText)).toThrow(
         'Invalid prepared terminal text handle',
       )
+      expect(() => getInternalPreparedTerminalReader(handle as unknown as InternalPreparedTerminalText)).toThrow(
+        'Invalid prepared terminal text handle',
+      )
+      expect(() => getInternalPreparedTerminalGeometry(handle as unknown as InternalPreparedTerminalText)).toThrow(
+        'Invalid prepared terminal text handle',
+      )
       expect(() => getInternalPreparedTerminalTextDebugSnapshot(
         handle as unknown as InternalPreparedTerminalText,
       )).toThrow('Invalid prepared terminal text handle')
@@ -119,6 +176,8 @@ describe('prepared reader capability boundary', () => {
     for (const file of publicRuntimeFiles) {
       const content = await readFile(path.join(repoRoot, file), 'utf8')
       expect(content).not.toMatch(/from ['"]\.\/terminal-prepared-reader\.js['"]/)
+      expect(content).not.toContain('PreparedTerminalReader')
+      expect(content).not.toContain('getInternalPreparedTerminalReader')
       expect(content).not.toContain('getInternalPreparedTerminalTextDebugSnapshot')
     }
 
@@ -131,6 +190,8 @@ describe('prepared reader capability boundary', () => {
       './terminal',
       './terminal-rich-inline',
     ])
+    expect(JSON.stringify(packageJson.exports)).not.toContain('PreparedTerminalReader')
+    expect(JSON.stringify(packageJson.exports)).not.toContain('getInternalPreparedTerminalReader')
     expect(JSON.stringify(packageJson.exports)).not.toContain('terminal-prepared-reader')
   })
 })
