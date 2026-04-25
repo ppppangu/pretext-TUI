@@ -1,9 +1,11 @@
-// 补建说明：该文件为后续补建，用于提供 Task 7 的 TUI-only 静态门禁；当前进度：Batch 6B.1 继续拒绝浏览器/DOM/宿主 app 依赖，并复用公共契约扫描 runtime reader-boundary 回退。
+// 补建说明：该文件为后续补建，用于提供 Task 7 的 TUI-only 静态门禁；当前进度：Batch 6 preflight 继续拒绝浏览器/DOM/宿主 app 依赖，并复用公共契约扫描 runtime reader-boundary 回退与未分类 runtime 文件。
 import { readFile, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import {
   findReaderBoundaryRuntimeFindings,
   readerBoundaryRuntimeFiles,
+  readerBoundaryRuntimeClassificationTokens,
+  readerBoundaryStorageRuntimeFiles,
 } from './public-api-contract.js'
 
 const root = process.cwd()
@@ -22,6 +24,7 @@ const ignoredDirs = new Set(['node_modules', 'dist', '.git'])
 const codeFileExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs'])
 const textFileExtensions = new Set(['.json', '.yml', '.yaml', '.md', '.txt'])
 const readerBoundaryRuntimeFileSet = new Set(readerBoundaryRuntimeFiles)
+const readerBoundaryStorageRuntimeFileSet = new Set(readerBoundaryStorageRuntimeFiles)
 
 type Finding = {
   file: string
@@ -104,6 +107,24 @@ function scanCode(file: string, raw: string): void {
       })
     }
   }
+
+  if (isUnclassifiedTerminalRuntimeFile(file, stripped)) {
+    findings.push({
+      file,
+      pattern: 'PreparedTerminal*',
+      reason: 'terminal runtime file uses prepared reader/text capabilities but is not classified in the reader-boundary contract',
+    })
+  }
+}
+
+function isUnclassifiedTerminalRuntimeFile(file: string, stripped: string): boolean {
+  if (!file.startsWith('src/terminal') || !file.endsWith('.ts') || file.endsWith('.test.ts')) {
+    return false
+  }
+  if (readerBoundaryRuntimeFileSet.has(file) || readerBoundaryStorageRuntimeFileSet.has(file)) {
+    return false
+  }
+  return readerBoundaryRuntimeClassificationTokens.some(token => stripped.includes(token))
 }
 
 function scanConfig(file: string, raw: string): void {

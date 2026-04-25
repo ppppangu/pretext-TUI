@@ -1,10 +1,11 @@
-// 补建说明：该文件为后续补建，用于提供 Task 9 的 appendable terminal cell-flow generation boundary；当前进度：Batch 6B.1 仍保持 full reprepare append 语义，但 invalidation 比较已通过 reader helper 而非 legacy prepared arrays。
+// 补建说明：该文件为后续补建，用于提供 Task 9 的 appendable terminal cell-flow generation boundary；当前进度：Batch 6 preflight 仍保持 full reprepare append 语义，但 flow prepared handle 已改为 single-store reader-backed 以验证未来 chunk storage 的读取契约。
 import {
   prepareTerminal,
   type PreparedTerminalText,
   type TerminalPrepareOptions,
 } from './terminal.js'
 import {
+  createSingleStorePreparedTerminalText,
   getInternalPreparedTerminalGeometry,
   getInternalPreparedTerminalReader,
   type PreparedTerminalReader,
@@ -80,7 +81,7 @@ export function appendTerminalCellFlow(
   )
   const previousState = internalCellFlow(flow)
   const previousPrepared = previousState.prepared
-  // Batch 6B.1 intentional hold: append still does a full reprepare, but
+  // Batch 6 preflight intentional hold: append still does a full reprepare, but
   // invalidation now uses reader-only helpers so true chunked storage can
   // replace this path without reintroducing legacy prepared array reads.
   const previousReader = getInternalPreparedTerminalReader(previousPrepared)
@@ -124,11 +125,12 @@ function createCellFlow(
   const handle = Object.freeze({
     kind: 'prepared-terminal-cell-flow@1',
   }) as PreparedTerminalCellFlow
+  const arrayPrepared = prepareTerminal(rawText, prepareOptions)
   cellFlowStates.set(handle, {
     generation,
     rawText,
     prepareOptions,
-    prepared: prepareTerminal(rawText, prepareOptions),
+    prepared: createSingleStorePreparedTerminalText(arrayPrepared),
   })
   return handle
 }
@@ -137,7 +139,11 @@ function clonePrepareOptions(options: TerminalPrepareOptions): TerminalPrepareOp
   const clone: TerminalPrepareOptions = {}
   if (options.whiteSpace !== undefined) clone.whiteSpace = options.whiteSpace
   if (options.wordBreak !== undefined) clone.wordBreak = options.wordBreak
-  if (options.widthProfile !== undefined) clone.widthProfile = options.widthProfile
+  if (options.widthProfile !== undefined) {
+    clone.widthProfile = typeof options.widthProfile === 'object'
+      ? { ...options.widthProfile }
+      : options.widthProfile
+  }
   if (options.tabSize !== undefined) clone.tabSize = options.tabSize
   return clone
 }

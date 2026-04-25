@@ -1,6 +1,7 @@
-// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6B.1 将 runtime access 改为 reader-first，默认 prepare 仍为 array-backed，legacy prepared storage 仅保留为兼容/debug 来源。
+// 补建说明：该文件为后续补建，用于为通用 TUI 文本内核提供 opaque prepared document handle 与内部 reader 能力边界；当前进度：Batch 6 preflight 支持从既有 prepared 派生 single-store reader-backed handle，默认 prepare 仍为 array-backed，legacy storage 仅保留为兼容/debug 来源。
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
+import { createSingleStorePreparedTerminalReader } from './terminal-reader-store.js'
 import {
   createPreparedTerminalGeometry,
   type PreparedTerminalGeometry,
@@ -103,6 +104,15 @@ export function createPreparedTerminalTextFromReader(
   if (debugSnapshotProvider !== undefined) state.debugSnapshotProvider = debugSnapshotProvider
   preparedTerminalTextStates.set(handle, state)
   return handle
+}
+
+export function createSingleStorePreparedTerminalText(
+  prepared: PreparedTerminalText,
+): PreparedTerminalText {
+  return createPreparedTerminalTextFromReader(
+    createSingleStorePreparedTerminalReader(getInternalPreparedTerminalReader(prepared)),
+    () => getInternalPreparedTerminalTextDebugSnapshot(prepared),
+  )
 }
 
 export function getInternalPreparedTerminalText(

@@ -26,6 +26,7 @@
     "src/terminal-materialize.ts",
     "src/terminal-page-cache.ts",
     "src/terminal-prepared-reader.ts",
+    "src/terminal-reader-store.ts",
     "src/terminal-rich-policy.ts",
     "src/terminal-rich-inline.ts",
     "src/terminal-source-offset-index.ts",
