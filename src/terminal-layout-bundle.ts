@@ -4,6 +4,7 @@ import type { TerminalAppendInvalidation } from './terminal-cell-flow.js'
 import { getInternalPreparedTerminalReader } from './terminal-prepared-reader.js'
 import {
   createTerminalLineIndex,
+  getTerminalLineIndexMemoryEstimate,
   getTerminalLineIndexMetadata,
   getTerminalLineIndexStats,
   invalidateTerminalLineIndex,
@@ -16,6 +17,7 @@ import {
 import {
   createTerminalPageCache,
   getTerminalLinePage,
+  getTerminalPageCacheMemoryEstimate,
   getTerminalPageCacheStats,
   invalidateTerminalPageCache,
   type TerminalLinePage,
@@ -26,9 +28,14 @@ import {
 } from './terminal-page-cache.js'
 import {
   createTerminalSourceOffsetIndex,
+  getTerminalSourceOffsetIndexMemoryEstimate,
   type TerminalSourceOffsetIndex,
 } from './terminal-source-offset-index.js'
 import { materializePreparedTerminalSourceTextRange } from './terminal-line-source.js'
+import {
+  combineTerminalMemoryBudgetEstimates,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalLayoutBundleOptions = TerminalFixedLayoutOptions & TerminalPageCacheOptions
 
@@ -195,6 +202,21 @@ export function getTerminalLayoutBundleStats(
   }
 }
 
+export function getTerminalLayoutBundleMemoryEstimate(
+  bundle: TerminalLayoutBundle,
+  label = 'terminal layout bundle',
+): TerminalMemoryBudgetEstimate {
+  const internal = internalLayoutBundle(bundle)
+  const estimates = [
+    getTerminalLineIndexMemoryEstimate(internal.lineIndex, `${label} line index`),
+    getTerminalPageCacheMemoryEstimate(internal.pageCache, `${label} page cache`),
+    ...(internal.sourceIndex === null ? [] : [
+      getTerminalSourceOffsetIndexMemoryEstimate(internal.sourceIndex, `${label} source index`),
+    ]),
+  ]
+  return combineTerminalMemoryBudgetEstimates(label, estimates, 'layout-bundle')
+}
+
 function normalizeTerminalLayoutBundleInvalidation(
   prepared: PreparedTerminalText,
   internal: InternalTerminalLayoutBundle,
@@ -257,9 +279,20 @@ function validateTerminalAppendPrepared(
     throw new Error('Terminal layout bundle append invalidation requires the appended prepared text')
   }
   const reader = getInternalPreparedTerminalReader(prepared)
-  if (reader.sourceLength !== invalidation.reprepareSourceCodeUnits) {
+  if (
+    invalidation.strategy.startsWith('full-reprepare-') &&
+    reader.sourceLength !== invalidation.reprepareSourceCodeUnits
+  ) {
     throw new Error(
       `Terminal layout bundle append prepared source length must match reprepareSourceCodeUnits ${invalidation.reprepareSourceCodeUnits}, got ${reader.sourceLength}`,
+    )
+  }
+  if (
+    invalidation.strategy.startsWith('chunked-append-') &&
+    invalidation.reprepareSourceCodeUnits > reader.sourceLength
+  ) {
+    throw new Error(
+      `Terminal layout bundle append reprepareSourceCodeUnits must fit prepared source length ${reader.sourceLength}, got ${invalidation.reprepareSourceCodeUnits}`,
     )
   }
   const previousReader = getInternalPreparedTerminalReader(internal.prepared)
@@ -339,7 +372,9 @@ function normalizeTerminalAppendInvalidation(
 function normalizeTerminalAppendStrategy(value: unknown): TerminalAppendInvalidation['strategy'] {
   if (
     value === 'full-reprepare-bounded-invalidation' ||
-    value === 'full-reprepare-normalized-invalidation'
+    value === 'full-reprepare-normalized-invalidation' ||
+    value === 'chunked-append-bounded-invalidation' ||
+    value === 'chunked-append-normalized-invalidation'
   ) {
     return value
   }

@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 7 保持 canonical 公共 API 边界不扩张，rich metadata hardening 仅进入内部索引与 capability gate。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 8 保持 canonical 公共 API 边界不扩张，chunked append storage 仅进入既有 opaque cell-flow capability。 -->
 # Public API Boundary
 
 ## Purpose
@@ -101,7 +101,7 @@ These surfaces are not public API:
 - analysis, line-walking, measurement, tokenizer, and width internals
 - scripts, benchmarks, fixtures, generated status data, and repository-only validation helpers
 - internal storage fields on prepared text, indexes, pages, cursors, diagnostics, or rich fragments
-- true chunked append storage internals until proven and explicitly surfaced through a stable capability boundary
+- chunked append storage internals behind `PreparedTerminalCellFlow`
 
 Docs, recipes, tests, and examples for public consumers must not import private surfaces.
 
@@ -115,8 +115,8 @@ The public API must not promise:
 - named-host package subpaths
 - browser, DOM, Canvas, CSS, or pixel measurement compatibility
 - broad benchmark supremacy wording
-- chunked append storage until it is implemented and proven
 - arbitrary insert/delete/replace editing in prepared flows
+- destructive prefix eviction that changes global source-offset meaning
 
 Hosts may build those behaviors above `pretext-TUI`, but the package boundary stays text layout.
 

@@ -191,6 +191,8 @@ export function materializeTerminalLineRange(
 export type TerminalAppendStrategy =
   | 'full-reprepare-bounded-invalidation'
   | 'full-reprepare-normalized-invalidation'
+  | 'chunked-append-bounded-invalidation'
+  | 'chunked-append-normalized-invalidation'
 
 declare const preparedTerminalCellFlowBrand: unique symbol
 export type PreparedTerminalCellFlow = Readonly<{

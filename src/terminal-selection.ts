@@ -23,6 +23,11 @@ import {
   type TerminalRange,
   type TerminalRangeIndex,
 } from './terminal-range-index.js'
+import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalSelectionMode = 'linear'
 export type TerminalSelectionDirection = 'forward' | 'backward' | 'collapsed'
@@ -94,6 +99,7 @@ export function createTerminalSelectionFromCoordinates(
   request: TerminalSelectionRequest,
 ): TerminalSelection | null {
   const normalized = normalizeSelectionRequest(request)
+  recordTerminalPerformanceCounter('terminalSelectionCoordinateRequests')
   const anchor = projectTerminalCoordinate(prepared, indexes, normalized.anchor)
   const focus = projectTerminalCoordinate(prepared, indexes, normalized.focus)
   if (anchor === null || focus === null) return null
@@ -106,6 +112,7 @@ export function createTerminalSelectionFromCoordinates(
     indexes,
     { sourceStart, sourceEnd },
   ))
+  recordTerminalPerformanceCounter('terminalSelectionProjectionFragments', projection.fragments.length)
 
   return Object.freeze({
     kind: 'terminal-selection@1',
@@ -201,6 +208,7 @@ function buildTerminalSelectionExtraction(
     visibleText: visibleRows.join('\n'),
   }
   if (options.rangeIndex !== undefined) {
+    recordTerminalPerformanceCounter('terminalSelectionRangeIndexLookups')
     extraction.rangeMatches = getTerminalRangesForSourceRange(
       options.rangeIndex,
       {
@@ -209,7 +217,31 @@ function buildTerminalSelectionExtraction(
       },
     )
   }
+  recordTerminalPerformanceCounter('terminalSelectionExtractionRequests')
+  recordTerminalPerformanceCounter('terminalSelectionProjectionFragments', projection.fragments.length)
+  recordTerminalPerformanceCounter('terminalSelectionSourceCodeUnits', sourceText.length)
+  recordTerminalPerformanceCounter('terminalSelectionVisibleCodeUnits', extraction.visibleText.length)
   return Object.freeze(extraction)
+}
+
+export function getTerminalSelectionExtractionMemoryEstimate(
+  extraction: TerminalSelectionExtraction,
+  label = 'terminal selection extraction',
+): TerminalMemoryBudgetEstimate {
+  return createTerminalMemoryBudgetEstimate({
+    category: 'selection-extraction',
+    label,
+    cachedLineRanges: extraction.rowFragments.length,
+    numberSlots: extraction.rowFragments.length * 7 + 6,
+    objectEntries: extraction.rowFragments.length + extraction.visibleRows.length + 1 + (extraction.rangeMatches?.length ?? 0),
+    rangeRecords: extraction.rowFragments.length + (extraction.rangeMatches?.length ?? 0),
+    stringCodeUnits:
+      extraction.sourceText.length +
+      extraction.visibleText.length +
+      extraction.rowFragments.reduce((sum, fragment) => sum + fragment.text.length + fragment.sourceText.length, 0) +
+      extraction.visibleRows.reduce((sum, row) => sum + row.length, 0),
+    notes: ['selection extraction memory excludes clipboard, highlight state, and host UI structures'],
+  })
 }
 
 function buildTerminalSelectionExtractionFragment(

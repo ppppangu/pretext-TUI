@@ -1,12 +1,12 @@
 # Migration Status
 
-This repository has a publishable `pretext-TUI` terminal-cell text layout package baseline. Active work keeps the package host-neutral while tightening API boundaries, production/security posture, benchmark evidence, performance telemetry, and future append-storage design.
+This repository has a publishable `pretext-TUI` terminal-cell text layout package baseline. Active work keeps the package host-neutral while tightening API boundaries, production/security posture, benchmark evidence, performance telemetry, and append-storage evidence.
 
 ## Current Snapshot
 
 The package has typed validation scripts, static no-browser gating, reference goldens, corpus invariants, deterministic fuzzing, benchmark guardrails, tarball smoke verification, a deterministic terminal demo, fixed-column helpers for large text seek/page/source/coordinate-projection/append workflows with runtime-opaque handles, an incubating unified layout bundle for coordinated page/projection invalidation, an incubating generic source range sidecar index, incubating source-first search sessions, incubating selection/extraction helpers, and a root `dist/` surface limited to public entry wrappers.
 
-Current hardening covers declaration-checked public API boundaries, host-neutral rich-sidecar security profiles, rich handle and materialize-option validation, internal rich span/raw-visible indexes, public-only adoption recipes, optional raw-sample benchmark evidence reports with provenance and semantic caveats, and release benchmark telemetry for prepared geometry reuse plus rich index lookup behavior. Search and selection helpers are source-first data APIs only; search UI, active selection behavior, clipboard/copy integration, named-host integration, arbitrary editing, and true chunked append storage remain future work, not implemented claims.
+Current hardening covers declaration-checked public API boundaries, host-neutral rich-sidecar security profiles, rich handle and materialize-option validation, internal rich span/raw-visible indexes, public-only adoption recipes, optional raw-sample benchmark evidence reports with provenance and semantic caveats, and release benchmark telemetry for prepared geometry reuse plus rich/search/selection index behavior. Phase 7 is approved with documented residual risk. Phase 8 is approved with documented residual risk after landing an internal append-only chunked storage path behind `PreparedTerminalCellFlow`, with focused parity tests and release benchmark counters covering 1,000 small appends without full-reprepare fallback. Phase 9 is approved with documented residual risk after adding search/selection/range counters, modelled memory-budget telemetry for kernel-owned structures, and release-gate consistency checks. Search and selection helpers are source-first data APIs only; search UI, active selection behavior, clipboard/copy integration, named-host integration, arbitrary editing, destructive prefix eviction, and host retention policy remain outside the package scope.
 
 ## Target Package Status
 
@@ -36,7 +36,9 @@ Current hardening covers declaration-checked public API boundaries, host-neutral
 | Production/security gate | Complete for rich sidecar defaults and Phase 7 handle/index hardening; broader support/provenance notes remain future adoption work |
 | Host-neutral recipes | Public-only docs/test examples; no host adapters |
 | Benchmark evidence gate | Optional competitive benchmark emits `pretext-tui-benchmark-evidence@1` reports |
-| Hot-path instrumentation and first optimizations | Prepared geometry is reused across layout/source/append paths, page-cache misses walk sequentially, anchor/source insertion avoids per-anchor sorting, and benchmark counters expose line/rich index lookup behavior |
+| Hot-path instrumentation and first optimizations | Prepared geometry is reused across layout/source/append paths, page-cache misses walk sequentially, anchor/source insertion avoids per-anchor sorting, and benchmark counters expose line/rich/search/selection index behavior |
+| Append-only chunked storage | Phase 8 approved with documented residual risk behind the existing flow handle; incubating and evidence-gated, with no arbitrary editing or destructive prefix eviction |
+| Memory budget gate | Phase 9 approved with documented residual risk; `memory-budget-check:tui` models kernel-owned layout/search/selection/rich/range/chunked structures without host UI memory |
 
 ## Reference Map
 
@@ -64,6 +66,7 @@ Start with [docs/README.md](docs/README.md) for the fact-source hierarchy. The l
 - `status/tui-dashboard.json`
 - `accuracy/tui-reference.json`
 - `benchmarks/tui.json`
+- `benchmarks/tui-memory-budgets.json`
 - `corpora/tui-step10.json`
 
 These files are active validation inputs/status data for the current release gate.

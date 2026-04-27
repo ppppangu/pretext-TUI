@@ -20,6 +20,10 @@ import type { TerminalLayoutBundle } from './terminal-layout-bundle.js'
 import {
   recordTerminalPerformanceCounter,
 } from './terminal-performance-counters.js'
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalSearchMode = 'literal' | 'regex'
 
@@ -107,6 +111,7 @@ export function createTerminalSearchSession(
 ): TerminalSearchSession {
   const reader = getInternalPreparedTerminalReader(prepared)
   const sourceText = materializePreparedTerminalSourceTextRange(reader, 0, reader.sourceLength)
+  recordTerminalPerformanceCounter('terminalSearchSourceMaterializations')
   const normalizedQuery = normalizeSearchQuery(query, options)
   const scopes = normalizeSearchScopes(options.scope, reader.sourceLength)
   const rawMatches = normalizedQuery.mode === 'regex'
@@ -129,6 +134,9 @@ export function createTerminalSearchSession(
   recordTerminalPerformanceCounter('terminalSearchSessions')
   recordTerminalPerformanceCounter('terminalSearchScannedCodeUnits', sourceText.length)
   recordTerminalPerformanceCounter('terminalSearchMatches', matches.length)
+  recordTerminalPerformanceCounter('terminalSearchScopes', scopes.length)
+  recordTerminalPerformanceCounter('terminalSearchStoredMatches', matches.length)
+  recordTerminalPerformanceCounter('terminalSearchStoredMatchCodeUnits', sumSearchMatchCodeUnits(matches))
 
   const handle = Object.freeze({
     kind: 'terminal-search-session@1',
@@ -169,6 +177,7 @@ export function getTerminalSearchMatchesForSourceRange(
       if (limit !== undefined && matches.length >= limit) break
     }
   }
+  recordTerminalPerformanceCounter('terminalSearchReturnedMatches', matches.length)
   return Object.freeze(matches)
 }
 
@@ -180,7 +189,9 @@ export function getTerminalSearchMatchAfterSourceOffset(
   const offset = normalizeSearchSourceOffset(sourceOffset, 'Terminal search after sourceOffset', state.sourceLength)
   const index = lowerBoundMatchStart(state.matches, offset)
   const match = state.matches[index]
-  return match === undefined ? null : copyTerminalSearchMatch(state, match, index)
+  const result = match === undefined ? null : copyTerminalSearchMatch(state, match, index)
+  if (result !== null) recordTerminalPerformanceCounter('terminalSearchReturnedMatches')
+  return result
 }
 
 export function getTerminalSearchMatchBeforeSourceOffset(
@@ -191,7 +202,29 @@ export function getTerminalSearchMatchBeforeSourceOffset(
   const offset = normalizeSearchSourceOffset(sourceOffset, 'Terminal search before sourceOffset', state.sourceLength)
   const index = lowerBoundMatchStart(state.matches, offset) - 1
   const match = state.matches[index]
-  return match === undefined ? null : copyTerminalSearchMatch(state, match, index)
+  const result = match === undefined ? null : copyTerminalSearchMatch(state, match, index)
+  if (result !== null) recordTerminalPerformanceCounter('terminalSearchReturnedMatches')
+  return result
+}
+
+export function getTerminalSearchSessionMemoryEstimate(
+  session: TerminalSearchSession,
+  label = 'terminal search session',
+): TerminalMemoryBudgetEstimate {
+  const state = internalSearchSession(session)
+  let stringCodeUnits = 0
+  for (const match of state.matches) {
+    stringCodeUnits += match.matchText.length + (match.scopeId?.length ?? 0)
+  }
+  return createTerminalMemoryBudgetEstimate({
+    category: 'search-session',
+    label,
+    numberSlots: state.matches.length * 3 + 2,
+    objectEntries: state.matches.length + (state.indexes === undefined ? 1 : 2),
+    rangeRecords: state.matches.length,
+    stringCodeUnits,
+    notes: ['source text is materialized during session build; stored matches remain source ranges'],
+  })
 }
 
 function collectLiteralMatches(
@@ -259,6 +292,7 @@ function assignMatchesToScopes(
   const matches: InternalTerminalSearchMatch[] = []
   for (const match of rawMatches) {
     for (const scope of scopes) {
+      recordTerminalPerformanceCounter('terminalSearchScopeChecks')
       if (match.sourceStart < scope.sourceStart || match.sourceEnd > scope.sourceEnd) continue
       matches.push(Object.freeze({
         ...match,
@@ -372,7 +406,15 @@ function normalizeRegexFlags(flags: string, caseSensitive: boolean): string {
 function normalizeSearchMode(mode: unknown, query: TerminalSearchQuery): TerminalSearchMode {
   if (mode === undefined) return query instanceof RegExp ? 'regex' : 'literal'
   if (mode === 'literal' || mode === 'regex') return mode
-  throw new Error(`Terminal search mode must be "literal" or "regex", got ${String(mode)}`)
+  throw new Error(`Terminal search mode must be "literal" or "regex", got ${formatUnknownSearchValue(mode)}`)
+}
+
+function formatUnknownSearchValue(value: unknown): string {
+  if (typeof value === 'string') return JSON.stringify(value)
+  if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return Object.prototype.toString.call(value)
 }
 
 function normalizeSearchScopes(
@@ -482,6 +524,10 @@ function maxSearchMatchCodeUnits(matches: readonly InternalTerminalSearchMatch[]
     max = Math.max(max, match.sourceEnd - match.sourceStart)
   }
   return max
+}
+
+function sumSearchMatchCodeUnits(matches: readonly InternalTerminalSearchMatch[]): number {
+  return matches.reduce((sum, match) => sum + (match.sourceEnd - match.sourceStart), 0)
 }
 
 function searchMatchIntersectsRange(

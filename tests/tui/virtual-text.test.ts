@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于验证 Task 9 的 sparse-anchor virtual text primitives；当前进度：首版覆盖 fixed-column page parity、source offset lookup、cache stats 与 append invalidation。
+// 补建说明：该文件为后续补建，用于验证 sparse-anchor virtual text primitives；当前进度：Phase 8 更新 fixed-column page/source/cache 与 chunked append invalidation parity。
 import { describe, expect, test } from 'bun:test'
 import {
   appendTerminalCellFlow,
@@ -31,6 +31,10 @@ import {
   readInternalPreparedTerminalText,
   type CollectedTerminalLine,
 } from './validation-helpers.js'
+import {
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalText as InternalPreparedTerminalText,
+} from '../../src/terminal-prepared-reader.js'
 import {
   disableTerminalPerformanceCounters,
   resetTerminalPerformanceCounters,
@@ -425,7 +429,7 @@ describe('tui virtual text primitives', () => {
       expect(appendCounters.preparedGeometryBuilds).toBe(1)
       expect(appendCounters.preparedGeometrySegments).toBeGreaterThan(0)
       expect(appended.invalidation.stablePrefixCodeUnits).toBe(
-        readInternalPreparedTerminalText(getTerminalCellFlowPrepared(flow)).sourceText.length,
+        getInternalSourceLength(getTerminalCellFlowPrepared(flow)),
       )
     } finally {
       disableTerminalPerformanceCounters()
@@ -473,8 +477,8 @@ describe('tui virtual text primitives', () => {
       },
     )
 
-    expect(appended.invalidation.strategy).toBe('full-reprepare-bounded-invalidation')
-    expect(appended.invalidation.stablePrefixCodeUnits).toBe(readInternalPreparedTerminalText(initialPrepared).sourceText.length)
+    expect(appended.invalidation.strategy).toMatch(/^chunked-append-/)
+    expect(appended.invalidation.stablePrefixCodeUnits).toBe(getInternalSourceLength(initialPrepared))
     expect(lineInvalidation.firstInvalidRow).toBeGreaterThan(10)
     expect(materializedPageTexts(appendedPrepared, prefixPageAfter)).toEqual(prefixTextsBefore)
     expect(materializedPageTexts(appendedPrepared, suffixPage)).toEqual(
@@ -626,3 +630,9 @@ describe('tui virtual text primitives', () => {
     expect(Object.isFrozen(page.lines[0])).toBe(true)
   })
 })
+
+function getInternalSourceLength(prepared: PreparedTerminalText): number {
+  return getInternalPreparedTerminalReader(
+    prepared as unknown as InternalPreparedTerminalText,
+  ).sourceLength
+}

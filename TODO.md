@@ -4,10 +4,13 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 
 ## Active Next
 
-- Turn production/security readiness into broader adoption material: support matrix, provenance notes, and recipe-level threat-model callouts.
-- Keep upcoming chunked append storage host-neutral as it moves from contract planning into implementation.
-- Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work.
-- Design chunked append storage before making any append-storage performance claim.
+- Start Phase 10 adoption evidence and launch-readiness work from the approved Phase 9 performance/memory evidence baseline.
+- Keep append claims narrow: append-only chunked storage is internal and incubating; arbitrary editing, destructive prefix eviction, and host retention policy are not implemented.
+- Keep Phase 8 benchmark counters inside Phase 9 memory/performance evidence instead of converting them into broad speed claims.
+- Keep Phase 10 host-neutral: no renderer, PTY, clipboard, filesystem, named-host adapter, or second public pipeline.
+- Treat `memory-budget-check:tui` as modelled kernel-owned structure evidence, not process heap or host UI evidence.
+- Add memory/perf evidence only from reproducible counters and clean/declared benchmark baselines.
+- Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
 - Prepare launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
 
 ## Completed
@@ -34,6 +37,9 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 - Host-neutral recipes have landed for structured transcript-like viewports, terminal pane resize, editor source mapping, and rich ANSI log viewers, with public-import scanning and incubating API labels.
 - Benchmark evidence gate has landed: the optional competitive benchmark emits `pretext-tui-benchmark-evidence@1` JSON with raw samples, p50/p95 policy, hashes, runtime/dependency metadata, and comparator semantic matrices.
 - Initial terminal hot-path performance pass has landed: prepared grapheme/source geometry is reused across layout/source/append paths, page-cache misses seek once then walk sequentially, anchor/source lookup insertion avoids per-anchor sorting, and release benchmark counters now expose line/rich lookup behavior instead of relying on wall-clock timing alone.
+- Phase 7 rich metadata hardening recovery has landed with approval status `approve with documented residual risk`.
+- Phase 8 append-only chunked storage has landed behind `PreparedTerminalCellFlow` with focused parity, seam, invalidation, benchmark evidence, and review status `approve with documented residual risk`.
+- Phase 9 performance, memory-budget, and evidence work has landed with approval status `approve with documented residual risk`: search/selection/range counters, modelled memory budgets, `memory-budget-check:tui`, release-gate consistency tests, and claim guardrails are implemented.
 
 ## Not Worth Doing Now
 

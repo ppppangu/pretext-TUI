@@ -6,6 +6,7 @@
 
 import { computeSegmentLevels } from './bidi.js'
 import {
+  analyzeNormalizedText,
   analyzeText,
   canContinueKeepAllTextRun,
   clearAnalysisCaches,
@@ -664,6 +665,27 @@ function prepareInternal(
   )
 }
 
+function prepareNormalizedInternal(
+  text: string,
+  _font: string,
+  includeSegments: boolean,
+  options?: PrepareOptions,
+): InternalPreparedText | PreparedTextWithSegments {
+  const wordBreak = options?.wordBreak ?? 'normal'
+  const letterSpacing = options?.letterSpacing ?? 0
+  const analysisProfile = DEFAULT_TERMINAL_ANALYSIS_PROFILE
+  const analysis = analyzeNormalizedText(text, analysisProfile, options?.whiteSpace, wordBreak)
+  return measureAnalysis(
+    analysis,
+    analysisProfile,
+    options?.widthProfile,
+    options?.tabSize,
+    includeSegments,
+    wordBreak,
+    letterSpacing,
+  )
+}
+
 // Prepare text for layout. Segments the text, measures each segment in terminal cells,
 // and stores the widths for fast relayout at any width. Call once per text block
 // (e.g. when a comment first appears). The result is width-independent — the
@@ -685,6 +707,10 @@ export function prepare(text: string, font: string, options?: PrepareOptions): P
 // laid-out lines themselves.
 export function prepareWithSegments(text: string, font: string, options?: PrepareOptions): PreparedTextWithSegments {
   return prepareInternal(text, font, true, options) as PreparedTextWithSegments
+}
+
+export function prepareNormalizedWithSegments(text: string, font: string, options?: PrepareOptions): PreparedTextWithSegments {
+  return prepareNormalizedInternal(text, font, true, options) as PreparedTextWithSegments
 }
 
 function getInternalPrepared(prepared: PreparedText): InternalPreparedText {

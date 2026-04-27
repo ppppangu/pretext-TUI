@@ -62,6 +62,14 @@ bun run benchmark-check:tui
 
 That gate checks deterministic counters and conservative wall-clock budgets for the package itself. Its explicit validation instrumentation is default-off in normal runtime code and tracks prepared geometry reuse plus rich index lookup behavior as regression telemetry. The competitive benchmark is an optional local comparison harness, not a release guarantee and not a full application renderer or event-loop benchmark.
 
+Phase 9 also adds an internal memory-budget release check:
+
+```sh
+bun run memory-budget-check:tui
+```
+
+That gate uses a documented model for kernel-owned structures such as layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows. It is release evidence for package-owned data structures, not process heap telemetry and not host UI memory evidence.
+
 ## What Makes It Different
 
 - **Prepare once, relayout many times.** Reusable text analysis, terminal-width preparation, and source metadata live in prepared state. Width-dependent line/page caches stay separate.
@@ -153,7 +161,7 @@ const visibleRows = materializeTerminalLinePage(prepared, page)
 
 These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text/index that created them, so hosts can use them without depending on anchor or page internals. Lower-level line-index and page-cache primitives remain available for advanced custom choreography; the bundle reduces handle plumbing for the common viewport case.
 
-Append support is deliberately honest today: the public API exposes bounded invalidation metadata, while the current implementation still counts full reprepare cost. That leaves room for future chunked storage without pretending it already exists.
+Append support is append-only and still incubating, but it now uses internal chunked storage behind the opaque `PreparedTerminalCellFlow` handle. The release benchmark gate includes 1,000-small-append workloads that assert no full-reprepare fallback and bounded analyzed source units per append. Arbitrary insert/delete/replace editing, destructive prefix eviction, host retention policy, and UI lifecycle still belong outside this package.
 
 ## Coordinate And Source Mapping
 
@@ -321,12 +329,14 @@ bun run prepublishOnly
 ```
 
 It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, terminal demo checks, API snapshot checks, and package smoke tests.
+It also runs the internal modelled memory-budget gate for kernel-owned structures.
 
 Useful focused commands:
 
 ```sh
 bun run test:tui
 bun run benchmark-check:tui
+bun run memory-budget-check:tui
 bun run benchmark:competitive:tui
 bun run terminal-demo --columns=52 --fixture=mixed-terminal-session
 ```

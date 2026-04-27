@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于记录 pretext-TUI 的生产化、安全与支持边界；当前进度：Phase 7 补充 rich sidecar capability gate 与内部 metadata 索引 hardening。 -->
+<!-- 补建说明：该目录为后续补建，用于记录 pretext-TUI 的生产化、安全与支持边界；当前进度：Phase 8 补充 append-only chunked storage 的能力边界与非目标。 -->
 # Production Notes
 
 `pretext-TUI` is a host-neutral terminal text kernel. Production readiness here means the package exposes clear data contracts and safe defaults for untrusted terminal text; it does not mean the package owns rendering, input handling, process execution, clipboard, link opening, persistence, or application policy.
@@ -23,7 +23,8 @@ Production readiness does not currently claim:
 - safe execution or interpretation of terminal output
 - bundled adapters for specific terminal hosts
 - browser, DOM, Canvas, or pixel measurement support
-- chunked append storage performance beyond the current honest invalidation counters
+- arbitrary editing or destructive prefix eviction for append flows
+- broad append performance claims beyond focused parity and benchmark-counter evidence
 
 Primary supporting documents:
 

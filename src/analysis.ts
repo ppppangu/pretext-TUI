@@ -1346,6 +1346,29 @@ export function analyzeText(
   const normalized = whiteSpaceProfile.mode === 'pre-wrap'
     ? normalizeWhitespacePreWrap(text)
     : normalizeWhitespaceNormal(text)
+  return analyzeNormalizedTextWithProfile(normalized, profile, whiteSpaceProfile, wordBreak)
+}
+
+export function analyzeNormalizedText(
+  normalized: string,
+  profile: AnalysisProfile,
+  whiteSpace: WhiteSpaceMode = 'normal',
+  wordBreak: WordBreakMode = 'normal',
+): TextAnalysis {
+  return analyzeNormalizedTextWithProfile(
+    normalized,
+    profile,
+    getWhiteSpaceProfile(whiteSpace),
+    wordBreak,
+  )
+}
+
+function analyzeNormalizedTextWithProfile(
+  normalized: string,
+  profile: AnalysisProfile,
+  whiteSpaceProfile: WhiteSpaceProfile,
+  wordBreak: WordBreakMode,
+): TextAnalysis {
   if (normalized.length === 0) {
     return {
       normalized,

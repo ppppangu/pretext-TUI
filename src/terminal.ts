@@ -26,13 +26,13 @@ import {
   getTerminalSegmentWidthRange,
   type PreparedTerminalGeometry,
 } from './terminal-grapheme-geometry.js'
-import { isTerminalBidiFormatControlCodePoint } from './terminal-control-policy.js'
 import {
   terminalGraphemeWidth,
   terminalStringWidth,
   terminalTabAdvance,
 } from './terminal-string-width.js'
 import type { TerminalWidthProfileInput } from './terminal-types.js'
+import { assertPlainTerminalInput } from './terminal-plain-input.js'
 
 export type TerminalPrepareOptions = {
   whiteSpace?: PrepareOptions['whiteSpace']
@@ -92,20 +92,6 @@ export const TERMINAL_START_CURSOR: TerminalCursor = Object.freeze({
   segmentIndex: 0,
   graphemeIndex: 0,
 })
-
-function assertPlainTerminalInput(text: string): void {
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i)
-    const ch = text[i]!
-    const allowedWhitespace = ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f'
-    if ((code <= 0x1f || (code >= 0x7f && code <= 0x9f)) && !allowedWhitespace) {
-      throw new Error(`Plain terminal text cannot contain control character U+${code.toString(16).toUpperCase()}`)
-    }
-    if (isTerminalBidiFormatControlCodePoint(code)) {
-      throw new Error(`Plain terminal text cannot contain bidi format control U+${code.toString(16).toUpperCase()}`)
-    }
-  }
-}
 
 function validateColumns(columns: number): number {
   if (!Number.isInteger(columns) || columns <= 0) {

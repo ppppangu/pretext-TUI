@@ -28,6 +28,10 @@ import {
   collectTerminalLines,
   readInternalPreparedTerminalText,
 } from './validation-helpers.js'
+import {
+  getInternalPreparedTerminalReader,
+  type PreparedTerminalText as InternalPreparedTerminalText,
+} from '../../src/terminal-prepared-reader.js'
 
 function makeLongTranscript(rowCount = 32): string {
   const rows: string[] = []
@@ -63,7 +67,9 @@ function materializedTexts(prepared: PreparedTerminalText, page: TerminalLinePag
 }
 
 function getInternalSourceLength(prepared: PreparedTerminalText): number {
-  return readInternalPreparedTerminalText(prepared).sourceText.length
+  return getInternalPreparedTerminalReader(
+    prepared as unknown as InternalPreparedTerminalText,
+  ).sourceLength
 }
 
 describe('terminal layout bundle', () => {
@@ -141,7 +147,7 @@ describe('terminal layout bundle', () => {
       ...layout,
       generation: getTerminalCellFlowGeneration(appended.flow),
     })
-    const afterSourceLength = readInternalPreparedTerminalText(after).sourceText.length
+    const afterSourceLength = getInternalSourceLength(after)
     const suffixStart = Math.max(0, projectTerminalSourceOffset(after, bundle, afterSourceLength).row - 3)
     const suffixPage = getTerminalLayoutBundlePage(after, bundle, { startRow: suffixStart, rowCount: 4 })
     const freshSuffixPage = getTerminalLayoutBundlePage(after, freshBundle, { startRow: suffixStart, rowCount: 4 })

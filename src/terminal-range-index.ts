@@ -1,4 +1,10 @@
 // 补建说明：该文件为后续补建，用于提供 Phase 4 的 host-neutral source range sidecar index；当前进度：首版支持不可变 generic ranges、点查询与 source-range overlap 查询，不理解任何宿主语义。
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
+import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
+
 export type TerminalRangeData =
   | null
   | boolean
@@ -62,6 +68,8 @@ export function createTerminalRangeIndex(
     maxEnd = Math.max(maxEnd, item.range.sourceEnd)
     prefixMaxEnd.push(maxEnd)
   }
+  recordTerminalPerformanceCounter('terminalRangeIndexBuilds')
+  recordTerminalPerformanceCounter('terminalRangeIndexRanges', normalized.length)
   const handle = Object.freeze({
     kind: 'terminal-range-index@1',
   }) as TerminalRangeIndex
@@ -77,6 +85,7 @@ export function getTerminalRangesAtSourceOffset(
   sourceOffset: number,
 ): readonly TerminalRange[] {
   const offset = normalizeNonNegativeInteger(sourceOffset, 'Terminal range sourceOffset')
+  recordTerminalPerformanceCounter('terminalRangeIndexLookups')
   return collectMatchingRanges(
     internalRangeIndex(index),
     offset,
@@ -97,12 +106,43 @@ export function getTerminalRangesForSourceRange(
   if (sourceEnd < sourceStart) {
     throw new Error(`Terminal range query sourceEnd must be >= sourceStart, got ${sourceEnd} < ${sourceStart}`)
   }
+  recordTerminalPerformanceCounter('terminalRangeIndexLookups')
   return collectMatchingRanges(
     internalRangeIndex(index),
     sourceStart,
     sourceEnd,
     sourceStart === sourceEnd,
   )
+}
+
+export function getTerminalRangeIndexMemoryEstimate(
+  index: TerminalRangeIndex,
+  label = 'terminal range index',
+): TerminalMemoryBudgetEstimate {
+  const internal = internalRangeIndex(index)
+  let stringCodeUnits = 0
+  let objectEntries = internal.byStart.length + internal.prefixMaxEnd.length
+  for (const item of internal.byStart) {
+    stringCodeUnits += item.range.id.length + item.range.kind.length
+    if (item.range.tags !== undefined) {
+      objectEntries += item.range.tags.length
+      stringCodeUnits += item.range.tags.reduce((sum, tag) => sum + tag.length, 0)
+    }
+    if (item.range.data !== undefined) {
+      const dataEstimate = estimateTerminalRangeData(item.range.data)
+      objectEntries += dataEstimate.objectEntries
+      stringCodeUnits += dataEstimate.stringCodeUnits
+    }
+  }
+  return createTerminalMemoryBudgetEstimate({
+    category: 'range-index',
+    label,
+    numberSlots: internal.prefixMaxEnd.length + internal.byStart.length * 3,
+    objectEntries,
+    rangeRecords: internal.byStart.length,
+    stringCodeUnits,
+    notes: ['generic inert sidecar ranges only; host payload interpretation is excluded'],
+  })
 }
 
 function collectMatchingRanges(
@@ -119,7 +159,11 @@ function collectMatchingRanges(
 
   for (let cursor = upperBound - 1; cursor >= 0; cursor--) {
     const prefixMaxEnd = index.prefixMaxEnd[cursor]
-    if (prefixMaxEnd === undefined || prefixMaxEnd < sourceStart) break
+    recordTerminalPerformanceCounter('terminalRangeIndexSteps')
+    if (prefixMaxEnd === undefined || prefixMaxEnd < sourceStart) {
+      recordTerminalPerformanceCounter('terminalRangeIndexPrefixPrunes')
+      break
+    }
     const item = index.byStart[cursor]!
     if (collapsed ? rangeContainsPoint(item.range, sourceStart) : rangeOverlapsQuery(item.range, sourceStart, searchEnd)) {
       matches.push(item)
@@ -127,7 +171,39 @@ function collectMatchingRanges(
   }
 
   matches.sort(compareIndexedTerminalRanges)
+  recordTerminalPerformanceCounter('terminalRangeIndexMatches', matches.length)
   return Object.freeze(matches.map(item => item.range))
+}
+
+function estimateTerminalRangeData(data: TerminalRangeData): { objectEntries: number, stringCodeUnits: number } {
+  if (data === null || typeof data === 'boolean' || typeof data === 'number') {
+    return { objectEntries: 1, stringCodeUnits: 0 }
+  }
+  if (typeof data === 'string') {
+    return { objectEntries: 1, stringCodeUnits: data.length }
+  }
+  if (Array.isArray(data)) {
+    return data.reduce(
+      (sum, item) => {
+        const itemEstimate = estimateTerminalRangeData(item)
+        return {
+          objectEntries: sum.objectEntries + itemEstimate.objectEntries + 1,
+          stringCodeUnits: sum.stringCodeUnits + itemEstimate.stringCodeUnits,
+        }
+      },
+      { objectEntries: 1, stringCodeUnits: 0 },
+    )
+  }
+  return Object.entries(data).reduce(
+    (sum, [key, value]) => {
+      const valueEstimate = estimateTerminalRangeData(value)
+      return {
+        objectEntries: sum.objectEntries + valueEstimate.objectEntries + 1,
+        stringCodeUnits: sum.stringCodeUnits + key.length + valueEstimate.stringCodeUnits,
+      }
+    },
+    { objectEntries: 1, stringCodeUnits: 0 },
+  )
 }
 
 function rangeContainsPoint(range: TerminalRange, sourceOffset: number): boolean {

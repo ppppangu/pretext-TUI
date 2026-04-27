@@ -19,3 +19,5 @@ Forbidden wording in README, marketing, roadmap, and prose summaries even when a
 Concrete timing values belong in the JSON report. Public prose should cite `reportId`, workload id, adapter id, and semantic caveats, then direct readers to the JSON for numbers.
 
 `benchmark-check:tui` output is release-regression telemetry. It must not be promoted as public benchmark evidence.
+
+`memory-budget-check:tui` output is a deterministic model for package-owned structures. It must not be promoted as process heap evidence or host application memory evidence.

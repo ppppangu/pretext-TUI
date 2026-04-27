@@ -6,6 +6,10 @@ import {
   getTerminalLineRangesAtRows,
   type TerminalLineIndex,
 } from './terminal-line-index.js'
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalLinePage = Readonly<{
   kind: 'terminal-line-page@1'
@@ -145,6 +149,26 @@ export function getTerminalLinePage(
 
 export function getTerminalPageCacheStats(cache: TerminalPageCache): TerminalPageCacheStats {
   return { ...internalPageCache(cache).stats }
+}
+
+export function getTerminalPageCacheMemoryEstimate(
+  cache: TerminalPageCache,
+  label = 'terminal page cache',
+): TerminalMemoryBudgetEstimate {
+  const internal = internalPageCache(cache)
+  let cachedLineRanges = 0
+  for (const page of internal.pages.values()) {
+    cachedLineRanges += page.lines.length
+  }
+  return createTerminalMemoryBudgetEstimate({
+    category: 'page-cache',
+    label,
+    cachedLineRanges,
+    numberSlots: internal.pages.size * 5 + cachedLineRanges * 9,
+    objectEntries: internal.pages.size + cachedLineRanges,
+    rangeRecords: cachedLineRanges,
+    notes: ['page cache stores immutable line range metadata, not materialized row text'],
+  })
 }
 
 export function invalidateTerminalPageCache(

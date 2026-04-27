@@ -58,6 +58,44 @@ export function createCompositePreparedTerminalReaderStore(
   })
 }
 
+export function createPreparedTerminalReaderStoreFromReaders(
+  readers: readonly PreparedTerminalReader[],
+): PreparedTerminalReaderStore {
+  if (readers.length === 0) {
+    throw new Error('Prepared terminal reader store requires at least one reader')
+  }
+  const firstReader = readers[0]!
+  const chunks: PreparedTerminalReaderStoreChunk[] = []
+  let segmentStartIndex = 0
+  let sourceStart = 0
+
+  for (const reader of readers) {
+    if (reader.widthProfile.cacheKey !== firstReader.widthProfile.cacheKey) {
+      throw new Error('Prepared terminal reader store chunk readers must share a width profile')
+    }
+    if (reader.tabStopAdvance !== firstReader.tabStopAdvance) {
+      throw new Error('Prepared terminal reader store chunk readers must share a tab stop advance')
+    }
+    if (reader.segmentCount === 0) {
+      if (reader.sourceLength !== 0) {
+        throw new Error('Prepared terminal reader store empty chunk reader cannot have source text')
+      }
+      continue
+    }
+    chunks.push(copyReaderStoreChunkWithBase(reader, segmentStartIndex, sourceStart))
+    segmentStartIndex += reader.segmentCount
+    sourceStart += reader.sourceLength
+  }
+
+  return freezeReaderStore({
+    chunks,
+    segmentCount: segmentStartIndex,
+    sourceLength: sourceStart,
+    tabStopAdvance: firstReader.tabStopAdvance,
+    widthProfile: firstReader.widthProfile,
+  })
+}
+
 export function assertPreparedTerminalReaderStoreInvariants(
   store: PreparedTerminalReaderStore,
 ): void {
@@ -163,6 +201,35 @@ function copyReaderStoreChunk(
     segmentCount: segments.length,
     sourceStart,
     sourceLength: sourceEnd - sourceStart,
+    segments,
+    kinds,
+    sourceStarts,
+    segmentBreaksAfter,
+  })
+}
+
+function copyReaderStoreChunkWithBase(
+  reader: PreparedTerminalReader,
+  segmentStartIndex: number,
+  sourceStart: number,
+): PreparedTerminalReaderStoreChunk {
+  const segments: string[] = []
+  const kinds: Array<SegmentBreakKind | undefined> = []
+  const sourceStarts: number[] = []
+  const segmentBreaksAfter: boolean[] = []
+
+  for (let segmentIndex = 0; segmentIndex < reader.segmentCount; segmentIndex++) {
+    segments.push(reader.segmentText(segmentIndex) ?? '')
+    kinds.push(reader.segmentKind(segmentIndex))
+    sourceStarts.push(sourceStart + reader.segmentSourceStart(segmentIndex))
+    segmentBreaksAfter.push(reader.hasSegmentBreakAfter(segmentIndex))
+  }
+
+  return freezeReaderStoreChunk({
+    segmentStartIndex,
+    segmentCount: segments.length,
+    sourceStart,
+    sourceLength: reader.sourceLength,
     segments,
     kinds,
     sourceStarts,

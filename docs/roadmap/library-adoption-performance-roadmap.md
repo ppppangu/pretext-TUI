@@ -99,7 +99,7 @@ Definition of done:
 
 ## Phase 2: Performance Measurement Before Optimization
 
-Status: initial release-gate instrumentation has landed. The package now exposes default-off internal counters to validation scripts for prepared geometry builds/cache hits, line-text materialization segmentation, rich boundary counts, rich fragment width measurement, rich span/raw-visible index lookup behavior, page/cache counters, anchor replay, source lookups, and append invalidation size. These are regression diagnostics, not public benchmark evidence.
+Status: release-gate instrumentation has landed. The package now exposes default-off internal counters to validation scripts for prepared geometry builds/cache hits, line-text materialization segmentation, rich boundary counts, rich fragment width measurement, rich span/raw-visible index lookup behavior, search/session behavior, selection extraction, page/cache counters, anchor replay, source lookups, and append invalidation size. Phase 9 adds deterministic modelled memory budgets for package-owned structures. These are regression diagnostics, not public benchmark evidence.
 
 Goal: keep proving where time goes before rewriting additional hot paths.
 
@@ -113,9 +113,9 @@ Maintain or extend instrumentation or benchmark counters for:
 - rich span scans
 - source-offset lookup build time and p95 lookup time
 - append total input size versus appended suffix size
-- allocation and heap snapshots where available
+- modelled kernel-owned memory budgets and optional allocation/heap snapshots where available
 
-Extend `benchmark:competitive:tui` with:
+Keep `benchmark:evidence:tui` report output aligned with:
 
 - raw `samples[]`
 - `p50`, `p95`, `min`, `max`, `mean`, `stdev`
@@ -160,7 +160,7 @@ Design requirements:
 
 - chunked prepared storage for append-only transcripts
 - generation-based invalidation
-- bounded memory and chunk compaction strategy
+- memory accounting and lossless chunk compaction strategy
 - lazy source-offset indexes
 - correctness equivalence against full reprepare
 - clear behavior for normalization boundaries, tabs, soft breaks, hard breaks, and trailing whitespace
@@ -182,7 +182,7 @@ Blocking review items before an enterprise-style launch:
 
 - Broaden production docs with runtime/support matrix, provenance, and recipe-level threat model notes.
 - Decide whether raw-to-sanitized provenance should stay as raw-visible maps or grow a named audit API.
-- Extend DoS accounting from rich input limits into cache-memory budgets when page/index APIs get memory budgets.
+- Extend DoS accounting from rich input limits into cache-memory budgets as page/index budget evidence matures.
 - Freeze or deeply resolve width profiles and prepare options used by append flows.
 
 Definition of done:
@@ -198,11 +198,12 @@ Goal: give external developers and companies enough proof to try the package.
 Evidence pack contents:
 
 - correctness matrix: terminal width profiles, CJK, emoji, combining marks, tabs, source offsets, rich sanitizer, oracle, corpus, fuzz
-- benchmark reports: clean commit, raw samples, p50/p95, hardware/runtime/dependency metadata, cross-runtime notes
+- benchmark reports: clean commit, raw samples, p50/p95 policy, hardware/runtime/dependency metadata, cross-runtime notes
+- memory budget reports: model version, workload id, kernel-owned categories, and exclusions
 - semantic matrix: what each comparator does and does not support
 - host-neutral recipes: transcript viewport, terminal pane resize, editor source mapping, log viewer
 - production readiness: API stability, security posture, support policy, license/provenance, package smoke results
-- known limitations: no renderer, no emulator, no named-host integration layer, no chunked append storage yet, no broad benchmark supremacy wording
+- known limitations: no renderer, no emulator, no named-host integration layer, no arbitrary editing, no destructive prefix eviction, no broad benchmark supremacy wording
 
 Definition of done:
 

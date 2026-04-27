@@ -38,6 +38,9 @@ import {
   getTerminalLayoutBundleStats,
 } from '../src/terminal-layout-bundle.js'
 import {
+  getTerminalCellFlowDebugStats,
+} from '../src/terminal-cell-flow.js'
+import {
   createTerminalSelectionFromCoordinates,
   extractTerminalSelection,
   extractTerminalSourceRange,
@@ -99,6 +102,12 @@ export type BenchmarkWorkload = {
   virtual?: boolean
   layoutBundle?: boolean
   appendText?: string
+  appendSequence?: {
+    count: number
+    invalidationWindowCodeUnits?: number
+    parityCheckpoints?: readonly number[]
+    parts: readonly string[]
+  }
   prepare?: TerminalPrepareOptions
   layout: TerminalLayoutOptions
   iterations?: number
@@ -128,6 +137,15 @@ const benchmarkHarnessCounterNames = [
   'anchorCount',
   'maxAnchorReplayRows',
   'sourceLookups',
+  'appendCalls',
+  'appendRawCodeUnits',
+  'appendAnalyzedCodeUnits',
+  'appendMaxAnalyzedCodeUnitsPerCall',
+  'appendFullReprepareFallbacks',
+  'appendFullReprepareCodeUnits',
+  'appendFinalSourceCodeUnits',
+  'appendChunkCount',
+  'appendOpenTailCodeUnits',
   'appendInvalidatedCodeUnits',
   'appendReprepareCodeUnits',
   'invalidatedPages',
@@ -223,6 +241,15 @@ function runWorkload(
     anchorCount: 0,
     maxAnchorReplayRows: 0,
     sourceLookups: 0,
+    appendCalls: 0,
+    appendRawCodeUnits: 0,
+    appendAnalyzedCodeUnits: 0,
+    appendMaxAnalyzedCodeUnitsPerCall: 0,
+    appendFullReprepareFallbacks: 0,
+    appendFullReprepareCodeUnits: 0,
+    appendFinalSourceCodeUnits: 0,
+    appendChunkCount: 0,
+    appendOpenTailCodeUnits: 0,
     appendInvalidatedCodeUnits: 0,
     appendReprepareCodeUnits: 0,
     invalidatedPages: 0,
@@ -303,7 +330,7 @@ function runWorkload(
         ? runLayoutBundleWorkload(workload, input)
         : runVirtualWorkload(workload, input)
       for (const key of Object.keys(virtualCounters) as Array<keyof typeof virtualCounters>) {
-        if (key === 'maxAnchorReplayRows') {
+        if (key === 'maxAnchorReplayRows' || key === 'appendMaxAnalyzedCodeUnitsPerCall') {
           counters[key] = Math.max(counters[key], virtualCounters[key])
         } else {
           counters[key] += virtualCounters[key]
@@ -443,7 +470,16 @@ function runVirtualWorkload(
   input: string,
 ): Record<
   | 'anchorCount'
+  | 'appendAnalyzedCodeUnits'
+  | 'appendCalls'
+  | 'appendChunkCount'
+  | 'appendFinalSourceCodeUnits'
+  | 'appendFullReprepareCodeUnits'
+  | 'appendFullReprepareFallbacks'
   | 'appendInvalidatedCodeUnits'
+  | 'appendMaxAnalyzedCodeUnitsPerCall'
+  | 'appendOpenTailCodeUnits'
+  | 'appendRawCodeUnits'
   | 'appendReprepareCodeUnits'
   | 'invalidatedPages'
   | 'layoutPasses'
@@ -486,10 +522,22 @@ function runVirtualWorkload(
 
   let appendInvalidatedCodeUnits = 0
   let appendReprepareCodeUnits = 0
+  let appendCalls = 0
+  let appendRawCodeUnits = 0
+  let appendAnalyzedCodeUnits = 0
+  let appendMaxAnalyzedCodeUnitsPerCall = 0
+  let appendFullReprepareFallbacks = 0
+  let appendFullReprepareCodeUnits = 0
+  let appendFinalSourceCodeUnits = 0
+  let appendChunkCount = 0
+  let appendOpenTailCodeUnits = 0
   let invalidatedPages = 0
   let flowRangeWalks = 0
+  let prepareCalls = 1
   if (workload.appendText !== undefined) {
     const flow = prepareTerminalCellFlow(input, workload.prepare)
+    let previousFlowChunkCount = getTerminalCellFlowDebugStats(flow as never).chunkCount
+    prepareCalls += previousFlowChunkCount
     const flowPrepared = getTerminalCellFlowPrepared(flow)
     const flowIndex = createTerminalLineIndex(flowPrepared, {
       ...workload.layout,
@@ -507,6 +555,20 @@ function runVirtualWorkload(
     })
     const appended = appendTerminalCellFlow(flow, workload.appendText, { invalidationWindowCodeUnits: 256 })
     const appendedPrepared = getTerminalCellFlowPrepared(appended.flow)
+    const stats = getTerminalCellFlowDebugStats(appended.flow as never)
+    prepareCalls += countCellFlowAppendPreparedChunks(previousFlowChunkCount, stats.chunkCount)
+    previousFlowChunkCount = stats.chunkCount
+    appendCalls++
+    appendRawCodeUnits += workload.appendText.length
+    appendAnalyzedCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+    appendMaxAnalyzedCodeUnitsPerCall = Math.max(
+      appendMaxAnalyzedCodeUnitsPerCall,
+      appended.invalidation.reprepareSourceCodeUnits,
+    )
+    if (appended.invalidation.strategy.startsWith('full-reprepare-')) {
+      appendFullReprepareFallbacks++
+      appendFullReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+    }
     appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
     appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
     const lineInvalidation = invalidateTerminalLineIndex(appendedPrepared, flowIndex, appended.invalidation)
@@ -517,12 +579,79 @@ function runVirtualWorkload(
     materializedLines += materialized.length
     materializedCodeUnits += materialized.reduce((sum, line) => sum + line.text.length, 0)
     flowRangeWalks += getTerminalLineIndexStats(flowIndex).rangeWalks
+    appendFinalSourceCodeUnits = stats.sourceLength
+    appendChunkCount = stats.chunkCount
+    appendOpenTailCodeUnits = stats.openTailSourceCodeUnits
+  }
+  if (workload.appendSequence !== undefined) {
+    let flow = prepareTerminalCellFlow(input, workload.prepare)
+    let flowChunkCount = getTerminalCellFlowDebugStats(flow as never).chunkCount
+    prepareCalls += flowChunkCount
+    let flowPrepared = getTerminalCellFlowPrepared(flow)
+    const flowIndex = createTerminalLineIndex(flowPrepared, {
+      ...workload.layout,
+      anchorInterval: 16,
+      generation: getTerminalCellFlowGeneration(flow),
+    })
+    const flowCache = createTerminalPageCache(flowPrepared, flowIndex, {
+      maxPages: 2,
+      pageSize: 8,
+    })
+    getTerminalLinePage(flowPrepared, flowCache, flowIndex, { startRow: 8, rowCount: 8 })
+    const checkpoints = new Set(workload.appendSequence.parityCheckpoints ?? [
+      1,
+      Math.floor(workload.appendSequence.count / 2),
+      workload.appendSequence.count,
+    ])
+    for (let appendIndex = 0; appendIndex < workload.appendSequence.count; appendIndex++) {
+      const part = workload.appendSequence.parts[appendIndex % workload.appendSequence.parts.length]!
+      const appended = appendTerminalCellFlow(flow, part, {
+        invalidationWindowCodeUnits: workload.appendSequence.invalidationWindowCodeUnits ?? 256,
+      })
+      flow = appended.flow
+      flowPrepared = getTerminalCellFlowPrepared(flow)
+      const stats = getTerminalCellFlowDebugStats(flow as never)
+      prepareCalls += countCellFlowAppendPreparedChunks(flowChunkCount, stats.chunkCount)
+      flowChunkCount = stats.chunkCount
+      appendCalls++
+      appendRawCodeUnits += part.length
+      appendAnalyzedCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      appendMaxAnalyzedCodeUnitsPerCall = Math.max(
+        appendMaxAnalyzedCodeUnitsPerCall,
+        appended.invalidation.reprepareSourceCodeUnits,
+      )
+      if (appended.invalidation.strategy.startsWith('full-reprepare-')) {
+        appendFullReprepareFallbacks++
+        appendFullReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      }
+      appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
+      appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      const lineInvalidation = invalidateTerminalLineIndex(flowPrepared, flowIndex, appended.invalidation)
+      invalidateTerminalPageCache(flowCache, lineInvalidation)
+      if (checkpoints.has(appendIndex + 1)) {
+        const page = getTerminalLinePage(flowPrepared, flowCache, flowIndex, { startRow: 8, rowCount: 8 })
+        const materialized = materializeTerminalLinePage(flowPrepared, page)
+        materializedLines += materialized.length
+        materializedCodeUnits += materialized.reduce((sum, line) => sum + line.text.length, 0)
+        const checkpointSourceIndex = createTerminalSourceOffsetIndex(flowPrepared)
+        for (const line of page.lines) {
+          getTerminalCursorForSourceOffset(flowPrepared, checkpointSourceIndex, line.sourceStart)
+          sourceLookups++
+        }
+      }
+    }
+    invalidatedPages += getTerminalPageCacheStats(flowCache).invalidatedPages
+    flowRangeWalks += getTerminalLineIndexStats(flowIndex).rangeWalks
+    const stats = getTerminalCellFlowDebugStats(flow as never)
+    appendFinalSourceCodeUnits = stats.sourceLength
+    appendChunkCount = stats.chunkCount
+    appendOpenTailCodeUnits = stats.openTailSourceCodeUnits
   }
 
   const indexStats = getTerminalLineIndexStats(index)
   const cacheStats = getTerminalPageCacheStats(cache)
   return {
-    prepareCalls: workload.appendText === undefined ? 1 : 3,
+    prepareCalls,
     // For virtual workloads this counts range-walker invocations, not renderer or page-build calls.
     layoutPasses: indexStats.rangeWalks + flowRangeWalks,
     materializedLines,
@@ -533,6 +662,15 @@ function runVirtualWorkload(
     anchorCount: indexStats.anchorCount,
     maxAnchorReplayRows: indexStats.maxReplayRows,
     sourceLookups,
+    appendCalls,
+    appendRawCodeUnits,
+    appendAnalyzedCodeUnits,
+    appendMaxAnalyzedCodeUnitsPerCall,
+    appendFullReprepareFallbacks,
+    appendFullReprepareCodeUnits,
+    appendFinalSourceCodeUnits,
+    appendChunkCount,
+    appendOpenTailCodeUnits,
     appendInvalidatedCodeUnits,
     appendReprepareCodeUnits,
     invalidatedPages,
@@ -544,7 +682,16 @@ function runLayoutBundleWorkload(
   input: string,
 ): Record<
   | 'anchorCount'
+  | 'appendAnalyzedCodeUnits'
+  | 'appendCalls'
+  | 'appendChunkCount'
+  | 'appendFinalSourceCodeUnits'
+  | 'appendFullReprepareCodeUnits'
+  | 'appendFullReprepareFallbacks'
   | 'appendInvalidatedCodeUnits'
+  | 'appendMaxAnalyzedCodeUnitsPerCall'
+  | 'appendOpenTailCodeUnits'
+  | 'appendRawCodeUnits'
   | 'appendReprepareCodeUnits'
   | 'invalidatedPages'
   | 'layoutPasses'
@@ -584,10 +731,22 @@ function runLayoutBundleWorkload(
 
   let appendInvalidatedCodeUnits = 0
   let appendReprepareCodeUnits = 0
+  let appendCalls = 0
+  let appendRawCodeUnits = 0
+  let appendAnalyzedCodeUnits = 0
+  let appendMaxAnalyzedCodeUnitsPerCall = 0
+  let appendFullReprepareFallbacks = 0
+  let appendFullReprepareCodeUnits = 0
+  let appendFinalSourceCodeUnits = 0
+  let appendChunkCount = 0
+  let appendOpenTailCodeUnits = 0
   let invalidatedPages = 0
   let flowRangeWalks = 0
+  let prepareCalls = 1
   if (workload.appendText !== undefined) {
     const flow = prepareTerminalCellFlow(input, workload.prepare)
+    let previousFlowChunkCount = getTerminalCellFlowDebugStats(flow as never).chunkCount
+    prepareCalls += previousFlowChunkCount
     const flowPrepared = getTerminalCellFlowPrepared(flow)
     const flowBundle = createTerminalLayoutBundle(flowPrepared, {
       ...workload.layout,
@@ -603,6 +762,20 @@ function runLayoutBundleWorkload(
     })
     const appended = appendTerminalCellFlow(flow, workload.appendText, { invalidationWindowCodeUnits: 256 })
     const appendedPrepared = getTerminalCellFlowPrepared(appended.flow)
+    const stats = getTerminalCellFlowDebugStats(appended.flow as never)
+    prepareCalls += countCellFlowAppendPreparedChunks(previousFlowChunkCount, stats.chunkCount)
+    previousFlowChunkCount = stats.chunkCount
+    appendCalls++
+    appendRawCodeUnits += workload.appendText.length
+    appendAnalyzedCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+    appendMaxAnalyzedCodeUnitsPerCall = Math.max(
+      appendMaxAnalyzedCodeUnitsPerCall,
+      appended.invalidation.reprepareSourceCodeUnits,
+    )
+    if (appended.invalidation.strategy.startsWith('full-reprepare-')) {
+      appendFullReprepareFallbacks++
+      appendFullReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+    }
     appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
     appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
     invalidateTerminalLayoutBundle(appendedPrepared, flowBundle, appended.invalidation)
@@ -615,11 +788,73 @@ function runLayoutBundleWorkload(
     projectTerminalSourceOffset(appendedPrepared, flowBundle, appended.invalidation.firstInvalidSourceOffset)
     sourceLookups++
     flowRangeWalks += getTerminalLayoutBundleStats(flowBundle as never).lineIndex.rangeWalks
+    appendFinalSourceCodeUnits = stats.sourceLength
+    appendChunkCount = stats.chunkCount
+    appendOpenTailCodeUnits = stats.openTailSourceCodeUnits
+  }
+  if (workload.appendSequence !== undefined) {
+    let flow = prepareTerminalCellFlow(input, workload.prepare)
+    let flowChunkCount = getTerminalCellFlowDebugStats(flow as never).chunkCount
+    prepareCalls += flowChunkCount
+    let flowPrepared = getTerminalCellFlowPrepared(flow)
+    const flowBundle = createTerminalLayoutBundle(flowPrepared, {
+      ...workload.layout,
+      anchorInterval: 16,
+      generation: getTerminalCellFlowGeneration(flow),
+      maxPages: 2,
+      pageSize: 8,
+    })
+    getTerminalLayoutBundlePage(flowPrepared, flowBundle, { startRow: 8, rowCount: 8 })
+    const checkpoints = new Set(workload.appendSequence.parityCheckpoints ?? [
+      1,
+      Math.floor(workload.appendSequence.count / 2),
+      workload.appendSequence.count,
+    ])
+    for (let appendIndex = 0; appendIndex < workload.appendSequence.count; appendIndex++) {
+      const part = workload.appendSequence.parts[appendIndex % workload.appendSequence.parts.length]!
+      const appended = appendTerminalCellFlow(flow, part, {
+        invalidationWindowCodeUnits: workload.appendSequence.invalidationWindowCodeUnits ?? 256,
+      })
+      flow = appended.flow
+      flowPrepared = getTerminalCellFlowPrepared(flow)
+      const stats = getTerminalCellFlowDebugStats(flow as never)
+      prepareCalls += countCellFlowAppendPreparedChunks(flowChunkCount, stats.chunkCount)
+      flowChunkCount = stats.chunkCount
+      appendCalls++
+      appendRawCodeUnits += part.length
+      appendAnalyzedCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      appendMaxAnalyzedCodeUnitsPerCall = Math.max(
+        appendMaxAnalyzedCodeUnitsPerCall,
+        appended.invalidation.reprepareSourceCodeUnits,
+      )
+      if (appended.invalidation.strategy.startsWith('full-reprepare-')) {
+        appendFullReprepareFallbacks++
+        appendFullReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      }
+      appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
+      appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
+      invalidateTerminalLayoutBundle(flowPrepared, flowBundle, appended.invalidation)
+      if (checkpoints.has(appendIndex + 1)) {
+        const page = getTerminalLayoutBundlePage(flowPrepared, flowBundle, { startRow: 8, rowCount: 8 })
+        const materialized = materializeTerminalLinePage(flowPrepared, page)
+        materializedLines += materialized.length
+        materializedCodeUnits += materialized.reduce((sum, line) => sum + line.text.length, 0)
+        projectTerminalSourceOffset(flowPrepared, flowBundle, appended.invalidation.firstInvalidSourceOffset)
+        sourceLookups++
+      }
+    }
+    const flowBundleStats = getTerminalLayoutBundleStats(flowBundle as never)
+    invalidatedPages += flowBundleStats.pageCache.invalidatedPages
+    flowRangeWalks += flowBundleStats.lineIndex.rangeWalks
+    const stats = getTerminalCellFlowDebugStats(flow as never)
+    appendFinalSourceCodeUnits = stats.sourceLength
+    appendChunkCount = stats.chunkCount
+    appendOpenTailCodeUnits = stats.openTailSourceCodeUnits
   }
 
   const bundleStats = getTerminalLayoutBundleStats(bundle as never)
   return {
-    prepareCalls: workload.appendText === undefined ? 1 : 3,
+    prepareCalls,
     // For virtual workloads this counts range-walker invocations, not renderer or page-build calls.
     layoutPasses: bundleStats.lineIndex.rangeWalks + flowRangeWalks,
     materializedLines,
@@ -630,6 +865,15 @@ function runLayoutBundleWorkload(
     anchorCount: bundleStats.lineIndex.anchorCount,
     maxAnchorReplayRows: bundleStats.lineIndex.maxReplayRows,
     sourceLookups,
+    appendCalls,
+    appendRawCodeUnits,
+    appendAnalyzedCodeUnits,
+    appendMaxAnalyzedCodeUnitsPerCall,
+    appendFullReprepareFallbacks,
+    appendFullReprepareCodeUnits,
+    appendFinalSourceCodeUnits,
+    appendChunkCount,
+    appendOpenTailCodeUnits,
     appendInvalidatedCodeUnits,
     appendReprepareCodeUnits,
     invalidatedPages,
@@ -646,14 +890,19 @@ function assertVirtualCounters(
   assert(counter(counters, 'anchorCount') > 0, `${workload.id} expected sparse anchors`)
   assert(counter(counters, 'maxAnchorReplayRows') <= 16, `${workload.id} exceeded sparse anchor replay bound`)
   assert(counter(counters, 'sourceLookups') > 0, `${workload.id} expected source lookups`)
-  if (workload.appendText !== undefined) {
+  if (workload.appendText !== undefined || workload.appendSequence !== undefined) {
     assert(counter(counters, 'appendInvalidatedCodeUnits') > 0, `${workload.id} expected append invalidation`)
-    assert(
-      counter(counters, 'appendReprepareCodeUnits') >= counter(counters, 'appendInvalidatedCodeUnits'),
-      `${workload.id} expected honest full reprepare counter`,
-    )
+    assert(counter(counters, 'appendCalls') > 0, `${workload.id} expected append calls`)
+    assert(counter(counters, 'appendFullReprepareFallbacks') === 0, `${workload.id} expected no full reprepare fallback`)
+    assert(counter(counters, 'appendFullReprepareCodeUnits') === 0, `${workload.id} expected no full reprepare code units`)
+    assert(counter(counters, 'appendMaxAnalyzedCodeUnitsPerCall') > 0, `${workload.id} expected append analyzed units`)
+    assert(counter(counters, 'appendChunkCount') > 0, `${workload.id} expected append chunks`)
     assert(counter(counters, 'invalidatedPages') > 0, `${workload.id} expected page invalidation`)
   }
+}
+
+function countCellFlowAppendPreparedChunks(previousChunkCount: number, nextChunkCount: number): number {
+  return 1 + Math.max(0, nextChunkCount - previousChunkCount)
 }
 
 function assertCounterAssertions(
@@ -720,6 +969,7 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
   const label = `workloads[${index}]`
   const workload = expectRecord(value, label)
   assertAllowedKeys(workload, label, [
+    'appendSequence',
     'appendText',
     'corpusFile',
     'counterAssertions',
@@ -757,6 +1007,11 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
     expectString(workload['appendText'], `${label}.appendText`)
     assert(workload['virtual'] === true, `${label}.appendText requires virtual`)
   }
+  if (workload['appendSequence'] !== undefined) {
+    parseAppendSequence(workload['appendSequence'], `${label}.appendSequence`)
+    assert(workload['virtual'] === true, `${label}.appendSequence requires virtual`)
+    assert(workload['appendText'] === undefined, `${label}.appendSequence cannot be combined with appendText`)
+  }
   if (workload['layoutBundle'] === true) {
     assert(workload['virtual'] === true, `${label}.layoutBundle requires virtual`)
   }
@@ -789,6 +1044,36 @@ function parseRepeatText(value: unknown, label: string): void {
   expectString(repeatText['text'], `${label}.text`)
   expectNonNegativeInteger(repeatText['count'], `${label}.count`)
   if (repeatText['suffix'] !== undefined) expectString(repeatText['suffix'], `${label}.suffix`)
+}
+
+function parseAppendSequence(value: unknown, label: string): void {
+  const appendSequence = expectRecord(value, label)
+  assertAllowedKeys(appendSequence, label, [
+    'count',
+    'invalidationWindowCodeUnits',
+    'parityCheckpoints',
+    'parts',
+  ])
+  const count = expectPositiveInteger(appendSequence['count'], `${label}.count`)
+  const parts = expectArray(appendSequence['parts'], `${label}.parts`)
+  assert(parts.length > 0, `${label}.parts must not be empty`)
+  for (let index = 0; index < parts.length; index++) {
+    expectString(parts[index], `${label}.parts[${index}]`)
+  }
+  if (appendSequence['invalidationWindowCodeUnits'] !== undefined) {
+    expectPositiveInteger(
+      appendSequence['invalidationWindowCodeUnits'],
+      `${label}.invalidationWindowCodeUnits`,
+    )
+  }
+  if (appendSequence['parityCheckpoints'] !== undefined) {
+    const checkpoints = expectArray(appendSequence['parityCheckpoints'], `${label}.parityCheckpoints`)
+    assert(checkpoints.length > 0, `${label}.parityCheckpoints must not be empty`)
+    for (let index = 0; index < checkpoints.length; index++) {
+      const checkpoint = expectPositiveInteger(checkpoints[index], `${label}.parityCheckpoints[${index}]`)
+      assert(checkpoint <= count, `${label}.parityCheckpoints[${index}] must be <= count`)
+    }
+  }
 }
 
 function parseLayout(value: unknown, label: string): void {

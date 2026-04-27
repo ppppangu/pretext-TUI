@@ -12,6 +12,10 @@ import {
   type PreparedTerminalReader,
 } from './terminal-prepared-reader.js'
 import { getTerminalSourceOffsetForCursor } from './terminal-source-offset-index.js'
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalFixedLayoutOptions = TerminalLayoutOptions & {
   anchorInterval?: number
@@ -341,6 +345,21 @@ export function getTerminalLineIndexStats(index: TerminalLineIndex): TerminalLin
     ...internal.stats,
     anchorCount: internal.anchors.length,
   }
+}
+
+export function getTerminalLineIndexMemoryEstimate(
+  index: TerminalLineIndex,
+  label = 'terminal line index',
+): TerminalMemoryBudgetEstimate {
+  const internal = internalLineIndex(index)
+  return createTerminalMemoryBudgetEstimate({
+    category: 'line-index',
+    label,
+    numberSlots: internal.anchors.length * 5 + 6,
+    objectEntries: internal.anchors.length + 1,
+    rangeRecords: internal.anchors.length,
+    notes: ['sparse row anchors only; prepared source storage is estimated separately'],
+  })
 }
 
 export function getTerminalLineIndexMetadata(index: TerminalLineIndex): TerminalLineIndexMetadata {

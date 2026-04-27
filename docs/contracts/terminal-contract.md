@@ -242,7 +242,7 @@ Terminal cursors are package-owned replay tokens with segment/grapheme fields. H
 
 Source-offset lookup results distinguish the original requested UTF-16 offset from the normalized boundary offset. Out-of-range requests may clamp to `0` or EOF, but `exact` is true only when the original requested offset was already a projectable source boundary. Runtime bias values must be one of `before`, `after`, or `closest`; invalid JavaScript values must be rejected.
 
-The current incremental contract is append-only. `PreparedTerminalCellFlow` may expose generation and invalidation metadata for growing text, but arbitrary insert, delete, or replace editing is a separate future buffer design. Until chunked append storage removes full accumulated reprepare cost and passes parity/evidence gates, append wording must remain "full reprepare plus bounded invalidation metadata."
+The current incremental contract is append-only. `PreparedTerminalCellFlow` exposes generation and invalidation metadata for growing text through an opaque handle backed by internal chunked storage. Arbitrary insert, delete, or replace editing is a separate future buffer design. Destructive prefix eviction is also a future explicit API because it would change global source-offset meaning.
 
 Ranges expose:
 
@@ -420,7 +420,7 @@ projectTerminalSourceRange(prepared, bundle, { sourceStart, sourceEnd })
 
 `invalidateTerminalLayoutBundle()` applies line-index invalidation, page-cache invalidation, and source-offset index refresh for the supplied prepared text. Bundle invalidation must reject forged bundle handles, stale prepared handles for page/projection calls, layout identity mismatches, replayed generations, and `previousGeneration` values that do not match the bundle's current generation.
 
-Layout bundles do not render, scroll, select, persist, open links, own clipboard state, or implement host behavior. Append remains full reprepare plus bounded invalidation metadata until true chunked append storage is implemented and proven.
+Layout bundles do not render, scroll, select, persist, open links, own clipboard state, or implement host behavior. Append invalidation may come from the append-only chunked flow, but bundle invalidation remains source-first and must continue to reject forged handles, stale generations, and mismatched prepared text.
 
 ## Rich Metadata Boundary
 

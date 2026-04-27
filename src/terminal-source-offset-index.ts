@@ -8,6 +8,10 @@ import {
   getTerminalCursorSourceOffset,
   getTerminalSegmentGeometry,
 } from './terminal-grapheme-geometry.js'
+import {
+  createTerminalMemoryBudgetEstimate,
+  type TerminalMemoryBudgetEstimate,
+} from './terminal-memory-budget.js'
 
 export type TerminalSourceOffsetBias = 'before' | 'after' | 'closest'
 
@@ -97,6 +101,21 @@ export function isTerminalSourceOffsetIndexForPrepared(
   index: TerminalSourceOffsetIndex,
 ): boolean {
   return internalSourceIndex(index).prepared === prepared
+}
+
+export function getTerminalSourceOffsetIndexMemoryEstimate(
+  index: TerminalSourceOffsetIndex,
+  label = 'terminal source offset index',
+): TerminalMemoryBudgetEstimate {
+  const internal = internalSourceIndex(index)
+  return createTerminalMemoryBudgetEstimate({
+    category: 'source-index',
+    label,
+    numberSlots: internal.boundaries.length * 3 + internal.cursorOffsets.size,
+    objectEntries: internal.boundaries.length + internal.cursorOffsets.size,
+    rangeRecords: internal.boundaries.length,
+    notes: ['cursor/source boundary table only; prepared geometry storage is not included'],
+  })
 }
 
 export function getTerminalSourceOffsetForCursor(

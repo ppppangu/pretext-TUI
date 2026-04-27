@@ -5,6 +5,7 @@ import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dir, '../..')
 const markdownRoots = [
+  'CHANGELOG.md',
   'README.md',
   'docs/README.md',
   'docs/contracts',
@@ -27,7 +28,7 @@ const dynamicNumberPattern =
   /\b\d+(?:\.\d+)?\s*(?:ms|µs|us|ns|ops\/sec|ops\/s)\b|\b\d+(?:\.\d+)?\s*[x×]\b|(?:p50|p95|mean|stdev|min|max)\s*[:=]\s*\d/i
 const benchmarkTelemetryPattern = /\b(?:elapsedMs|opsPerSecond|ratioToPretext|maxMilliseconds)\b/i
 const overclaimPattern =
-  /\b(?:fastest|faster than|times faster|speedup|outperform(?:s|ed)?|beats?|wins?|winner|orders? of magnitude|zero[- ]cost|no overhead|instant(?:ly)?|always faster|universally faster|universal speed|performance guarantee|make layout cheap|fast resize|fast scroll)\b/i
+  /\b(?:fastest|faster than|times faster|speedup|outperform(?:s|ed)?|beats?|wins?|winner|orders? of magnitude|zero[- ]cost|zero[- ]copy|no overhead|constant memory|O\(1\) append|O\(1\) memory|bounded memory|instant(?:ly)?|always faster|universally faster|universal speed|performance guarantee|make layout cheap|fast resize|fast scroll)\b/i
 const percentClaimPattern = /\b\d+(?:\.\d+)?\s*%\s*(?:faster|slower|less|more|improvement|reduction)\b/i
 const hostSpecificPattern =
   /\b(?:Claude Code|claude-code|Codex|codex|agent CLI|agent-CLI|@anthropic-ai|model prose|tmux|nvim|Ink|Blessed|React renderer)\b/i

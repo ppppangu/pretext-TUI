@@ -61,7 +61,7 @@ Avoid implying that `pretext-TUI` is already integrated with any named terminal 
 | Standalone benchmark headline | No | Cite the exact local hot-cache report id and workload id without copying numbers |
 | Broad wrapper comparison | No | Keep claims bounded to measured workloads and report ids |
 | Named-host integration | No | Say `style`, `like`, or `patterns`, and state no integration is included |
-| Chunked append storage | No | Current append is full reprepare plus bounded invalidation metadata |
+| Chunked append storage | Incubating | Append-only chunked storage is internal behind `PreparedTerminalCellFlow`; no arbitrary editing, destructive prefix eviction, or broad streaming-speed claim |
 | Secure ANSI rendering | Narrowly | Say `rich metadata has policy-bound defaults: unsupported controls are rejected or sanitized, diagnostics are redacted, and ANSI reconstruction is explicit opt-in`; do not imply terminal-emulator security |
 
 ## Benchmark Copy
@@ -101,7 +101,7 @@ Recommended README order:
 6. Terminal accuracy: contract, goldens, oracle, corpus, fuzz.
 7. Boundaries: package owns versus host owns.
 8. How it works: sparse anchors, page cache, source offsets, rich sidecar.
-9. Limits: no renderer, no emulator, no host adapters, no chunked append storage yet.
+9. Limits: no renderer, no emulator, no host adapters, no arbitrary editing, no destructive prefix eviction.
 10. Credits: Pretext lineage and what changed for terminal cells.
 
 ## Launch Assets
@@ -154,7 +154,7 @@ Every public launch artifact should pass this checklist:
 - Does it avoid claiming host integrations that do not exist?
 - Does it avoid implying broad performance superiority beyond the cited workload?
 - Does it state benchmark workload, cache state, runtime, and semantic differences?
-- Does it say chunked append storage has not landed yet?
+- Does it keep append claims narrow, evidence-gated, and limited to append-only chunked storage?
 - Does it keep the renderer/emulator/framework boundary explicit?
 - Does it mention Pretext lineage without implying drop-in replacement?
 - Does it point skeptical readers to validation commands and contracts?

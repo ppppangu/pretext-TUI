@@ -17,10 +17,28 @@ export type TerminalPerformanceCounterName =
   | 'richSpanIndexLookups'
   | 'richSpanIndexMatches'
   | 'richSpanIndexSteps'
+  | 'terminalRangeIndexBuilds'
+  | 'terminalRangeIndexLookups'
+  | 'terminalRangeIndexMatches'
+  | 'terminalRangeIndexPrefixPrunes'
+  | 'terminalRangeIndexRanges'
+  | 'terminalRangeIndexSteps'
   | 'terminalSearchMatches'
   | 'terminalSearchProjectionRequests'
+  | 'terminalSearchReturnedMatches'
   | 'terminalSearchScannedCodeUnits'
+  | 'terminalSearchScopeChecks'
+  | 'terminalSearchScopes'
   | 'terminalSearchSessions'
+  | 'terminalSearchSourceMaterializations'
+  | 'terminalSearchStoredMatches'
+  | 'terminalSearchStoredMatchCodeUnits'
+  | 'terminalSelectionCoordinateRequests'
+  | 'terminalSelectionExtractionRequests'
+  | 'terminalSelectionProjectionFragments'
+  | 'terminalSelectionRangeIndexLookups'
+  | 'terminalSelectionSourceCodeUnits'
+  | 'terminalSelectionVisibleCodeUnits'
 
 export type TerminalPerformanceCounterSnapshot = Readonly<Record<TerminalPerformanceCounterName, number>>
 
@@ -42,10 +60,28 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'richSpanIndexLookups',
   'richSpanIndexMatches',
   'richSpanIndexSteps',
+  'terminalRangeIndexBuilds',
+  'terminalRangeIndexLookups',
+  'terminalRangeIndexMatches',
+  'terminalRangeIndexPrefixPrunes',
+  'terminalRangeIndexRanges',
+  'terminalRangeIndexSteps',
   'terminalSearchMatches',
   'terminalSearchProjectionRequests',
+  'terminalSearchReturnedMatches',
   'terminalSearchScannedCodeUnits',
+  'terminalSearchScopeChecks',
+  'terminalSearchScopes',
   'terminalSearchSessions',
+  'terminalSearchSourceMaterializations',
+  'terminalSearchStoredMatches',
+  'terminalSearchStoredMatchCodeUnits',
+  'terminalSelectionCoordinateRequests',
+  'terminalSelectionExtractionRequests',
+  'terminalSelectionProjectionFragments',
+  'terminalSelectionRangeIndexLookups',
+  'terminalSelectionSourceCodeUnits',
+  'terminalSelectionVisibleCodeUnits',
 ]
 
 let activeCounters: Record<TerminalPerformanceCounterName, number> | null = null

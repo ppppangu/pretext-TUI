@@ -6,6 +6,7 @@ This directory is the home for reproducible evidence that supports public claims
 Evidence is not the same as a release gate:
 
 - `bun run benchmark-check:tui` is a conservative package regression gate.
+- `bun run memory-budget-check:tui` is a modelled kernel-owned structure budget gate.
 - `bun run benchmark:competitive:tui` is an optional local text-layout comparison.
 - `bun run benchmark:evidence:tui` writes a local JSON evidence report under `docs/evidence/benchmark-reports/`.
 
@@ -18,3 +19,9 @@ JSON evidence reports under `benchmark-reports/` are the sole benchmark-number s
 Claim notes, README, and marketing copy may cite report ids and workload ids, but they are not independent numeric truth sources. They should direct readers back to JSON for raw samples, timing stats, ratios, environment metadata, and comparator semantic caveats.
 
 Dirty local reports are useful for development, but they are not claimable public evidence. A claimable report should come from a clean commit and include raw samples, stats, source hashes, runtime metadata, dependency versions, and the semantic matrix.
+
+## Memory Budget Evidence
+
+`benchmarks/tui-memory-budgets.json` and `scripts/tui-memory-budget-check.ts` model package-owned structures only: layout bundles, source/range indexes, search sessions, selection extraction, rich sidecars, and append-only cell-flow chunks. The model is intentionally deterministic and reviewable. It does not measure process heap, renderer memory, terminal emulator state, host caches, or application UI structures.
+
+Memory-budget results may support release-readiness notes for package-owned structures. They are not standalone public performance claims, and they should not be used to imply a process-wide memory profile.

@@ -27,7 +27,7 @@ Use [adoption-growth-playbook.md](adoption-growth-playbook.md#benchmark-copy) as
 - Do not say `pretext-TUI` is the fastest terminal wrapper overall.
 - Do not imply cold start, one-shot full wrapping, or rich SGR wrapping are the headline speed wins.
 - Do not imply `wrap-ansi`, `string-width`, and `pretext-TUI` have identical semantics.
-- Do not say append storage is chunked yet; current append is full reprepare plus bounded invalidation metadata.
+- Do not turn append-only chunked storage into broad streaming-speed claims; cite evidence gates and keep arbitrary editing/destructive eviction out of scope.
 - Do not imply integration with any named terminal host already exists.
 - Do not call it a renderer, terminal emulator, or full TUI framework.
 - Do not present `benchmark-check:tui` thresholds as public performance benchmarks.

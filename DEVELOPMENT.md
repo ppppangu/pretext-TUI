@@ -1,6 +1,6 @@
 # Development
 
-This repository has a publishable terminal-cell text layout package baseline. Active development keeps the API host-neutral while tightening security posture, benchmark evidence, performance telemetry, and future append-storage design.
+This repository has a publishable terminal-cell text layout package baseline. Active development keeps the API host-neutral while tightening security posture, benchmark evidence, performance telemetry, and the incubating append-only chunked storage path.
 
 The active development target is terminal-cell layout. Browser-oriented source material remains out of the active package surface.
 
@@ -23,6 +23,7 @@ bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
+bun run memory-budget-check:tui
 bun run terminal-demo-check
 bun run api-snapshot-check
 bun run package-smoke-test
@@ -42,6 +43,7 @@ bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
+bun run memory-budget-check:tui
 bun run terminal-demo-check
 bun run api-snapshot-check
 bun run package-smoke-test
@@ -49,7 +51,7 @@ bun run package-smoke-test
 
 `terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
 
-The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work; these counters are release-regression telemetry, not public benchmark evidence.
+The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work plus rich/search/selection lookup behavior; these counters are release-regression telemetry, not public benchmark evidence. `memory-budget-check:tui` separately models kernel-owned structure sizes for layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows; it is not process heap telemetry.
 
 ## Competitive Benchmark
 

@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于验证 Batch 6 preflight 的 reader-store backed prepared 与既有 array-backed prepared 在 runtime API 上签名级等价；当前进度：覆盖 single-store/multi-store layout/materialization/index/page/projection/append parity，尚不声明 true chunked append。
+// 补建说明：该文件为后续补建，用于验证 reader-store backed prepared 与既有 array-backed prepared 在 runtime API 上签名级等价；当前进度：Phase 8 更新 append parity 为 chunked reader-backed storage 语义。
 import { describe, expect, test } from 'bun:test'
 import {
   appendTerminalCellFlow,
@@ -169,7 +169,7 @@ describe('reader store parity', () => {
     expect(() => createCompositePreparedTerminalReaderStore(reader, [1])).toThrow('cover every segment')
   })
 
-  test('cell flow exposes reader-backed prepared while append remains full reprepare', () => {
+  test('cell flow exposes reader-backed prepared while append uses chunked invalidation', () => {
     const sequences = [
       {
         initial: 'alpha beta',
@@ -226,10 +226,10 @@ describe('reader store parity', () => {
         const freshPrepared = prepareTerminal(raw, sequence.prepare)
 
         expect(getTerminalCellFlowGeneration(flow)).toBe(previousGeneration + 1)
-        expect(appended.invalidation.reprepareSourceCodeUnits).toBe(
+        expect(appended.invalidation.reprepareSourceCodeUnits).toBeLessThanOrEqual(
           getInternalPreparedTerminalReader(flowPrepared as unknown as InternalPreparedTerminalText).sourceLength,
         )
-        expect(appended.invalidation.strategy).toMatch(/^full-reprepare-/)
+        expect(appended.invalidation.strategy).toMatch(/^chunked-append-/)
         expect(() => getInternalPreparedTerminalText(flowPrepared as unknown as InternalPreparedTerminalText)).toThrow(
           'reader-backed',
         )
@@ -293,7 +293,7 @@ describe('reader store parity', () => {
     )
   })
 
-  test('small append stress stays runtime-equal to fresh full prepare without chunked claims', () => {
+  test('small append stress stays runtime-equal to fresh full prepare with chunked invalidation', () => {
     let flow = prepareTerminalCellFlow('', { whiteSpace: 'pre-wrap', tabSize: 4 })
     let raw = ''
     const parts = ['a', ' ', '界', '\t', 'e\u0301', '\u200B', 'b', '\n']
@@ -304,8 +304,8 @@ describe('reader store parity', () => {
       flow = appended.flow
       const prepared = getTerminalCellFlowPrepared(flow)
 
-      expect(appended.invalidation.strategy).toMatch(/^full-reprepare-/)
-      expect(appended.invalidation.reprepareSourceCodeUnits).toBe(
+      expect(appended.invalidation.strategy).toMatch(/^chunked-append-/)
+      expect(appended.invalidation.reprepareSourceCodeUnits).toBeLessThanOrEqual(
         getInternalPreparedTerminalReader(prepared as unknown as InternalPreparedTerminalText).sourceLength,
       )
       expect(coreLayoutSignature(prepared, { columns: 13 })).toEqual(

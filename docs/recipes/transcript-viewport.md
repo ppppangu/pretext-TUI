@@ -146,4 +146,4 @@ function findGenericRangesForLine(line: TerminalLineRange, blockRanges: readonly
 
 - Use source offsets as semantic anchors for selection, search hits, and jump targets.
 - Keep block metadata separate from prepared text. This preserves a small public API surface and avoids mixing domain state into the terminal layout kernel.
-- For append-heavy streams, `prepareTerminalCellFlow()` and append invalidation metadata can be used as an incubating public surface, but it still reports current full-reprepare strategy until true chunked append is implemented.
+- For append-heavy streams, `prepareTerminalCellFlow()` and append invalidation metadata can be used as an incubating public surface. The package owns append-only chunked source preparation and source-first invalidation; hosts still own stream lifecycle, retention policy, scroll state, persistence, and rendering.

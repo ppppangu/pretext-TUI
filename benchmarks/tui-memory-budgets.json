@@ -1,0 +1,159 @@
+{
+  "metadata": {
+    "note": "补建说明：该文件为后续补建，用于记录 Phase 9 TUI memory budget workloads；当前进度：首版覆盖 kernel-owned layout/search/selection/rich/range/chunked append structures。",
+    "schema": "pretext-tui-memory-budgets@1"
+  },
+  "workloads": [
+    {
+      "id": "layout-bundle-memory",
+      "corpusFile": "mixed-app-text.txt",
+      "maxChars": 1400,
+      "layoutBundle": true,
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 44 },
+      "budgets": [
+        {
+          "category": "layout-bundle",
+          "maxEstimatedBytes": 350000,
+          "maxRangeRecords": 1500,
+          "maxCachedLineRanges": 64
+        }
+      ]
+    },
+    {
+      "id": "source-search-session-memory",
+      "repeatText": {
+        "text": "terminal alpha beta gamma\n",
+        "count": 120
+      },
+      "search": {
+        "query": "terminal",
+        "caseSensitive": false,
+        "limit": 8
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 44 },
+      "budgets": [
+        {
+          "category": "search-session",
+          "maxEstimatedBytes": 40000,
+          "maxRangeRecords": 160,
+          "maxStringCodeUnits": 1600
+        }
+      ]
+    },
+    {
+      "id": "selection-extraction-memory",
+      "rawText": "first row for selection\nsecond row with linked terminal text\nthird row tail",
+      "selection": {
+        "anchor": { "row": 0, "column": 2 },
+        "focus": { "row": 2, "column": 8 }
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 18 },
+      "budgets": [
+        {
+          "category": "selection-extraction",
+          "maxEstimatedBytes": 20000,
+          "maxRangeRecords": 16,
+          "maxStringCodeUnits": 400
+        }
+      ]
+    },
+    {
+      "id": "generic-range-index-memory",
+      "text": "range fixture",
+      "rangeIndex": {
+        "count": 2048,
+        "data": true,
+        "span": 12,
+        "stride": 8,
+        "tags": ["generic", "fixture"]
+      },
+      "prepare": { "whiteSpace": "normal" },
+      "layout": { "columns": 20 },
+      "budgets": [
+        {
+          "category": "range-index",
+          "maxEstimatedBytes": 1200000,
+          "maxRangeRecords": 2048
+        }
+      ]
+    },
+    {
+      "id": "rich-inline-memory",
+      "repeatText": {
+        "text": "\u001b[31mred\u001b[0m \u001b]8;;https://e.test\u001b\\link\u001b]8;;\u001b\\ ",
+        "count": 256
+      },
+      "rich": true,
+      "prepare": { "whiteSpace": "pre-wrap" },
+      "layout": { "columns": 24 },
+      "budgets": [
+        {
+          "category": "rich-inline",
+          "maxEstimatedBytes": 300000,
+          "maxRangeRecords": 2048,
+          "maxStringCodeUnits": 20000
+        }
+      ]
+    },
+    {
+      "id": "chunked-append-1000-small-memory",
+      "text": "",
+      "appendSequence": {
+        "count": 1000,
+        "invalidationWindowCodeUnits": 96,
+        "parts": [
+          "row ",
+          "alpha ",
+          "界",
+          "\t",
+          "e",
+          "́",
+          " ",
+          "👩",
+          "‍",
+          "💻",
+          " ",
+          "🇺",
+          "🇸",
+          " soft­",
+          "zero​",
+          "tail\n"
+        ]
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 32 },
+      "budgets": [
+        {
+          "category": "cell-flow",
+          "maxEstimatedBytes": 160000,
+          "maxRangeRecords": 80,
+          "maxStringCodeUnits": 9000
+        }
+      ]
+    },
+    {
+      "id": "chunked-append-long-unbroken-memory",
+      "text": "",
+      "appendSequence": {
+        "count": 1000,
+        "invalidationWindowCodeUnits": 96,
+        "parts": [
+          "abc"
+        ]
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 32 },
+      "budgets": [
+        {
+          "category": "cell-flow",
+          "maxEstimatedBytes": 40000,
+          "maxRangeRecords": 1,
+          "maxStringCodeUnits": 4000
+        }
+      ]
+    }
+  ]
+}
