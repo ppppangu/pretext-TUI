@@ -1,0 +1,12 @@
+{
+  "__metadata": {
+    "note": "补建说明：该文件为后续补建，用于给 pretext-tui 官网提供基础 Web App metadata；当前进度：首版仅定义名称、描述、主题色与起始 URL。"
+  },
+  "name": "pretext-tui",
+  "short_name": "pretext-tui",
+  "description": "Host-neutral terminal-cell text layout primitives for TUI, CLI, log, transcript, editor-pane, and dashboard hosts.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0d0c",
+  "theme_color": "#0b0d0c"
+}

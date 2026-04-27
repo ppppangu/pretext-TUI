@@ -1,0 +1,9 @@
+<!-- 补建说明：该文件为后续补建，用于给 pretext-tui 官网提供搜索引擎 sitemap；当前进度：首版仅包含官网首页 URL，部署自定义域名后需更新 loc。 -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://pretext-tui.pages.dev/</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

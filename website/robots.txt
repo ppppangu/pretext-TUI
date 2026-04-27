@@ -1,0 +1,5 @@
+# 补建说明：该文件为后续补建，用于给 pretext-tui 官网提供搜索引擎抓取规则；当前进度：允许全站抓取并声明 sitemap。
+User-agent: *
+Allow: /
+
+Sitemap: https://pretext-tui.pages.dev/sitemap.xml

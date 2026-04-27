@@ -1,0 +1,18 @@
+<!-- 补建说明：该文件为后续补建，用于作为 pretext-tui 官网 OpenGraph 预览图；当前进度：首版使用可编辑 SVG 终端预览，不进入 npm package files。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">pretext-tui terminal-cell text layout preview</title>
+  <desc id="desc">A dark terminal-inspired preview image with the pretext-tui name and layout pipeline.</desc>
+  <rect width="1200" height="630" fill="#0b0d0c"/>
+  <rect x="64" y="64" width="1072" height="502" fill="#111713" stroke="#b9ff5a" stroke-opacity="0.28"/>
+  <circle cx="103" cy="103" r="9" fill="#ff7a90"/>
+  <circle cx="131" cy="103" r="9" fill="#ffc857"/>
+  <circle cx="159" cy="103" r="9" fill="#b9ff5a"/>
+  <text x="86" y="190" fill="#b9ff5a" font-family="Consolas, monospace" font-size="30">pretext-tui</text>
+  <text x="86" y="254" fill="#f3efe2" font-family="Georgia, serif" font-size="58" font-weight="700">Prepare once. Reflow by terminal cells.</text>
+  <text x="88" y="326" fill="#b8b09c" font-family="Consolas, monospace" font-size="25">prepareTerminal - layout ranges - materialize visible rows</text>
+  <g font-family="Consolas, monospace" font-size="22" fill="#4dd8c8">
+    <text x="92" y="408">$ npm install pretext-tui@next</text>
+    <text x="92" y="452">columns=80 rows=2409 page=hot sourceOffset=12894</text>
+    <text x="92" y="496">host owns rendering, input, panes, scroll, clipboard</text>
+  </g>
+</svg>
