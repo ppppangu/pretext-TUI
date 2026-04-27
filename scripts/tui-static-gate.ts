@@ -80,8 +80,16 @@ function scanCode(file: string, raw: string): void {
   const codePatterns: Array<[RegExp, string]> = [
     [/\b(window|document|navigator|HTMLElement|HTMLCanvasElement|CanvasRenderingContext2D|OffscreenCanvas|Path2D|ImageBitmap)\b/g, 'browser or DOM global in active code'],
     [/\b(measureText|getBoundingClientRect|requestAnimationFrame)\b/g, 'browser measurement/rendering API in active code'],
+  ]
+  const hostBoundaryPatterns: Array<[RegExp, string]> = [
+    [/\b(clipboard|Clipboard|writeText|readText|Selection|Range|MouseEvent|KeyboardEvent)\b/g, 'selection UI or clipboard API in active code'],
+    [/\b(pty|pseudo-?terminal|spawnPty|terminal emulator|renderer|render tree|component tree)\b/gi, 'PTY, emulator, or renderer concept in active code'],
+    [/\b(codex|claude-code|nvim|tmux)\b/gi, 'named-host adapter concept in active code'],
     [/\b(pane tree|file browser|workspace adapter|focus router|command runner)\b/gi, 'host application concept in package validation code'],
   ]
+  if (!isHostBoundaryValidationFile(file)) {
+    codePatterns.push(...hostBoundaryPatterns)
+  }
   for (const [pattern, reason] of codePatterns) {
     for (const match of stripped.matchAll(pattern)) {
       findings.push({ file, pattern: match[0]!, reason })
@@ -91,6 +99,8 @@ function scanCode(file: string, raw: string): void {
   const importPatterns: Array<[RegExp, string]> = [
     [/\bfrom\s+['"](?:playwright|puppeteer|jsdom|happy-dom)['"]/g, 'browser automation/dom package import'],
     [/\bimport\s*\(\s*['"](?:playwright|puppeteer|jsdom|happy-dom)['"]\s*\)/g, 'browser automation/dom package import'],
+    [/\bfrom\s+['"](?:node-pty|xterm|xterm-headless|blessed|ink|react|react-dom|solid-js|vue|svelte)['"]/g, 'host UI/PTY package import'],
+    [/\bimport\s*\(\s*['"](?:node-pty|xterm|xterm-headless|blessed|ink|react|react-dom|solid-js|vue|svelte)['"]\s*\)/g, 'host UI/PTY package import'],
   ]
   for (const [pattern, reason] of importPatterns) {
     for (const match of raw.matchAll(pattern)) {
@@ -130,14 +140,29 @@ function isUnclassifiedTerminalRuntimeFile(file: string, stripped: string): bool
 function scanConfig(file: string, raw: string): void {
   const configPatterns: Array<[RegExp, string]> = [
     [/\b(playwright|puppeteer|jsdom|happy-dom)\b/g, 'browser automation/dom package in config'],
+    [/\b(node-pty|xterm|xterm-headless|blessed|ink|react|react-dom|solid-js|vue|svelte)\b/g, 'host UI/PTY dependency in active config'],
+    [/\b(clipboard|Clipboard|MouseEvent|KeyboardEvent|terminal emulator|renderer)\b/g, 'selection UI, clipboard, or renderer concept in active config'],
+    [/\b(codex|claude-code|nvim|tmux)\b/gi, 'named-host adapter concept in active config'],
     [/\b(site:build|pages\/|browser-automation|build-demo-site)\b/g, 'browser demo or page workflow in active config'],
     [/\b(Claude Code|pane system|file browser|workspace adapter|focus router|command runner)\b/gi, 'host application concept in package validation text'],
   ]
   for (const [pattern, reason] of configPatterns) {
-    for (const match of raw.matchAll(pattern)) {
-      findings.push({ file, pattern: match[0]!, reason })
+    for (const line of raw.split(/\r?\n/)) {
+      if (isStaticGateGuardrailLine(line)) continue
+      for (const match of line.matchAll(pattern)) {
+        findings.push({ file, pattern: match[0]!, reason })
+      }
     }
   }
+}
+
+function isHostBoundaryValidationFile(file: string): boolean {
+  return file === 'tests/tui/benchmark-claim-guard.test.ts' ||
+    file === 'tests/tui/recipe-public-imports.test.ts'
+}
+
+function isStaticGateGuardrailLine(line: string): boolean {
+  return /\b(?:do not|forbidden|avoid|must not|unsupported|must not imply|without|No)\b/i.test(line)
 }
 
 function stripCommentsAndStrings(source: string): string {

@@ -122,71 +122,78 @@ const DEFAULT_DIAGNOSTICS: TerminalRichDiagnosticPolicy = Object.freeze({
 export function resolveTerminalRichPolicy(
   input: TerminalRichSecurityPolicyInput = {},
 ): TerminalRichResolvedPolicy {
+  const record = normalizePolicyInput(input)
   const profile = normalizeEnum(
-    input.profile ?? 'default',
+    ownValue(record, 'profile') ?? 'default',
     ['default', 'transcript', 'audit-strict'] as const,
     'Terminal rich security profile',
   )
   const base = profileDefaults(profile)
+  const osc8 = optionalPolicyObject(record, 'osc8', 'Terminal rich osc8')
+  const diagnostics = optionalPolicyObject(record, 'diagnostics', 'Terminal rich diagnostics')
+  const limits = optionalPolicyObject(record, 'limits', 'Terminal rich limits')
   return Object.freeze({
     profile,
     unsupportedControlMode: normalizeEnum(
-      input.unsupportedControlMode ?? base.unsupportedControlMode,
+      ownValue(record, 'unsupportedControlMode') ?? base.unsupportedControlMode,
       ['sanitize', 'reject'] as const,
       'Terminal rich unsupportedControlMode',
     ),
     rawRetention: normalizeEnum(
-      input.rawRetention ?? base.rawRetention,
+      ownValue(record, 'rawRetention') ?? base.rawRetention,
       ['none', 'fingerprint', 'capped-sample'] as const,
       'Terminal rich rawRetention',
     ),
     bidiFormatControls: normalizeEnum(
-      input.bidiFormatControls ?? base.bidiFormatControls,
+      ownValue(record, 'bidiFormatControls') ?? base.bidiFormatControls,
       ['sanitize', 'reject'] as const,
       'Terminal rich bidiFormatControls',
     ),
     ansiReemit: normalizeEnum(
-      input.ansiReemit ?? base.ansiReemit,
+      ownValue(record, 'ansiReemit') ?? base.ansiReemit,
       ['none', 'sgr', 'sgr-osc8'] as const,
       'Terminal rich ansiReemit',
     ),
     osc8: Object.freeze({
-      allowedSchemes: Object.freeze(normalizeSchemes(input.osc8?.allowedSchemes ?? base.osc8.allowedSchemes)),
-      allowCredentials: input.osc8?.allowCredentials ?? base.osc8.allowCredentials,
+      allowedSchemes: Object.freeze(normalizeSchemes(ownValue(osc8, 'allowedSchemes') ?? base.osc8.allowedSchemes)),
+      allowCredentials: normalizeBoolean(
+        ownValue(osc8, 'allowCredentials') ?? base.osc8.allowCredentials,
+        'Terminal rich OSC8 allowCredentials',
+      ),
       maxUriCodeUnits: normalizePositiveInteger(
-        input.osc8?.maxUriCodeUnits ?? base.osc8.maxUriCodeUnits,
+        ownValue(osc8, 'maxUriCodeUnits') ?? base.osc8.maxUriCodeUnits,
         'Terminal rich OSC8 maxUriCodeUnits',
       ),
     }),
     diagnostics: Object.freeze({
       maxDiagnostics: normalizeNonNegativeInteger(
-        input.diagnostics?.maxDiagnostics ?? base.diagnostics.maxDiagnostics,
+        ownValue(diagnostics, 'maxDiagnostics') ?? base.diagnostics.maxDiagnostics,
         'Terminal rich diagnostics maxDiagnostics',
       ),
       sampleCodeUnits: normalizeNonNegativeInteger(
-        input.diagnostics?.sampleCodeUnits ?? base.diagnostics.sampleCodeUnits,
+        ownValue(diagnostics, 'sampleCodeUnits') ?? base.diagnostics.sampleCodeUnits,
         'Terminal rich diagnostics sampleCodeUnits',
       ),
     }),
     limits: Object.freeze({
       maxInputCodeUnits: normalizePositiveInteger(
-        input.limits?.maxInputCodeUnits ?? base.limits.maxInputCodeUnits,
+        ownValue(limits, 'maxInputCodeUnits') ?? base.limits.maxInputCodeUnits,
         'Terminal rich maxInputCodeUnits',
       ),
       maxControlSequenceCodeUnits: normalizePositiveInteger(
-        input.limits?.maxControlSequenceCodeUnits ?? base.limits.maxControlSequenceCodeUnits,
+        ownValue(limits, 'maxControlSequenceCodeUnits') ?? base.limits.maxControlSequenceCodeUnits,
         'Terminal rich maxControlSequenceCodeUnits',
       ),
       maxSpans: normalizeNonNegativeInteger(
-        input.limits?.maxSpans ?? base.limits.maxSpans,
+        ownValue(limits, 'maxSpans') ?? base.limits.maxSpans,
         'Terminal rich maxSpans',
       ),
       maxRawVisibleMapEntries: normalizeNonNegativeInteger(
-        input.limits?.maxRawVisibleMapEntries ?? base.limits.maxRawVisibleMapEntries,
+        ownValue(limits, 'maxRawVisibleMapEntries') ?? base.limits.maxRawVisibleMapEntries,
         'Terminal rich maxRawVisibleMapEntries',
       ),
       maxAnsiOutputCodeUnits: normalizePositiveInteger(
-        input.limits?.maxAnsiOutputCodeUnits ?? base.limits.maxAnsiOutputCodeUnits,
+        ownValue(limits, 'maxAnsiOutputCodeUnits') ?? base.limits.maxAnsiOutputCodeUnits,
         'Terminal rich maxAnsiOutputCodeUnits',
       ),
     }),
@@ -382,17 +389,56 @@ function profileDefaults(profile: TerminalRichSecurityProfileName): TerminalRich
   })
 }
 
-function normalizeSchemes(schemes: readonly string[]): readonly string[] {
-  const normalized = schemes.map(scheme => scheme.replace(/:$/u, '').toLowerCase())
+function normalizePolicyInput(input: TerminalRichSecurityPolicyInput): Record<string, unknown> {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('Terminal rich security policy input must be an object')
+  }
+  return input as Record<string, unknown>
+}
+
+function optionalPolicyObject(
+  input: Record<string, unknown>,
+  key: string,
+  label: string,
+): Record<string, unknown> {
+  const value = ownValue(input, key)
+  if (value === undefined) return {}
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`)
+  }
+  return value as Record<string, unknown>
+}
+
+function ownValue(record: Record<string, unknown>, key: string): unknown {
+  return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined
+}
+
+function normalizeSchemes(schemes: unknown): readonly string[] {
+  if (!Array.isArray(schemes)) {
+    throw new Error('Terminal rich OSC8 allowedSchemes must be an array')
+  }
+  const normalized = schemes.map(scheme => {
+    if (typeof scheme !== 'string') {
+      throw new Error('Terminal rich OSC8 allowedSchemes must contain strings')
+    }
+    return scheme.replace(/:$/u, '').toLowerCase()
+  })
   if (normalized.some(scheme => !/^[a-z][a-z0-9+.-]*$/u.test(scheme))) {
     throw new Error('Terminal rich OSC8 allowedSchemes must contain valid URI schemes')
   }
   return [...new Set(normalized)]
 }
 
-function normalizePositiveInteger(value: number, label: string): number {
-  if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`${label} must be a positive integer, got ${value}`)
+function normalizeBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new Error(`${label} must be a boolean`)
+  }
+  return value
+}
+
+function normalizePositiveInteger(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer, got ${formatUnknown(value)}`)
   }
   return value
 }
@@ -408,9 +454,23 @@ function normalizeEnum<const T extends readonly string[]>(
   return value as T[number]
 }
 
-function normalizeNonNegativeInteger(value: number, label: string): number {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${label} must be a non-negative integer, got ${value}`)
+function normalizeNonNegativeInteger(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative integer, got ${formatUnknown(value)}`)
   }
   return value
+}
+
+function formatUnknown(value: unknown): string {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value)
+  }
+  return typeof value
 }

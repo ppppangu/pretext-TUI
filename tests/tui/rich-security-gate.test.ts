@@ -123,6 +123,46 @@ describe('terminal rich security gate', () => {
     expect(() => prepareTerminalRichInline('x', { ansiReemit: 'all' as never })).toThrow(
       'ansiReemit',
     )
+    expect(() => prepareTerminalRichInline('x', { osc8: { allowCredentials: 'yes' as never } })).toThrow(
+      'allowCredentials',
+    )
+  })
+
+  test('rich policy and materialize defaults ignore inherited prototype properties', () => {
+    const polluted = {
+      ansiText: 'sgr-osc8',
+      profile: 'transcript',
+      rawRetention: 'capped-sample',
+      diagnostics: { maxDiagnostics: 8, sampleCodeUnits: 8 },
+      osc8: { allowCredentials: true },
+    }
+
+    for (const [key, value] of Object.entries(polluted)) {
+      Object.defineProperty(Object.prototype, key, {
+        configurable: true,
+        value,
+      })
+    }
+
+    try {
+      const prepared = prepareTerminalRichInline(
+        '\x1b]8;;https://user:pass@example.test\x1b\\secret\x1b]8;;\x1b\\',
+        { whiteSpace: 'pre-wrap' },
+      )
+      const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 20 })
+      assert(line !== null, 'expected rich line')
+
+      expect(prepared.policy.profile).toBe('default')
+      expect(prepared.raw).toBeUndefined()
+      expect(prepared.diagnostics.some(diagnostic => diagnostic.escapedSample !== undefined)).toBe(false)
+      expect(prepared.diagnostics.some(diagnostic => diagnostic.code === 'osc8-uri-credentials-denied')).toBe(true)
+      expect(prepared.spans.some(span => span.kind === 'link')).toBe(false)
+      expect(materializeTerminalRichLineRange(prepared, line).ansiText).toBeUndefined()
+    } finally {
+      for (const key of Object.keys(polluted)) {
+        delete (Object.prototype as Record<string, unknown>)[key]
+      }
+    }
   })
 
   test('input and control sequence limits bound hostile payloads', () => {
@@ -197,5 +237,45 @@ describe('terminal rich security gate', () => {
     expect(() => materializeTerminalRichLineRange(limited, limitedLine, { ansiText: 'sgr' })).toThrow(
       'maxAnsiOutputCodeUnits',
     )
+  })
+
+  test('ANSI reconstruction options reject invalid runtime values before policy downgrade', () => {
+    const prepared = prepareTerminalRichInline(
+      '\x1b[31mred\x1b]8;;https://example.test\x1b\\link\x1b]8;;\x1b\\\x1b[0m',
+      { whiteSpace: 'pre-wrap', ansiReemit: 'none' },
+    )
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 20 })
+    assert(line !== null, 'expected rich line')
+
+    expect(() => materializeTerminalRichLineRange(prepared, line, null as never)).toThrow(
+      'options must be an object',
+    )
+    expect(() => materializeTerminalRichLineRange(prepared, line, [] as never)).toThrow(
+      'options must be an object',
+    )
+    expect(() => materializeTerminalRichLineRange(prepared, line, { ansiText: 'all' as never })).toThrow(
+      'options.ansiText',
+    )
+    expect(() => materializeTerminalRichLineRange(prepared, line, { ansiText: false as never })).toThrow(
+      'options.ansiText',
+    )
+    expect(() => materializeTerminalRichLineRange(prepared, line, {
+      ansiText: 'none',
+      unknown: true,
+    } as never)).toThrow('options.unknown')
+    expect(materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr' }).ansiText).toBeUndefined()
+  })
+
+  test('prepared sgr reemit policy downgrades requested osc8 materialization to sgr', () => {
+    const prepared = prepareTerminalRichInline(
+      '\x1b[31mred\x1b]8;;https://example.test\x1b\\link\x1b]8;;\x1b\\\x1b[0m',
+      { whiteSpace: 'pre-wrap', ansiReemit: 'sgr' },
+    )
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 20 })
+    assert(line !== null, 'expected rich line')
+    const materialized = materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr-osc8' })
+
+    expect(materialized.ansiText).toContain('\x1b[31m')
+    expect(materialized.ansiText).not.toContain('\x1b]8;;')
   })
 })

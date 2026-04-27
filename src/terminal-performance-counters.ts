@@ -7,14 +7,24 @@ export type TerminalPerformanceCounterName =
   | 'preparedGeometrySegments'
   | 'preparedGeometryWidthPrefixFallbacks'
   | 'preparedGeometryWidthPrefixHits'
-  | 'richBoundaryGraphemeSegmentations'
-  | 'richFragmentGraphemeSegmentations'
+  | 'richBoundaryCount'
   | 'richFragmentWidthMeasurements'
-  | 'terminalMaterializeGraphemeSegmentations'
+  | 'richRawVisibleIndexBuilds'
+  | 'richRawVisibleIndexLookups'
+  | 'richRawVisibleIndexMatches'
+  | 'richRawVisibleIndexSteps'
+  | 'richSpanIndexBuilds'
+  | 'richSpanIndexLookups'
+  | 'richSpanIndexMatches'
+  | 'richSpanIndexSteps'
+  | 'terminalSearchMatches'
+  | 'terminalSearchProjectionRequests'
+  | 'terminalSearchScannedCodeUnits'
+  | 'terminalSearchSessions'
 
 export type TerminalPerformanceCounterSnapshot = Readonly<Record<TerminalPerformanceCounterName, number>>
 
-const counterNames: readonly TerminalPerformanceCounterName[] = [
+export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounterName[] = [
   'lineTextGraphemeSegmentations',
   'preparedGeometryBuilds',
   'preparedGeometryCacheHits',
@@ -22,10 +32,20 @@ const counterNames: readonly TerminalPerformanceCounterName[] = [
   'preparedGeometrySegments',
   'preparedGeometryWidthPrefixFallbacks',
   'preparedGeometryWidthPrefixHits',
-  'richBoundaryGraphemeSegmentations',
-  'richFragmentGraphemeSegmentations',
+  'richBoundaryCount',
   'richFragmentWidthMeasurements',
-  'terminalMaterializeGraphemeSegmentations',
+  'richRawVisibleIndexBuilds',
+  'richRawVisibleIndexLookups',
+  'richRawVisibleIndexMatches',
+  'richRawVisibleIndexSteps',
+  'richSpanIndexBuilds',
+  'richSpanIndexLookups',
+  'richSpanIndexMatches',
+  'richSpanIndexSteps',
+  'terminalSearchMatches',
+  'terminalSearchProjectionRequests',
+  'terminalSearchScannedCodeUnits',
+  'terminalSearchSessions',
 ]
 
 let activeCounters: Record<TerminalPerformanceCounterName, number> | null = null
@@ -51,5 +71,5 @@ export function recordTerminalPerformanceCounter(
 }
 
 function createEmptyCounterSnapshot(): Record<TerminalPerformanceCounterName, number> {
-  return Object.fromEntries(counterNames.map(name => [name, 0])) as Record<TerminalPerformanceCounterName, number>
+  return Object.fromEntries(terminalPerformanceCounterNames.map(name => [name, 0])) as Record<TerminalPerformanceCounterName, number>
 }

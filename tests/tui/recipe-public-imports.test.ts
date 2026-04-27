@@ -16,7 +16,7 @@ const requiredRecipeFiles = [
 
 const forbiddenImportPatterns = [
   /from ['"][^'"]*(?:src\/|dist\/internal)/,
-  /from ['"]pretext-tui\/(?:layout|analysis|line-break|terminal-line-index|terminal-page-cache|terminal-cell-flow|terminal-source-offset-index|terminal-prepared-reader|terminal-grapheme-geometry|terminal-performance-counters|internal|public-index|public-terminal-rich-inline|terminal-control-policy|security|profiles|terminal-security|rich-policy|browser|enterprise|interactive-cli)/,
+  /from ['"]pretext-tui\/(?:layout|analysis|line-break|terminal-line-index|terminal-layout-bundle|terminal-page-cache|terminal-range-index|terminal-search|terminal-search-session|source-search|find|terminal-cell-flow|terminal-source-offset-index|terminal-prepared-reader|terminal-grapheme-geometry|terminal-performance-counters|internal|public-index|public-terminal-rich-inline|terminal-control-policy|security|profiles|terminal-security|rich-policy|browser|enterprise|interactive-cli)/,
 ]
 
 const forbiddenHostSpecificPatterns = [
@@ -34,7 +34,7 @@ const requiredHostBoundaryPhrases = [
 ]
 
 const incubatingSymbolPattern =
-  /\b(?:createTerminalLineIndex|createTerminalPageCache|getTerminalLinePage|createTerminalSourceOffsetIndex|prepareTerminalRichInline|materializeTerminalRichLineRange|prepareTerminalCellFlow|appendTerminalCellFlow)\b/
+  /\b(?:createTerminalLineIndex|createTerminalLayoutBundle|getTerminalLayoutBundlePage|invalidateTerminalLayoutBundle|createTerminalRangeIndex|getTerminalRangesAtSourceOffset|getTerminalRangesForSourceRange|createTerminalSearchSession|getTerminalSearchSessionMatchCount|getTerminalSearchMatchesForSourceRange|getTerminalSearchMatchAfterSourceOffset|getTerminalSearchMatchBeforeSourceOffset|createTerminalSelectionFromCoordinates|extractTerminalSelection|extractTerminalSourceRange|extractTerminalRichSelection|extractTerminalRichSourceRange|createTerminalPageCache|getTerminalLinePage|createTerminalSourceOffsetIndex|prepareTerminalRichInline|materializeTerminalRichLineRange|prepareTerminalCellFlow|appendTerminalCellFlow)\b/
 
 describe('host-neutral recipe docs', () => {
   test('required recipe files exist', async () => {

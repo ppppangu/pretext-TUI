@@ -38,10 +38,13 @@ what keys do, and how is the screen composed?
 | Layout unit | Integer terminal cells and rows | Viewport dimensions and container layout |
 | Prepared data | Width-independent prepared text, line cursors, ranges, UTF-16 source offsets | Domain objects, documents, files, messages, jobs, tasks |
 | Materialization | Visible line text and optional rich inline fragments | Painting, themes, borders, status bars, decorations |
-| Streaming text | Optional append/page/cache primitives for large text flows | Data lifecycle, persistence, scrolling policy |
+| Streaming text | Optional append/page/cache primitives and layout bundles for large text flows | Data lifecycle, persistence, scrolling policy |
 | Rich metadata | SGR/OSC8 parsing in rich path only | Link opening, action handling, interaction policy |
 | Large terminal text | Text wrapping, source mapping, paged visible line materialization | Loading domain content, permissions, preview selection, operation routing |
 | Coordinate projection | Source offset, cursor, and row projection into fixed-column terminal rows/columns | Choosing anchors to preserve, scroll adjustment, caret policy, selections, diagnostics UX |
+| Structure metadata | Generic source ranges, range indexes, and inert tags/payload ids | Transcript messages, log records, diff hunks, test results, agent/tool semantics, editor buffers, and domain-specific actions |
+| Search | Source-first literal/regex lookup over sanitized visible text and optional projection of hits | Query box UX, active result state, highlighting, result panes, persistence, shortcuts, filters, and domain semantics |
+| Selection/extraction | Coordinate-to-source selection projection, source extraction fragments, and optional generic range matches | Active selection state, drag behavior, focus/caret policy, rendering, copy formatting, clipboard writes |
 | Capabilities | Pure functions and data contracts | Lifecycle, telemetry, feature flags, fallbacks |
 
 ## What Belongs In `pretext-TUI`
@@ -52,9 +55,12 @@ what keys do, and how is the screen composed?
 - Range walking.
 - Materializing requested lines/ranges.
 - Stable cursor/range/source-offset mapping.
-- Stable source-offset/cursor/row projection into terminal row and cell-column coordinates.
-- Rich inline metadata for style/link/copy semantics.
-- Sparse-anchor/page-cache primitives for large terminal text.
+- Incubating source-offset/cursor/row projection into terminal row and cell-column coordinates.
+- Incubating `createTerminalRangeIndex()`, `getTerminalRangesAtSourceOffset()`, and `getTerminalRangesForSourceRange()` for generic source range metadata lookup.
+- Incubating `createTerminalSearchSession()` and related source-first search match lookup helpers.
+- Incubating `createTerminalSelectionFromCoordinates()`, `extractTerminalSourceRange()`, and `extractTerminalSelection()` for source-first selection/extraction data.
+- Incubating rich inline metadata for current style/link spans.
+- Incubating sparse-anchor/page-cache primitives and layout bundles for large terminal text.
 - Deterministic tests, fixtures, fuzzing, and benchmarks.
 
 The package must not import a consumer app, renderer framework, terminal UI framework, filesystem layer, session state, or app config.
@@ -109,6 +115,7 @@ A host may later build multi-pane navigation, file previews, searchable logs, co
 - wrapped content line ranges
 - source-offset mapping for search and copy
 - coordinate projection for source anchors, cursors, and rows after resize
+- generic source range projection and range metadata lookup
 - large-text paging primitives
 - terminal-safe rich inline metadata
 

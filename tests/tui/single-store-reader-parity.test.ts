@@ -1,4 +1,4 @@
-// 补建说明：该文件为后续补建，用于验证 Batch 6 preflight 的 single-store reader-backed prepared 与既有 array-backed prepared 在 runtime API 上签名级等价；当前进度：覆盖 layout/materialization/index/page/projection/append parity，尚不声明 true chunked append。
+// 补建说明：该文件为后续补建，用于验证 Batch 6 preflight 的 reader-store backed prepared 与既有 array-backed prepared 在 runtime API 上签名级等价；当前进度：覆盖 single-store/multi-store layout/materialization/index/page/projection/append parity，尚不声明 true chunked append。
 import { describe, expect, test } from 'bun:test'
 import {
   appendTerminalCellFlow,
@@ -25,9 +25,11 @@ import {
   measureTerminalLineStats,
   prepareTerminal,
   prepareTerminalCellFlow,
+  projectTerminalCoordinate,
   projectTerminalCursor,
   projectTerminalRow,
   projectTerminalSourceOffset,
+  projectTerminalSourceRange,
   TERMINAL_START_CURSOR,
   walkTerminalLineRanges,
   type PreparedTerminalText,
@@ -50,6 +52,8 @@ import {
   type PreparedTerminalText as InternalPreparedTerminalText,
 } from '../../src/terminal-prepared-reader.js'
 import {
+  assertPreparedTerminalReaderStoreInvariants,
+  createCompositePreparedTerminalReaderStore,
   createPreparedTerminalReaderFromStore,
   createSingleStorePreparedTerminalReaderStore,
 } from '../../src/terminal-reader-store.js'
@@ -130,7 +134,7 @@ const parityCases: readonly ParityCase[] = [
   },
 ]
 
-describe('single-store reader parity', () => {
+describe('reader store parity', () => {
   test.each([...parityCases])('reader-backed store matches array-backed runtime signature: $id', item => {
     const arrayPrepared = prepareTerminal(item.text, item.prepare)
     const readerBacked = createSingleStorePreparedForParity(arrayPrepared)
@@ -139,6 +143,30 @@ describe('single-store reader parity', () => {
       'reader-backed',
     )
     expect(runtimeSignature(readerBacked, item.layout)).toEqual(runtimeSignature(arrayPrepared, item.layout))
+  })
+
+  test.each([...parityCases])('composite reader store keeps global source/cursor identity: $id', item => {
+    const arrayPrepared = prepareTerminal(item.text, item.prepare)
+    const reader = getInternalPreparedTerminalReader(arrayPrepared as unknown as InternalPreparedTerminalText)
+
+    for (const plan of chunkPlansForReader(reader)) {
+      const readerBacked = createCompositeStorePreparedForParity(arrayPrepared, plan.sizes)
+      expect(runtimeSignature(readerBacked, item.layout)).toEqual(runtimeSignature(arrayPrepared, item.layout))
+    }
+  })
+
+  test('composite reader store rejects invalid chunk partitions before runtime use', () => {
+    const prepared = prepareTerminal('A\tB\nC', { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const reader = getInternalPreparedTerminalReader(prepared as unknown as InternalPreparedTerminalText)
+
+    expect(() => createCompositePreparedTerminalReaderStore(reader, [])).toThrow('cover every segment')
+    expect(() => createCompositePreparedTerminalReaderStore(reader, [reader.segmentCount + 1])).toThrow(
+      'exceed',
+    )
+    expect(() => createCompositePreparedTerminalReaderStore(reader, [0, reader.segmentCount])).toThrow(
+      'positive integer',
+    )
+    expect(() => createCompositePreparedTerminalReaderStore(reader, [1])).toThrow('cover every segment')
   })
 
   test('cell flow exposes reader-backed prepared while append remains full reprepare', () => {
@@ -291,11 +319,62 @@ function createSingleStorePreparedForParity(prepared: PreparedTerminalText): Pre
   const store = createSingleStorePreparedTerminalReaderStore(
     getInternalPreparedTerminalReader(prepared as unknown as InternalPreparedTerminalText),
   )
+  assertPreparedTerminalReaderStoreInvariants(store)
   expect(Object.isFrozen(store)).toBe(true)
   expect(Object.isFrozen(store.chunks)).toBe(true)
   expect(store.chunks.length).toBe(1)
   const reader = createPreparedTerminalReaderFromStore(store)
   return createPreparedTerminalTextFromReader(reader) as unknown as PreparedTerminalText
+}
+
+function createCompositeStorePreparedForParity(
+  prepared: PreparedTerminalText,
+  chunkSizes: readonly number[],
+): PreparedTerminalText {
+  const store = createCompositePreparedTerminalReaderStore(
+    getInternalPreparedTerminalReader(prepared as unknown as InternalPreparedTerminalText),
+    chunkSizes,
+  )
+  assertPreparedTerminalReaderStoreInvariants(store)
+  expect(Object.isFrozen(store)).toBe(true)
+  expect(Object.isFrozen(store.chunks)).toBe(true)
+  if (chunkSizes.length > 1) {
+    expect(store.chunks[1]!.segmentStartIndex).toBeGreaterThan(0)
+    expect(store.chunks[1]!.sourceStart).toBeGreaterThan(0)
+  }
+  const reader = createPreparedTerminalReaderFromStore(store)
+  return createPreparedTerminalTextFromReader(reader) as unknown as PreparedTerminalText
+}
+
+function chunkPlansForReader(reader: ReturnType<typeof getInternalPreparedTerminalReader>): Array<{
+  id: string
+  sizes: readonly number[]
+}> {
+  const count = reader.segmentCount
+  if (count === 0) {
+    return [{ id: 'empty', sizes: [] }]
+  }
+  const plans: Array<{ id: string, sizes: readonly number[] }> = [
+    { id: 'one chunk', sizes: [count] },
+    { id: 'every segment', sizes: Array.from({ length: count }, () => 1) },
+  ]
+  if (count > 1) {
+    const first = Math.max(1, Math.floor(count / 2))
+    plans.push({ id: 'two chunks', sizes: [first, count - first] })
+  }
+  if (count > 3) {
+    const deterministic: number[] = []
+    let remaining = count
+    let next = 1
+    while (remaining > 0) {
+      const size = Math.min(remaining, next)
+      deterministic.push(size)
+      remaining -= size
+      next = next === 3 ? 1 : next + 1
+    }
+    plans.push({ id: 'deterministic staggered chunks', sizes: deterministic })
+  }
+  return plans
 }
 
 function runtimeSignature(prepared: PreparedTerminalText, layout: TerminalLayoutOptions): unknown {
@@ -371,6 +450,19 @@ function virtualPrimitiveSignature(prepared: PreparedTerminalText, layout: Termi
     }
   }))
   const projectionIndexes = { sourceIndex, lineIndex }
+  const coordinateColumns = uniqueNonNegative([
+    0,
+    layout.startColumn ?? 0,
+    Math.floor(layout.columns / 2),
+    layout.columns,
+    layout.columns + 1,
+  ])
+  const sourceRangeOffsets = uniqueNumbers([
+    0,
+    Math.floor(reader.sourceLength / 2),
+    reader.sourceLength,
+    reader.sourceLength + 1,
+  ])
 
   return {
     metadata: getTerminalLineIndexMetadata(lineIndex),
@@ -413,6 +505,28 @@ function virtualPrimitiveSignature(prepared: PreparedTerminalText, layout: Termi
       prepared,
       projectTerminalCursor(prepared, sourceIndex, lineIndex, item.cursor, { bias: item.bias }),
     )),
+    coordinateProjections: rowSamples.flatMap(row => coordinateColumns.flatMap(column =>
+      biases.map(bias => ({
+        bias,
+        column,
+        projected: coordinateProjectionSignature(prepared, projectTerminalCoordinate(
+          prepared,
+          projectionIndexes,
+          { row, column, bias },
+        )),
+        row,
+      })),
+    )),
+    sourceRangeProjections: sourceRangeOffsets.flatMap((sourceStart, index) =>
+      sourceRangeOffsets.slice(index).map(sourceEnd => ({
+        sourceEnd,
+        sourceStart,
+        projected: sourceRangeProjectionSignature(
+          prepared,
+          projectTerminalSourceRange(prepared, projectionIndexes, { sourceStart, sourceEnd }),
+        ),
+      })),
+    ),
     rowProjections: rowSamples.map(row => {
       const projected = projectTerminalRow(prepared, lineIndex, row)
       return projected === null
@@ -501,6 +615,40 @@ function projectionSignature(
     requestedSourceOffset: projection.requestedSourceOffset,
     row: projection.row,
     sourceOffset: projection.sourceOffset,
+  }
+}
+
+function coordinateProjectionSignature(
+  prepared: PreparedTerminalText,
+  projection: ReturnType<typeof projectTerminalCoordinate>,
+): unknown {
+  if (projection === null) return null
+  return {
+    projection: projectionSignature(prepared, projection),
+    bias: projection.bias,
+    requestedCoordinate: { ...projection.requestedCoordinate },
+  }
+}
+
+function sourceRangeProjectionSignature(
+  prepared: PreparedTerminalText,
+  projection: ReturnType<typeof projectTerminalSourceRange>,
+): unknown {
+  return {
+    end: projectionSignature(prepared, projection.end),
+    fragments: projection.fragments.map(fragment => ({
+      endColumn: fragment.endColumn,
+      line: lineSignature(prepared, fragment.line),
+      row: fragment.row,
+      sourceEnd: fragment.sourceEnd,
+      sourceStart: fragment.sourceStart,
+      startColumn: fragment.startColumn,
+    })),
+    requestedSourceEnd: projection.requestedSourceEnd,
+    requestedSourceStart: projection.requestedSourceStart,
+    sourceEnd: projection.sourceEnd,
+    sourceStart: projection.sourceStart,
+    start: projectionSignature(prepared, projection.start),
   }
 }
 

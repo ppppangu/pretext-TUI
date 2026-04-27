@@ -6,8 +6,19 @@ import {
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
 } from './terminal-rich-inline.js'
+import {
+  createTerminalRichRawVisibleIndex,
+  createTerminalRichSpanIntervalIndex,
+  getTerminalRichRawVisibleRangesForRawRange,
+  getTerminalRichRawVisibleRangesForSourceRange,
+  getTerminalRichSpansForSourceRange,
+} from './terminal-rich-span-index.js'
 import { TERMINAL_START_CURSOR } from './terminal.js'
 import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
+import {
+  resetTerminalPerformanceCounters,
+  snapshotTerminalPerformanceCounters,
+} from './terminal-performance-counters.js'
 
 describe('terminal rich inline tokenizer', () => {
   test('captures SGR style spans on visible offsets', () => {
@@ -158,6 +169,72 @@ describe('terminal rich inline materialization', () => {
     expect(line1.ansiText).toContain('\x1b]8;;https://x.test\x1b\\')
   })
 
+  test('orders fragments and ansiText exactly when style contains link', () => {
+    const materialized = materializeRichFixture(
+      'a\x1b[31mb\x1b]8;;https://e.test\x1b\\c\x1b]8;;\x1b\\d\x1b[0me',
+    )
+
+    expect(richFragmentMap(materialized.fragments)).toEqual([
+      { text: 'a', sourceText: 'a', sourceStart: 0, sourceEnd: 1, styleFg: null, link: null },
+      { text: 'b', sourceText: 'b', sourceStart: 1, sourceEnd: 2, styleFg: 'ansi:31', link: null },
+      { text: 'c', sourceText: 'c', sourceStart: 2, sourceEnd: 3, styleFg: 'ansi:31', link: 'https://e.test' },
+      { text: 'd', sourceText: 'd', sourceStart: 3, sourceEnd: 4, styleFg: 'ansi:31', link: null },
+      { text: 'e', sourceText: 'e', sourceStart: 4, sourceEnd: 5, styleFg: null, link: null },
+    ])
+    expect(materialized.ansiText).toBe(
+      'a\x1b[31mb\x1b[0m\x1b]8;;https://e.test\x1b\\\x1b[31mc\x1b[0m\x1b]8;;\x1b\\\x1b[31md\x1b[0me',
+    )
+  })
+
+  test('orders fragments and ansiText exactly when link contains style', () => {
+    const materialized = materializeRichFixture(
+      'a\x1b]8;;https://e.test\x1b\\b\x1b[31mc\x1b[0md\x1b]8;;\x1b\\e',
+    )
+
+    expect(richFragmentMap(materialized.fragments)).toEqual([
+      { text: 'a', sourceText: 'a', sourceStart: 0, sourceEnd: 1, styleFg: null, link: null },
+      { text: 'b', sourceText: 'b', sourceStart: 1, sourceEnd: 2, styleFg: null, link: 'https://e.test' },
+      { text: 'c', sourceText: 'c', sourceStart: 2, sourceEnd: 3, styleFg: 'ansi:31', link: 'https://e.test' },
+      { text: 'd', sourceText: 'd', sourceStart: 3, sourceEnd: 4, styleFg: null, link: 'https://e.test' },
+      { text: 'e', sourceText: 'e', sourceStart: 4, sourceEnd: 5, styleFg: null, link: null },
+    ])
+    expect(materialized.ansiText).toBe(
+      'a\x1b]8;;https://e.test\x1b\\b\x1b]8;;\x1b\\\x1b]8;;https://e.test\x1b\\\x1b[31mc\x1b[0m\x1b]8;;\x1b\\\x1b]8;;https://e.test\x1b\\d\x1b]8;;\x1b\\e',
+    )
+  })
+
+  test('orders fragments and ansiText exactly for same-start different-end spans', () => {
+    const materialized = materializeRichFixture(
+      'a\x1b[31m\x1b]8;;https://e.test\x1b\\bc\x1b]8;;\x1b\\d\x1b[0me',
+    )
+
+    expect(richFragmentMap(materialized.fragments)).toEqual([
+      { text: 'a', sourceText: 'a', sourceStart: 0, sourceEnd: 1, styleFg: null, link: null },
+      { text: 'bc', sourceText: 'bc', sourceStart: 1, sourceEnd: 3, styleFg: 'ansi:31', link: 'https://e.test' },
+      { text: 'd', sourceText: 'd', sourceStart: 3, sourceEnd: 4, styleFg: 'ansi:31', link: null },
+      { text: 'e', sourceText: 'e', sourceStart: 4, sourceEnd: 5, styleFg: null, link: null },
+    ])
+    expect(materialized.ansiText).toBe(
+      'a\x1b]8;;https://e.test\x1b\\\x1b[31mbc\x1b[0m\x1b]8;;\x1b\\\x1b[31md\x1b[0me',
+    )
+  })
+
+  test('orders fragments and ansiText exactly for different-start same-end spans', () => {
+    const materialized = materializeRichFixture(
+      'a\x1b[31mb\x1b]8;;https://e.test\x1b\\cd\x1b]8;;\x1b\\\x1b[0me',
+    )
+
+    expect(richFragmentMap(materialized.fragments)).toEqual([
+      { text: 'a', sourceText: 'a', sourceStart: 0, sourceEnd: 1, styleFg: null, link: null },
+      { text: 'b', sourceText: 'b', sourceStart: 1, sourceEnd: 2, styleFg: 'ansi:31', link: null },
+      { text: 'cd', sourceText: 'cd', sourceStart: 2, sourceEnd: 4, styleFg: 'ansi:31', link: 'https://e.test' },
+      { text: 'e', sourceText: 'e', sourceStart: 4, sourceEnd: 5, styleFg: null, link: null },
+    ])
+    expect(materialized.ansiText).toBe(
+      'a\x1b[31mb\x1b[0m\x1b]8;;https://e.test\x1b\\\x1b[31mcd\x1b[0m\x1b]8;;\x1b\\e',
+    )
+  })
+
   test('fragments align to source offsets and visible text', () => {
     const prepared = prepareTerminalRichInline('A\x1b[31mBC\x1b[0mD', { whiteSpace: 'pre-wrap' })
     const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 10 })!
@@ -247,4 +324,190 @@ describe('terminal rich inline materialization', () => {
     const materialized = lines.map(line => materializeTerminalRichLineRange(prepared, line))
     expect(materialized.map(line => line.text)).toEqual(['', '', ''])
   })
+
+  test('rich handles reject forged structural copies before using spans', () => {
+    const prepared = prepareTerminalRichInline('\x1b[31mred\x1b[0m', { whiteSpace: 'pre-wrap' })
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 10 })!
+    const forged = Object.freeze({ ...prepared, spans: [] })
+
+    expect(() => materializeTerminalRichLineRange(forged as never, line)).toThrow('Invalid prepared terminal rich inline handle')
+    expect(() => walkTerminalRichLineRanges(forged as never, { columns: 10 }, () => {})).toThrow('Invalid prepared terminal rich inline handle')
+  })
+
+  test('rich span interval index avoids full-span scans for sparse visible windows', () => {
+    const raw = Array.from({ length: 128 }, (_, index) => `\x1b[31m${String.fromCharCode(65 + (index % 26))}\x1b[0m`).join('')
+    const prepared = prepareTerminalRichInline(raw, { whiteSpace: 'pre-wrap' })
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 2 })!
+
+    resetTerminalPerformanceCounters()
+    const materialized = materializeTerminalRichLineRange(prepared, line)
+    const counters = snapshotTerminalPerformanceCounters()
+
+    expect(materialized.text).toHaveLength(2)
+    expect(prepared.spans.length).toBe(128)
+    expect(counters.richSpanIndexLookups).toBe(1)
+    expect(counters.richSpanIndexMatches).toBe(2)
+    expect(counters.richSpanIndexSteps).toBeLessThan(16)
+  })
+
+  test('raw-visible range lookup is indexed, frozen, and does not expose raw payloads', () => {
+    const prepared = prepareTerminalRichInline('A\x1b[31mB\x1b[0m  \t C', { whiteSpace: 'normal' })
+    const rawVisibleIndex = createTerminalRichRawVisibleIndex(prepared.rawVisibleMap)
+
+    const sourceRanges = getTerminalRichRawVisibleRangesForSourceRange(rawVisibleIndex, {
+      sourceStart: 1,
+      sourceEnd: 4,
+    })
+    const controlOnlyRawRanges = getTerminalRichRawVisibleRangesForRawRange(rawVisibleIndex, {
+      rawStart: 1,
+      rawEnd: 6,
+    })
+    const rawVisibleRanges = getTerminalRichRawVisibleRangesForRawRange(rawVisibleIndex, {
+      rawStart: 6,
+      rawEnd: 14,
+    })
+
+    expect(Object.isFrozen(sourceRanges)).toBe(true)
+    expect(sourceRanges.length).toBeGreaterThan(0)
+    expect(sourceRanges.every(range => Object.isFrozen(range))).toBe(true)
+    expect(sourceRanges.some(range => 'text' in range)).toBe(false)
+    expect(sourceRanges.some(range => prepared.visibleText.slice(range.sourceStart, range.sourceEnd).includes('B'))).toBe(true)
+    expect(controlOnlyRawRanges).toEqual([])
+    expect(rawVisibleRanges.some(range => range.sourceStart <= 1 && range.sourceEnd >= 2)).toBe(true)
+    expect(() => getTerminalRichRawVisibleRangesForSourceRange(rawVisibleIndex, {
+      sourceStart: 2,
+      sourceEnd: 1,
+    })).toThrow('source range end')
+    expect(() => getTerminalRichRawVisibleRangesForRawRange(rawVisibleIndex, {
+      rawStart: 2,
+      rawEnd: 1,
+    })).toThrow('raw range end')
+
+    const manualIndex = createTerminalRichRawVisibleIndex([
+      { rawStart: 10, rawEnd: 20, sourceStart: 5, sourceEnd: 15 },
+    ])
+    expect(getTerminalRichRawVisibleRangesForSourceRange(manualIndex, {
+      sourceStart: 7,
+      sourceEnd: 8,
+    })).toEqual([
+      { rawStart: 10, rawEnd: 20, sourceStart: 5, sourceEnd: 15 },
+    ])
+    expect(getTerminalRichRawVisibleRangesForRawRange(manualIndex, {
+      rawStart: 12,
+      rawEnd: 13,
+    })).toEqual([
+      { rawStart: 10, rawEnd: 20, sourceStart: 5, sourceEnd: 15 },
+    ])
+  })
+
+  test('rich span and raw-visible indexes reject invalid stored ranges and ignore zero-length spans', () => {
+    const mutableSpan: {
+      kind: 'style'
+      rawStart: number
+      rawEnd: number
+      sourceStart: number
+      sourceEnd: number
+      style: { bold?: boolean; fg?: string }
+    } = {
+      kind: 'style' as const,
+      rawStart: 1,
+      rawEnd: 2,
+      sourceStart: 1,
+      sourceEnd: 2,
+      style: { bold: true },
+    }
+    const clonedIndex = createTerminalRichSpanIntervalIndex([mutableSpan])
+    mutableSpan.sourceStart = 100
+    mutableSpan.sourceEnd = 101
+    mutableSpan.style = { bold: true, fg: 'ansi:31' }
+
+    expect(getTerminalRichSpansForSourceRange(clonedIndex, {
+      sourceStart: 1,
+      sourceEnd: 2,
+    })).toEqual([
+      {
+        kind: 'style',
+        rawStart: 1,
+        rawEnd: 2,
+        sourceStart: 1,
+        sourceEnd: 2,
+        style: { bold: true },
+      },
+    ])
+
+    const zeroLengthIndex = createTerminalRichSpanIntervalIndex([
+      {
+        kind: 'style',
+        rawStart: 1,
+        rawEnd: 1,
+        sourceStart: 1,
+        sourceEnd: 1,
+        style: { bold: true },
+      },
+    ])
+
+    expect(getTerminalRichSpansForSourceRange(zeroLengthIndex, {
+      sourceStart: 0,
+      sourceEnd: 2,
+    })).toEqual([])
+    expect(() => createTerminalRichSpanIntervalIndex([
+      {
+        kind: 'style',
+        rawStart: 0,
+        rawEnd: 1,
+        sourceStart: 2,
+        sourceEnd: 1,
+        style: { bold: true },
+      },
+    ])).toThrow('source end')
+    expect(() => createTerminalRichSpanIntervalIndex([
+      Object.create({
+        kind: 'style',
+        rawStart: 0,
+        rawEnd: 1,
+        sourceStart: 0,
+        sourceEnd: 1,
+        style: { bold: true },
+      }),
+    ] as never)).toThrow('own property')
+    expect(() => createTerminalRichRawVisibleIndex([
+      { rawStart: 2, rawEnd: 1, sourceStart: 0, sourceEnd: 1 },
+    ])).toThrow('raw end')
+    expect(() => createTerminalRichRawVisibleIndex([
+      Object.create({ rawStart: 0, rawEnd: 1, sourceStart: 0, sourceEnd: 1 }),
+    ] as never)).toThrow('own property')
+    expect(() => getTerminalRichSpansForSourceRange({ kind: 'terminal-rich-span-index@1' } as never, {
+      sourceStart: 0,
+      sourceEnd: 1,
+    })).toThrow('span index')
+    expect(() => getTerminalRichRawVisibleRangesForSourceRange({ kind: 'terminal-rich-raw-visible-index@1' } as never, {
+      sourceStart: 0,
+      sourceEnd: 1,
+    })).toThrow('raw-visible index')
+  })
 })
+
+function materializeRichFixture(raw: string) {
+  const prepared = prepareTerminalRichInline(raw, { whiteSpace: 'pre-wrap' })
+  const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 20 })
+  expect(line).not.toBeNull()
+  return materializeTerminalRichLineRange(prepared, line!, { ansiText: 'sgr-osc8' })
+}
+
+function richFragmentMap(fragments: readonly {
+  text: string
+  sourceText: string
+  sourceStart: number
+  sourceEnd: number
+  style: { fg?: string } | null
+  link: string | null
+}[]) {
+  return fragments.map(fragment => ({
+    text: fragment.text,
+    sourceText: fragment.sourceText,
+    sourceStart: fragment.sourceStart,
+    sourceEnd: fragment.sourceEnd,
+    styleFg: fragment.style?.fg ?? null,
+    link: fragment.link,
+  }))
+}

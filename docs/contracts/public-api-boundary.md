@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Task 3 收敛为当前 canonical 公共 API 边界，配合 API snapshot、package smoke 和 recipe gate 持续校验。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 7 保持 canonical 公共 API 边界不扩张，rich metadata hardening 仅进入内部索引与 capability gate。 -->
 # Public API Boundary
 
 ## Purpose
@@ -59,6 +59,7 @@ These surfaces are candidates for the first stable `0.1` contract once declarati
 - `materializeTerminalLineRange`
 - terminal prepare/layout option shapes
 - terminal row, cursor, range, and materialized-line data shapes
+- plain source-offset mapping over sanitized visible text
 
 Stable candidates should remain pure terminal-cell text-layout APIs. They should accept terminal text and options, then return data.
 
@@ -70,12 +71,26 @@ These surfaces are useful but need more evidence before they become stable:
 - sparse line indexes
 - fixed-column page caches
 - source-offset indexes
+- unified layout bundles that compose source-offset, sparse row, and page-cache handles
 - coordinate projection helpers and projection result types
+- row+column hit-test projection
+- source-range-to-row-fragment projection
+- generic range/block sidecar indexes
+- source-first search sessions
+- selection and extraction helpers
 - append/cell-flow invalidation metadata
 - rich diagnostics and ANSI re-emission
 - custom terminal width profiles
 
 Incubating APIs may change before `0.1`. They still must stay host-neutral and data-only.
+
+Unified terminal layout bundles are public but incubating convenience handles. They compose a fixed-column line index, a source-offset index, and a page cache behind one opaque handle while preserving the existing prepared-text, projection, and materialization contracts. They do not create a renderer, viewport controller, selection state, or host integration layer.
+
+Generic range sidecar indexes are public but incubating data handles. The exposed names are `createTerminalRangeIndex()`, `getTerminalRangesAtSourceOffset()`, `getTerminalRangesForSourceRange()`, `TerminalRange`, `TerminalRangeData`, `TerminalRangeIndex`, and `TerminalRangeQuery`. `createTerminalRangeIndex()` accepts generic UTF-16 source ranges with `id`, `kind`, optional inert `tags`, and optional inert JSON-like `data`. The package validates, clones, freezes, and indexes those ranges, then supports point and source-range overlap lookup. It does not interpret transcript, log, diff, test, editor, record, or action semantics; hosts layer those meanings above returned ranges.
+
+Source-first search sessions are public but incubating data handles. The exposed runtime names are `createTerminalSearchSession()`, `getTerminalSearchSessionMatchCount()`, `getTerminalSearchMatchesForSourceRange()`, `getTerminalSearchMatchAfterSourceOffset()`, and `getTerminalSearchMatchBeforeSourceOffset()`. The exposed search types include `TerminalSearchSession`, `TerminalSearchMatch`, `TerminalSearchMode`, `TerminalSearchQuery`, `TerminalSearchOptions`, `TerminalSearchScope`, `TerminalSearchRangeIndexScope`, and `TerminalSearchSourceRangeQuery`. Search hits are UTF-16 source ranges over sanitized visible source text, with optional projection metadata when hosts provide indexes. The package does not expose search UI, active-match state, highlighting, result panes, keyboard handling, or host-specific query semantics.
+
+Selection and extraction helpers are public but incubating immutable data APIs. The exposed core runtime names are `createTerminalSelectionFromCoordinates()`, `extractTerminalSourceRange()`, and `extractTerminalSelection()`. The exposed core selection/extraction types include `TerminalSelection`, `TerminalSelectionCoordinate`, `TerminalSelectionDirection`, `TerminalSelectionExtraction`, `TerminalSelectionExtractionFragment`, `TerminalSelectionExtractionOptions`, `TerminalSelectionMode`, `TerminalSelectionRequest`, and `TerminalSourceRangeExtractionRequest`. Rich extraction companions live only under `pretext-tui/terminal-rich-inline` as `extractTerminalRichSourceRange()` and `extractTerminalRichSelection()`. The package does not expose clipboard behavior, active selection state, mouse tracking, caret policy, highlight rendering, or copy formatting.
 
 ### Private Surfaces
 
@@ -86,6 +101,7 @@ These surfaces are not public API:
 - analysis, line-walking, measurement, tokenizer, and width internals
 - scripts, benchmarks, fixtures, generated status data, and repository-only validation helpers
 - internal storage fields on prepared text, indexes, pages, cursors, diagnostics, or rich fragments
+- true chunked append storage internals until proven and explicitly surfaced through a stable capability boundary
 
 Docs, recipes, tests, and examples for public consumers must not import private surfaces.
 
@@ -100,6 +116,7 @@ The public API must not promise:
 - browser, DOM, Canvas, CSS, or pixel measurement compatibility
 - broad benchmark supremacy wording
 - chunked append storage until it is implemented and proven
+- arbitrary insert/delete/replace editing in prepared flows
 
 Hosts may build those behaviors above `pretext-TUI`, but the package boundary stays text layout.
 
@@ -113,9 +130,11 @@ This applies to:
 - line indexes
 - page caches
 - source-offset indexes
+- layout bundles
+- range sidecar indexes
 - append/cell-flow handles
 
-`PreparedTerminalRichInline` is the current incubating exception: it intentionally exposes visible text, spans, redacted diagnostics, raw-to-visible mapping, raw summary policy, and rich policy summary as data contracts while nesting the core `PreparedTerminalText` as an opaque handle. It must not expose full raw terminal input, full unsafe diagnostic sequences, or implicit ANSI re-emission.
+`PreparedTerminalRichInline` is the current incubating exception: it intentionally exposes visible text, spans, redacted diagnostics, raw-to-visible mapping, raw summary policy, and rich policy summary as data contracts while nesting the core `PreparedTerminalText` as an opaque handle. Runtime rich helpers still validate that the handle came from `prepareTerminalRichInline()` before using indexed spans or re-emitting ANSI. The public data shape must not expose full raw terminal input, full unsafe diagnostic sequences, internal rich span indexes, raw-visible indexes, or implicit ANSI re-emission.
 
 Future implementation work should preserve this shape through capability boundaries, branded types, private symbols, WeakMaps, or equivalent internal storage.
 

@@ -16,6 +16,15 @@ import {
   materializeTerminalLineSourceRange,
 } from './terminal-line-source.js'
 import {
+  extractTerminalSelection,
+  extractTerminalSourceRange,
+  type TerminalSelection,
+  type TerminalSelectionExtraction,
+  type TerminalSelectionExtractionOptions,
+  type TerminalSelectionExtractionFragment,
+  type TerminalSourceRangeExtractionRequest,
+} from './terminal-selection.js'
+import {
   getInternalPreparedTerminalReader,
   type PreparedTerminalReader,
 } from './terminal-prepared-reader.js'
@@ -26,6 +35,11 @@ import {
   type TerminalRichSpan,
   type TerminalRichStyle,
 } from './ansi-tokenize.js'
+import {
+  createTerminalRichSpanIntervalIndex,
+  getTerminalRichSpansForSourceRange,
+  type TerminalRichSpanIntervalIndex,
+} from './terminal-rich-span-index.js'
 import {
   createTerminalRichRawSummary,
   resolveTerminalRichPolicy,
@@ -69,9 +83,24 @@ export type MaterializedTerminalRichLine = MaterializedTerminalLine & {
   ansiText?: string
 }
 
+export type TerminalRichSelectionExtractionFragment = TerminalRichFragment & Readonly<{
+  kind: 'terminal-rich-selection-extraction-fragment@1'
+  row: number
+}>
+
+export type TerminalRichSelectionExtraction = TerminalSelectionExtraction & Readonly<{
+  richFragments: readonly TerminalRichSelectionExtractionFragment[]
+}>
+
 export type TerminalRichMaterializeOptions = Readonly<{
   ansiText?: TerminalRichAnsiReemitPolicy
 }>
+
+type TerminalRichInlineState = Readonly<{
+  spanIndex: TerminalRichSpanIntervalIndex
+}>
+
+const terminalRichInlineStates = new WeakMap<PreparedTerminalRichInline, TerminalRichInlineState>()
 
 function styleToSgr(style: TerminalRichStyle | null): string {
   if (style === null) return '\x1b[0m'
@@ -91,12 +120,15 @@ function styleToSgr(style: TerminalRichStyle | null): string {
   return codes.length > 0 ? `\x1b[${codes.join(';')}m` : ''
 }
 
-function overlappingSpans(
-  spans: readonly TerminalRichSpan[],
+function overlappingSpansForRange(
+  prepared: PreparedTerminalRichInline,
   start: number,
   end: number,
-): TerminalRichSpan[] {
-  return spans.filter(span => span.sourceStart < end && span.sourceEnd > start)
+): readonly TerminalRichSpan[] {
+  return getTerminalRichSpansForSourceRange(
+    getTerminalRichInlineState(prepared).spanIndex,
+    { sourceStart: start, sourceEnd: end },
+  )
 }
 
 function sourceBoundaries(spans: readonly TerminalRichSpan[], start: number, end: number): number[] {
@@ -105,7 +137,9 @@ function sourceBoundaries(spans: readonly TerminalRichSpan[], start: number, end
     boundaries.add(Math.max(start, span.sourceStart))
     boundaries.add(Math.min(end, span.sourceEnd))
   }
-  return [...boundaries].sort((a, b) => a - b)
+  const sorted = [...boundaries].sort((a, b) => a - b)
+  recordTerminalPerformanceCounter('richBoundaryCount', sorted.length)
+  return sorted
 }
 
 function clampToGraphemeBoundary(
@@ -146,10 +180,37 @@ function effectiveAnsiTextMode(
   prepared: PreparedTerminalRichInline,
   options: TerminalRichMaterializeOptions,
 ): TerminalRichAnsiReemitPolicy {
-  const requested = options.ansiText ?? 'none'
+  const requested = hasOwn(options as Record<string, unknown>, 'ansiText')
+    ? options.ansiText ?? 'none'
+    : 'none'
   if (requested === 'none' || prepared.policy.ansiReemit === 'none') return 'none'
   if (prepared.policy.ansiReemit === 'sgr') return 'sgr'
   return requested
+}
+
+function normalizeTerminalRichMaterializeOptions(
+  options: TerminalRichMaterializeOptions | undefined,
+): TerminalRichMaterializeOptions {
+  if (options === undefined) return {}
+  if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+    throw new Error('Terminal rich materialize options must be an object')
+  }
+  const record = options as Record<string, unknown>
+  for (const key of Object.keys(record)) {
+    if (key !== 'ansiText') {
+      throw new Error(`Terminal rich materialize options.${key} is not supported`)
+    }
+  }
+  const ansiText = hasOwn(record, 'ansiText') ? record['ansiText'] : undefined
+  if (ansiText === undefined) return {}
+  if (ansiText === 'none' || ansiText === 'sgr' || ansiText === 'sgr-osc8') {
+    return { ansiText }
+  }
+  throw new Error('Terminal rich materialize options.ansiText must be one of none, sgr, or sgr-osc8')
+}
+
+function hasOwn(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key)
 }
 
 function appendAnsiText(
@@ -193,7 +254,11 @@ export function prepareTerminalRichInline(
   }
   const raw = createTerminalRichRawSummary(rawText, policy)
   if (raw !== undefined) prepared.raw = raw
-  return Object.freeze(prepared)
+  const frozen = Object.freeze(prepared)
+  terminalRichInlineStates.set(frozen, Object.freeze({
+    spanIndex: createTerminalRichSpanIntervalIndex(frozen.spans),
+  }))
+  return frozen
 }
 
 export function walkTerminalRichLineRanges(
@@ -201,6 +266,7 @@ export function walkTerminalRichLineRanges(
   options: TerminalLayoutOptions,
   onLine: (line: TerminalLineRange) => void,
 ): number {
+  getTerminalRichInlineState(prepared)
   return walkTerminalLineRanges(prepared.prepared, options, onLine)
 }
 
@@ -209,6 +275,7 @@ export function layoutNextTerminalRichLineRange(
   cursor: TerminalCursor,
   options: TerminalLayoutOptions,
 ): TerminalLineRange | null {
+  getTerminalRichInlineState(prepared)
   return layoutNextTerminalLineRange(prepared.prepared, cursor, options)
 }
 
@@ -217,9 +284,11 @@ export function materializeTerminalRichLineRange(
   line: TerminalLineRange,
   options: TerminalRichMaterializeOptions = {},
 ): MaterializedTerminalRichLine {
+  getTerminalRichInlineState(prepared)
+  const materializeOptions = normalizeTerminalRichMaterializeOptions(options)
   const reader = getInternalPreparedTerminalReader(prepared.prepared)
   const base = materializeTerminalLineRange(prepared.prepared, line)
-  const spans = overlappingSpans(prepared.spans, line.sourceStart, line.sourceEnd)
+  const spans = overlappingSpansForRange(prepared, line.sourceStart, line.sourceEnd)
   const localBoundaries = getTerminalLineSourceBoundaryOffsets(prepared.prepared, line)
     .map(boundary => boundary - line.sourceStart)
   const boundaries = sourceBoundaries(spans, line.sourceStart, line.sourceEnd).map(boundary =>
@@ -228,7 +297,7 @@ export function materializeTerminalRichLineRange(
   )
   const fragments: TerminalRichFragment[] = []
   let currentColumn = line.startColumn
-  const ansiTextMode = effectiveAnsiTextMode(prepared, options)
+  const ansiTextMode = effectiveAnsiTextMode(prepared, materializeOptions)
   let ansiText = ansiTextMode === 'none' ? undefined : ''
   let renderedOffset = 0
 
@@ -286,8 +355,37 @@ export function materializeTerminalRichLineRange(
     ...base,
     fragments,
   }
-  if (ansiText !== undefined) materialized.ansiText = ansiText
+  if (ansiText !== undefined) {
+    materialized.ansiText = ansiText
+  } else {
+    Object.defineProperty(materialized, 'ansiText', {
+      configurable: false,
+      enumerable: false,
+      value: undefined,
+      writable: false,
+    })
+  }
   return materialized
+}
+
+export function extractTerminalRichSourceRange(
+  prepared: PreparedTerminalRichInline,
+  request: TerminalSourceRangeExtractionRequest,
+  options: TerminalSelectionExtractionOptions,
+): TerminalRichSelectionExtraction {
+  getTerminalRichInlineState(prepared)
+  const extraction = extractTerminalSourceRange(prepared.prepared, request, options)
+  return withRichSelectionFragments(prepared, extraction)
+}
+
+export function extractTerminalRichSelection(
+  prepared: PreparedTerminalRichInline,
+  selection: TerminalSelection,
+  options: TerminalSelectionExtractionOptions,
+): TerminalRichSelectionExtraction {
+  getTerminalRichInlineState(prepared)
+  const extraction = extractTerminalSelection(prepared.prepared, selection, options)
+  return withRichSelectionFragments(prepared, extraction)
 }
 
 function measureTrimmedRichFragmentWidth(
@@ -296,4 +394,78 @@ function measureTrimmedRichFragmentWidth(
 ): number {
   recordTerminalPerformanceCounter('richFragmentWidthMeasurements')
   return terminalStringWidth(text, reader.widthProfile)
+}
+
+function withRichSelectionFragments(
+  prepared: PreparedTerminalRichInline,
+  extraction: TerminalSelectionExtraction,
+): TerminalRichSelectionExtraction {
+  const richFragments = Object.freeze(extraction.rowFragments.flatMap(fragment =>
+    richFragmentsForSelectionFragment(prepared, fragment),
+  ))
+  return Object.freeze({
+    ...extraction,
+    richFragments,
+  })
+}
+
+function richFragmentsForSelectionFragment(
+  prepared: PreparedTerminalRichInline,
+  rowFragment: TerminalSelectionExtractionFragment,
+): TerminalRichSelectionExtractionFragment[] {
+  const spans = overlappingSpansForRange(prepared, rowFragment.sourceStart, rowFragment.sourceEnd)
+  const localBoundaries = getTerminalLineSourceBoundaryOffsets(prepared.prepared, rowFragment.line)
+    .map(boundary => boundary - rowFragment.line.sourceStart)
+  const boundaries = sourceBoundaries(spans, rowFragment.sourceStart, rowFragment.sourceEnd).map(boundary =>
+    rowFragment.line.sourceStart +
+    clampToGraphemeBoundary(
+      boundary - rowFragment.line.sourceStart,
+      localBoundaries,
+      boundary === rowFragment.sourceStart ? 'start' : 'end',
+    ),
+  )
+  const fragments: TerminalRichSelectionExtractionFragment[] = []
+  let currentColumn = rowFragment.startColumn
+
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const sourceStart = boundaries[i]!
+    const sourceEnd = boundaries[i + 1]!
+    if (sourceEnd <= sourceStart) continue
+    const materialized = materializeTerminalLineSourceRange(
+      prepared.prepared,
+      rowFragment.line,
+      sourceStart,
+      sourceEnd,
+      currentColumn,
+    )
+    const sourceText = rowFragment.sourceText.slice(
+      sourceStart - rowFragment.sourceStart,
+      sourceEnd - rowFragment.sourceStart,
+    )
+    const fragment: TerminalRichSelectionExtractionFragment = {
+      kind: 'terminal-rich-selection-extraction-fragment@1',
+      row: rowFragment.row,
+      text: materialized.text,
+      sourceText,
+      sourceStart,
+      sourceEnd,
+      columnStart: currentColumn,
+      columnEnd: currentColumn + materialized.width,
+      style: currentStyle(spans, sourceStart, sourceEnd),
+      link: currentLink(spans, sourceStart, sourceEnd),
+    }
+    if (fragment.text === '' && fragment.columnStart === fragment.columnEnd) continue
+    currentColumn = fragment.columnEnd
+    fragments.push(Object.freeze(fragment))
+  }
+
+  return fragments
+}
+
+function getTerminalRichInlineState(prepared: PreparedTerminalRichInline): TerminalRichInlineState {
+  const state = terminalRichInlineStates.get(prepared)
+  if (state === undefined) {
+    throw new Error('Invalid prepared terminal rich inline handle')
+  }
+  return state
 }

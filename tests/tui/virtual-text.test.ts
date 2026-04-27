@@ -417,7 +417,6 @@ describe('tui virtual text primitives', () => {
       expect(layoutCounters.preparedGeometryBuilds).toBe(0)
       expect(layoutCounters.preparedGeometryCacheHits).toBeGreaterThan(0)
       expect(layoutCounters.preparedGeometryWidthPrefixHits).toBeGreaterThan(0)
-      expect(layoutCounters.terminalMaterializeGraphemeSegmentations).toBe(0)
 
       resetTerminalPerformanceCounters()
       const flow = prepareTerminalCellFlow('prefix e\u0301 tail', { whiteSpace: 'pre-wrap' })

@@ -22,18 +22,21 @@ The blocks might be chat turns, command entries, notebook cells, build steps, re
 
 ## Incubating API Note
 
-This recipe uses sparse line indexes and page caches. They are public and covered by package smoke tests, but remain incubating until the first stable `0.1` API contract.
+This recipe uses sparse line indexes, page caches, and generic range sidecar indexes. They are public and covered by package smoke tests, but remain incubating until the first stable `0.1` API contract.
 
 ## Public Imports
 
 ```ts
 import {
+  createTerminalRangeIndex,
   createTerminalLineIndex,
   createTerminalPageCache,
+  getTerminalRangesAtSourceOffset,
   getTerminalLinePage,
   materializeTerminalLinePage,
   prepareTerminal,
   type MaterializedTerminalLine,
+  type TerminalRange,
   type TerminalLineRange,
 } from 'pretext-tui'
 ```
@@ -70,6 +73,22 @@ function buildViewportSource(blocks: readonly HostBlock[]): {
   }
 
   return { source, ranges }
+}
+```
+
+If the host only needs generic source range lookup, it can put inert ids, kinds, tags, or payload ids into the package's range sidecar. Keep rich domain objects in host state.
+
+```ts
+function buildBlockRangeIndex(ranges: readonly BlockRange[]) {
+  const terminalRanges: TerminalRange[] = ranges.map(range => ({
+    id: range.block.id,
+    kind: range.block.kind,
+    sourceStart: range.sourceStart,
+    sourceEnd: range.sourceEnd,
+    data: { payloadId: range.block.id },
+  }))
+
+  return createTerminalRangeIndex(terminalRanges)
 }
 ```
 
@@ -114,7 +133,14 @@ function findBlockForLine(line: TerminalLineRange, blockRanges: readonly BlockRa
 }
 ```
 
-For very large block tables, replace the linear lookup with a host-owned interval index. Keep that index outside `pretext-TUI` because it stores domain metadata, not terminal layout state.
+For very large block tables, use `createTerminalRangeIndex()` when the indexed entries are generic source ranges with inert ids/tags/data. Keep a separate host-owned table for full domain metadata and actions.
+
+```ts
+function findGenericRangesForLine(line: TerminalLineRange, blockRanges: readonly BlockRange[]) {
+  const rangeIndex = buildBlockRangeIndex(blockRanges)
+  return getTerminalRangesAtSourceOffset(rangeIndex, line.sourceStart)
+}
+```
 
 ## Notes
 

@@ -99,7 +99,7 @@ Definition of done:
 
 ## Phase 2: Performance Measurement Before Optimization
 
-Status: initial release-gate instrumentation has landed. The package now exposes default-off internal counters to validation scripts for prepared geometry builds/cache hits, line-text materialization segmentation, terminal materialization segmentation, rich boundary segmentation, rich fragment segmentation, rich fragment width measurement, page/cache counters, anchor replay, source lookups, and append invalidation size. These are regression diagnostics, not public benchmark evidence.
+Status: initial release-gate instrumentation has landed. The package now exposes default-off internal counters to validation scripts for prepared geometry builds/cache hits, line-text materialization segmentation, rich boundary counts, rich fragment width measurement, rich span/raw-visible index lookup behavior, page/cache counters, anchor replay, source lookups, and append invalidation size. These are regression diagnostics, not public benchmark evidence.
 
 Goal: keep proving where time goes before rewriting additional hot paths.
 
@@ -141,8 +141,8 @@ Priority tasks:
 2. Landed: store prepared-time grapheme offsets, widths, and source boundaries so layout-time code avoids repeated `Intl.Segmenter` work for prepared geometry.
 3. Landed: change page-cache miss construction to seek once, then walk rows sequentially inside the page.
 4. Landed initially: use append-ordered/binary insertion for anchor structures and binary source-anchor lookup where profiling showed linear scans.
-5. Next: reduce materialization-time grapheme segmentation now exposed by `lineTextGraphemeSegmentations`, `terminalMaterializeGraphemeSegmentations`, `richBoundaryGraphemeSegmentations`, and `richFragmentGraphemeSegmentations`.
-6. Next: build rich span interval cursors so rich materialization does not scan all spans for every line.
+5. Next: reduce remaining line materialization and width-prefix work exposed by `lineTextGraphemeSegmentations`, `preparedGeometryWidthPrefixFallbacks`, `preparedGeometryWidthPrefixHits`, and `richFragmentWidthMeasurements`.
+6. Landed: build rich span/raw-visible interval indexes so rich materialization and provenance lookup do not scan all stored ranges for a first-line query.
 7. Next: move source-offset lookup storage toward compact tables or typed arrays when object allocation shows up in profiles.
 8. Next: split optional bidi/source metadata from cold terminal prepare work if the plain path does not need it.
 

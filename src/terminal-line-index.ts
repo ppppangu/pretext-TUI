@@ -112,7 +112,7 @@ export function createTerminalLineIndex(
     columns,
     startColumn,
     anchorInterval,
-    generation: options.generation ?? 0,
+    generation: normalizeNonNegativeInteger(options.generation ?? 0, 'Terminal line index generation'),
     layoutKey: createLineIndexLayoutKey(reader, columns, startColumn),
     prepared,
     anchors,
@@ -360,13 +360,20 @@ export function invalidateTerminalLineIndex(
   invalidation: TerminalLineIndexInvalidation,
 ): TerminalLineIndexInvalidationResult {
   const internal = internalLineIndex(index)
+  const generation = normalizeNonNegativeInteger(invalidation.generation, 'Terminal line index invalidation generation')
+  const invalidationFirstInvalidRow = invalidation.firstInvalidRow === undefined
+    ? undefined
+    : normalizeNonNegativeInteger(invalidation.firstInvalidRow, 'Terminal firstInvalidRow')
+  const invalidationFirstInvalidSourceOffset = invalidation.firstInvalidSourceOffset === undefined
+    ? undefined
+    : normalizeNonNegativeInteger(invalidation.firstInvalidSourceOffset, 'Terminal firstInvalidSourceOffset')
   const nextReader = getInternalPreparedTerminalReader(prepared)
   const nextLayoutKey = createLineIndexLayoutKey(nextReader, internal.columns, internal.startColumn)
   if (nextLayoutKey !== internal.layoutKey) {
     throw new Error('Terminal line index cannot be invalidated with prepared text that has a different layout identity')
   }
-  const firstInvalidSourceOffset = invalidation.firstInvalidSourceOffset
-  const firstInvalidRow = invalidation.firstInvalidRow ?? (
+  const firstInvalidSourceOffset = invalidationFirstInvalidSourceOffset
+  const firstInvalidRow = invalidationFirstInvalidRow ?? (
     firstInvalidSourceOffset === undefined
       ? undefined
       : findFirstInvalidRowForSourceOffset(internal, firstInvalidSourceOffset)
@@ -375,12 +382,12 @@ export function invalidateTerminalLineIndex(
   if (firstInvalidRow === undefined && firstInvalidSourceOffset === undefined) {
     internal.anchors.length = 1
     internal.rows = null
-    internal.generation = invalidation.generation
+    internal.generation = generation
     internal.prepared = prepared
     updateAnchorCount(internal)
     return {
       kind: 'terminal-line-index-invalidation@1',
-      generation: invalidation.generation,
+      generation,
     }
   }
 
@@ -393,7 +400,7 @@ export function invalidateTerminalLineIndex(
   internal.anchors.length = 0
   internal.anchors.push(...keep)
   internal.rows = null
-  internal.generation = invalidation.generation
+  internal.generation = generation
   internal.prepared = prepared
   updateAnchorCount(internal)
 
@@ -404,7 +411,7 @@ export function invalidateTerminalLineIndex(
     firstInvalidSourceOffset?: number
   } = {
     kind: 'terminal-line-index-invalidation@1',
-    generation: invalidation.generation,
+    generation,
   }
   if (firstInvalidRow !== undefined) result.firstInvalidRow = firstInvalidRow
   if (firstInvalidSourceOffset !== undefined) result.firstInvalidSourceOffset = firstInvalidSourceOffset

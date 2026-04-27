@@ -1,24 +1,30 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Task 10 已包含 internalized tarball layout、virtual text primitives、terminal demo gate 与 package smoke gate。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Phase 7 保持 prepublish gate 对齐，并补充 rich metadata hardening 状态。",
     "schema": "pretext-tui-status@1"
   },
   "gate": {
     "typecheck:tui": "required",
     "typecheck:tui-validation": "required",
     "tui-static-gate": "required",
+    "oxlint --type-aware src": "required via check",
     "test:tui": "required",
     "tui-oracle-check": "required",
     "tui-corpus-check": "required",
     "tui-fuzz --seed=ci --cases=2000": "required",
     "benchmark-check:tui": "required",
     "terminal-demo-check": "required",
+    "api-snapshot-check": "required",
     "package-smoke-test": "required"
   },
   "scope": {
     "browserProductSurface": "removed from active validation",
     "hostAppIntegration": "out of scope",
     "tarballRootDist": "public wrappers only; implementation modules are under dist/internal",
-    "virtualTextPrimitives": "Task 9 sparse index, page cache, source lookup, and append invalidation landed"
+    "virtualTextPrimitives": "Task 9 sparse index, page cache, source lookup, incubating layout bundle, and append invalidation landed",
+    "genericRangeSidecar": "Phase 4 incubating generic source range index landed; metadata remains inert and host-owned",
+    "sourceFirstSearchSessions": "Phase 5 incubating source-first search sessions landed; hits are source ranges with optional projection and no UI state",
+    "selectionExtraction": "Phase 6 incubating selection/extraction helpers landed; results are immutable source-first data with no clipboard or active selection state",
+    "richMetadataHardening": "Phase 7 internal rich span/raw-visible indexes, rich materialize option validation, and benchmark schema guardrails landed without expanding public exports"
   }
 }

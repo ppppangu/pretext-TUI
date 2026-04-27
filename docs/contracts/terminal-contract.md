@@ -24,7 +24,7 @@ what rows, ranges, source offsets, and materialized terminal fragments result?
 - source offset mapping
 - line/range walking
 - visible-line materialization
-- optional rich inline metadata for style/link/copy semantics
+- optional rich inline metadata for current style/link spans
 - optional paging/cache primitives for very large text flows
 
 Consumers own:
@@ -51,6 +51,24 @@ Height is measured in integer terminal rows.
 `rows` is derived from emitted terminal lines.
 
 The terminal lane has no pixels, font strings, CSS `lineHeight`, CSS `letter-spacing`, browser fit tolerance, or font-specific correction.
+
+## Coordinate Domains
+
+The terminal kernel distinguishes these coordinate domains:
+
+- raw input before plain or rich sanitization
+- sanitized visible source text after normalization
+- UTF-16 source offsets over sanitized visible source text
+- grapheme-boundary package cursors
+- terminal cursor replay tokens
+- zero-based terminal rows
+- integer terminal cell columns
+- fixed-column layout identity for `columns`, `startColumn`, `tabSize`, and width profile
+- generation numbers for append-only prepared flows and invalidation metadata
+- optional generic range sidecar metadata over sanitized visible source text
+- optional rich sidecar ranges over sanitized visible source text
+
+Hosts may store public handles, source offsets, rows, columns, and returned cursors, but they must not infer private segment, anchor, page, or chunk storage from those values.
 
 ## Core API Contract
 
@@ -216,13 +234,15 @@ Canonical source offsets are UTF-16 code unit offsets over sanitized visible sou
 Prepared data must retain enough mapping for:
 
 - copy
-- search hits
+- source-first search hits
 - materialization
 - future paging
 
 Terminal cursors are package-owned replay tokens with segment/grapheme fields. Hosts may store and pass them back to package APIs, but should not treat those fields as raw source offsets or mutable implementation state.
 
 Source-offset lookup results distinguish the original requested UTF-16 offset from the normalized boundary offset. Out-of-range requests may clamp to `0` or EOF, but `exact` is true only when the original requested offset was already a projectable source boundary. Runtime bias values must be one of `before`, `after`, or `closest`; invalid JavaScript values must be rejected.
+
+The current incremental contract is append-only. `PreparedTerminalCellFlow` may expose generation and invalidation metadata for growing text, but arbitrary insert, delete, or replace editing is a separate future buffer design. Until chunked append storage removes full accumulated reprepare cost and passes parity/evidence gates, append wording must remain "full reprepare plus bounded invalidation metadata."
 
 Ranges expose:
 
@@ -237,7 +257,7 @@ Ranges expose:
 
 Coordinate projection is a host-neutral convenience layer over the public source-offset index and fixed-column line index. It must not expose prepared segments, row anchors, page caches, raw source storage, or mutable implementation state.
 
-The agreed public shape is:
+The agreed public shape is incubating until the API snapshot, package smoke tests, and focused projection tests cover the full bidirectional mapping surface:
 
 ```ts
 projectTerminalSourceOffset(prepared, sourceIndex, lineIndex, sourceOffset, biasOrOptions?)
@@ -245,6 +265,8 @@ projectTerminalSourceOffset(prepared, { sourceIndex, lineIndex }, sourceOffset, 
 projectTerminalCursor(prepared, sourceIndex, lineIndex, cursor, options?)
 projectTerminalCursor(prepared, { sourceIndex, lineIndex }, cursor, options?)
 projectTerminalRow(prepared, lineIndex, row)
+projectTerminalCoordinate(prepared, { sourceIndex, lineIndex }, { row, column, bias? })
+projectTerminalSourceRange(prepared, { sourceIndex, lineIndex }, { sourceStart, sourceEnd })
 ```
 
 `projectTerminalSourceOffset()` maps a UTF-16 source offset to a grapheme-safe source boundary, then projects that boundary into the fixed-column layout represented by `lineIndex`.
@@ -252,6 +274,12 @@ projectTerminalRow(prepared, lineIndex, row)
 `projectTerminalCursor()` maps an opaque terminal cursor back through the same source/line indexes and returns the matching terminal coordinate.
 
 `projectTerminalRow()` maps a terminal row to the line range and row extent for that fixed-column layout, or `null` when the row is outside the emitted row set.
+
+`projectTerminalCoordinate()` maps a zero-based terminal row and absolute terminal cell column back to a grapheme-safe UTF-16 source offset for mouse hit-test, hover, and caret-like host workflows. It returns data only; hosts own pointer state, caret policy, selection state, and rendering.
+
+`projectTerminalSourceRange()` maps a source range to terminal row fragments. Fragments are over generic source ranges only; transcript messages, logs, diffs, tests, code blocks, diagnostics, or agent/tool semantics remain host-owned metadata layered above the kernel.
+
+Selection constructors and extraction helpers are incubating host-neutral surfaces. They are source-first data APIs, not UI state or clipboard behavior.
 
 A coordinate projection result must include:
 
@@ -288,6 +316,112 @@ Resize is handled by rebuilding the width-dependent `TerminalLineIndex` for the 
 
 Forged handles and mismatched prepared/source/line index handles must be rejected through the same capability boundaries as the underlying public index APIs.
 
+## Generic Range Sidecar Index
+
+Generic range sidecar indexes are an incubating host-neutral metadata layer over UTF-16 offsets in sanitized visible source text. They are prepared-neutral by design: the host owns keeping the indexed source ranges in sync with the visible source passed to `prepareTerminal()`.
+
+The agreed public shape is:
+
+```ts
+createTerminalRangeIndex(ranges)
+getTerminalRangesAtSourceOffset(index, sourceOffset)
+getTerminalRangesForSourceRange(index, { sourceStart, sourceEnd })
+```
+
+`TerminalRange` contains `id`, `kind`, `sourceStart`, `sourceEnd`, optional `tags`, and optional inert JSON-like `data`. The package validates, clones, freezes, indexes, and returns those ranges. It must not branch on, interpret, mutate, execute, or retain active behavior from `id`, `kind`, `tags`, or `data`.
+
+Range semantics are:
+
+- non-empty ranges are half-open: `[sourceStart, sourceEnd)`
+- zero-length ranges are point ranges
+- point lookup returns non-empty ranges containing the offset plus point ranges exactly at that offset
+- non-collapsed range lookup returns overlapping non-empty ranges plus point ranges where `queryStart <= point < queryEnd`
+- collapsed range lookup behaves like point lookup
+- results are deterministic: `sourceStart` ascending, longer enclosing ranges first when starts match, then `id`, `kind`, and original order
+
+The range sidecar does not implement transcript messages, log records, diff hunks, test results, editor buffers, diagnostics UX, search UI, highlighting, selection state, clipboard behavior, agent/tool semantics, or host actions. Hosts layer those meanings above returned generic ranges.
+
+## Source-First Search Sessions
+
+Search sessions are an incubating host-neutral lookup layer over sanitized visible source text. They search the same UTF-16 source coordinate domain used by `prepareTerminal()` and by coordinate projection. A search hit is canonical as a source range first; row, column, and fragment data are optional projections.
+
+The agreed public shape is:
+
+```ts
+createTerminalSearchSession(prepared, query, options?)
+getTerminalSearchSessionMatchCount(session)
+getTerminalSearchMatchesForSourceRange(session, { sourceStart?, sourceEnd?, limit? }?)
+getTerminalSearchMatchAfterSourceOffset(session, sourceOffset)
+getTerminalSearchMatchBeforeSourceOffset(session, sourceOffset)
+```
+
+Supported query modes are literal and regex. A string query defaults to literal mode, and a `RegExp` query defaults to regex mode. `caseSensitive` defaults to `true`; passing `false` enables case-insensitive matching. `wholeWord` uses package-owned ASCII word boundaries (`A-Z`, `a-z`, `0-9`, and `_`) so it remains deterministic across runtimes. Regex searches must use non-empty patterns, run against sanitized visible source text, and reject zero-width matches.
+
+Search scopes are generic source ranges. A scope may be an explicit source range, an array of explicit source ranges, or a range-index scope created with `createTerminalRangeIndex()`. Range-index scope ids become `scopeId` on returned hits, but the package does not inspect or branch on range `kind`, `tags`, or `data`.
+
+`getTerminalSearchMatchesForSourceRange()` is an overlap query over search hits. Non-collapsed source-range queries return hits where `hit.sourceStart < query.sourceEnd` and `hit.sourceEnd > query.sourceStart`. Collapsed source-range queries behave like point lookup and return hits where `hit.sourceStart <= query.sourceStart < hit.sourceEnd`. Passing `scopeId` filters returned hits to that exact generic scope id. Passing `limit: 0` returns an empty immutable result.
+
+`TerminalSearchMatch` returns immutable data:
+
+- `kind: "terminal-search-match@1"`
+- `matchIndex`
+- `sourceStart`
+- `sourceEnd`
+- `matchText`
+- optional `scopeId`
+- optional `projection` when `indexes` were supplied at session creation
+
+Search sessions do not implement search UI, active-match navigation state, highlighting, selections, result panes, keyboard shortcuts, clipboard behavior, or host-specific semantics. Hosts layer those workflows above returned source ranges and optional projections.
+
+## Selection And Extraction
+
+Selection and extraction helpers are an incubating host-neutral data layer over coordinate projection and source-range projection. They construct recoverable source ranges from terminal coordinates and extract deterministic source/visible fragments. They do not implement active selection state.
+
+The agreed public core shape is:
+
+```ts
+createTerminalSelectionFromCoordinates(prepared, indexes, { anchor, focus, mode: "linear" })
+extractTerminalSourceRange(prepared, { sourceStart, sourceEnd }, { indexes, rangeIndex? })
+extractTerminalSelection(prepared, selection, { indexes, rangeIndex? })
+```
+
+`TerminalSelection` is immutable data, not an opaque state handle. It contains the projected anchor, projected focus, direction, collapsed flag, normalized `sourceStart/sourceEnd`, `rowStart/rowEnd`, and the source-range projection that made those values. The only supported mode is `linear`; rectangular/block selection is host-owned future work.
+
+`TerminalSelectionExtraction` returns:
+
+- `kind: "terminal-selection-extraction@1"`
+- requested and normalized source bounds
+- `rowStart` and `rowEnd`
+- `sourceText` over sanitized visible source text
+- deterministic `visibleRows` and `visibleText`
+- row fragments with terminal columns and source spans
+- optional generic `rangeMatches` when a `TerminalRangeIndex` is supplied
+
+`visibleText` is extraction data only. It is not clipboard policy, copy formatting, or host UI behavior. Hosts own drag state, focus, caret policy, highlighting, active selection state, copy commands, clipboard writes, and persistence.
+
+Rich extraction helpers live under `pretext-tui/terminal-rich-inline`. They return clipped style/link fragments in addition to the core extraction data. They must not expose full raw terminal input, unsafe control sequences, link opening behavior, or ANSI reconstruction unless a separate rich materialization option explicitly asks for ANSI text.
+
+## Layout Bundle Invalidation
+
+Layout bundles are an incubating convenience layer over the existing fixed-column line index, page cache, and source-offset index. They reduce handle plumbing for host viewports without replacing the lower-level primitives.
+
+The agreed public shape is:
+
+```ts
+createTerminalLayoutBundle(prepared, { columns, startColumn?, generation?, anchorInterval?, pageSize?, maxPages? })
+getTerminalLayoutBundlePage(prepared, bundle, { startRow, rowCount })
+invalidateTerminalLayoutBundle(prepared, bundle, invalidation)
+projectTerminalSourceOffset(prepared, bundle, sourceOffset, options?)
+projectTerminalCursor(prepared, bundle, cursor, options?)
+projectTerminalRow(prepared, bundle, row)
+projectTerminalCoordinate(prepared, bundle, { row, column, bias? })
+projectTerminalSourceRange(prepared, bundle, { sourceStart, sourceEnd })
+```
+
+`invalidateTerminalLayoutBundle()` applies line-index invalidation, page-cache invalidation, and source-offset index refresh for the supplied prepared text. Bundle invalidation must reject forged bundle handles, stale prepared handles for page/projection calls, layout identity mismatches, replayed generations, and `previousGeneration` values that do not match the bundle's current generation.
+
+Layout bundles do not render, scroll, select, persist, open links, own clipboard state, or implement host behavior. Append remains full reprepare plus bounded invalidation metadata until true chunked append storage is implemented and proven.
+
 ## Rich Metadata Boundary
 
 Plain core APIs do not parse ANSI.
@@ -298,17 +432,18 @@ SGR maps to style metadata over visible ranges.
 
 OSC8 maps to hyperlink metadata over visible ranges.
 
-Rich metadata may include:
+Rich metadata currently includes:
 
 - style
 - link
-- copy text
-- inert selection metadata
-- opaque payload ids
+
+Copy text, opaque payload ids, and domain-specific selection metadata belong in host-owned state or the generic range sidecar, not in the rich ANSI metadata surface.
 
 Rich metadata defaults are fragment-first. Reconstructed ANSI output is not emitted unless materialization is called with an explicit `ansiText` mode, and the prepared policy may still cap or disable that output.
 
 Rich diagnostics are structured and redacted. They should not retain full unsafe control sequences by default.
+
+Rich prepared handles may expose public snapshot arrays such as spans and raw-visible maps, but runtime helpers must use package-owned capability state for internal indexes. Span and raw-visible range indexes are implementation details; returned offsets remain UTF-16 offsets over sanitized visible source text.
 
 The core package must not encode application click behavior.
 

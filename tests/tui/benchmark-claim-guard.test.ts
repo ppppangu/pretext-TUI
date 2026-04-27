@@ -18,13 +18,21 @@ const hostNeutralMarkdownRoots = [
   ...markdownRoots,
   'docs/plans',
 ]
+const claimBoundaryMarkdownRoots = [
+  'STATUS.md',
+  'TODO.md',
+  'docs/decisions',
+]
 const dynamicNumberPattern =
   /\b\d+(?:\.\d+)?\s*(?:ms|µs|us|ns|ops\/sec|ops\/s)\b|\b\d+(?:\.\d+)?\s*[x×]\b|(?:p50|p95|mean|stdev|min|max)\s*[:=]\s*\d/i
 const benchmarkTelemetryPattern = /\b(?:elapsedMs|opsPerSecond|ratioToPretext|maxMilliseconds)\b/i
 const overclaimPattern =
   /\b(?:fastest|faster than|times faster|speedup|outperform(?:s|ed)?|beats?|wins?|winner|orders? of magnitude|zero[- ]cost|no overhead|instant(?:ly)?|always faster|universally faster|universal speed|performance guarantee|make layout cheap|fast resize|fast scroll)\b/i
 const percentClaimPattern = /\b\d+(?:\.\d+)?\s*%\s*(?:faster|slower|less|more|improvement|reduction)\b/i
-const hostSpecificPattern = /\b(?:Claude Code|claude-code|Codex|codex|agent CLI|agent-CLI|@anthropic-ai|model prose)\b/i
+const hostSpecificPattern =
+  /\b(?:Claude Code|claude-code|Codex|codex|agent CLI|agent-CLI|@anthropic-ai|model prose|tmux|nvim|Ink|Blessed|React renderer)\b/i
+const forbiddenClaimPattern =
+  /\b(?:true chunked append storage|named-host integration|broad ANSI safety|universal speed|universally faster|broad benchmark supremacy|chunked append storage has landed|existing integration)\b/i
 
 describe('benchmark evidence claim guard', () => {
   test('public Markdown does not copy dynamic benchmark numbers out of JSON evidence reports', async () => {
@@ -63,6 +71,20 @@ describe('benchmark evidence claim guard', () => {
       expect(relevantLines).not.toMatch(hostSpecificPattern)
     }
   })
+
+  test('status, todo, and decision records keep claim boundaries negative or scoped', async () => {
+    for (const file of await markdownFiles(claimBoundaryMarkdownRoots)) {
+      const content = await readFile(file, 'utf8')
+      const relevantLines = content
+        .split(/\r?\n/)
+        .filter(line => !isClaimBoundaryGuardrailLine(line))
+        .join('\n')
+      expect(relevantLines).not.toMatch(hostSpecificPattern)
+      expect(relevantLines).not.toMatch(forbiddenClaimPattern)
+      expect(relevantLines).not.toMatch(overclaimPattern)
+      expect(relevantLines).not.toMatch(percentClaimPattern)
+    }
+  })
 })
 
 async function markdownFiles(entries: readonly string[]): Promise<string[]> {
@@ -83,7 +105,16 @@ function isGuardrailLine(line: string): boolean {
 }
 
 function isHostNeutralGuardrailLine(line: string): boolean {
-  return /\brg -n\b|\b(?:do not|forbidden|avoid|must not|unsupported|named-host|named host)\b/i.test(line)
+  return /^\s*-\s*No\b/i.test(line) ||
+    /\brg -n\b|\b(?:do not|forbidden|avoid|must not|unsupported|named-host|named host|outside this package|PTY control)\b/i.test(line)
+}
+
+function isClaimBoundaryGuardrailLine(line: string): boolean {
+  return isGuardrailLine(line) ||
+    isHostNeutralGuardrailLine(line) ||
+    /\b(?:future work|future APIs|future adoption work|not implemented claims|not claims|Forbidden Claims|Do not claim|Residual Risk|claim restrictions|Follow-up gate)\b/i.test(line) ||
+    /\b(?:does not implement|not implement|can be misread|continues? to state|remain(?:s)? full reprepare|future chunked storage)\b/i.test(line) ||
+    /^\s*-\s*(?:true chunked append storage|named-host integration|broad ANSI safety|broad or universal speed superiority)\b/i.test(line)
 }
 
 async function collectMarkdownFiles(dir: string): Promise<string[]> {

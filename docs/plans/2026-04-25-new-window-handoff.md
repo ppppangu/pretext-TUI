@@ -207,7 +207,7 @@ Current state:
   - prepared geometry reused across layout/source/append paths
   - page-cache misses walk sequentially
   - anchor/source insertion avoids per-anchor sorting
-  - benchmark counters expose remaining materialization-time segmentation
+  - benchmark counters expose prepared geometry reuse and rich index lookup behavior
 - This is not a claim that all performance work is complete.
 
 Important files:

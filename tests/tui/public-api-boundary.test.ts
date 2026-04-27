@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import {
   forbiddenRootRuntimeExports,
+  terminalIncubatingRuntimeExports,
   richPublicRuntimeExports,
+  terminalStableRuntimeExports,
   terminalPublicRuntimeExports,
 } from '../../scripts/public-api-contract.js'
 import * as publicFacade from '../../src/public-index.js'
@@ -13,8 +15,10 @@ import * as rich from '../../src/terminal-rich-inline.js'
 import type {
   PreparedTerminalCellFlow,
   PreparedTerminalText,
+  TerminalLayoutBundle,
   TerminalLineIndex,
   TerminalPageCache,
+  TerminalRangeIndex,
   TerminalSourceOffsetIndex,
 } from '../../src/index.js'
 
@@ -26,6 +30,18 @@ describe('public API boundary', () => {
     expect(terminalPublicRuntimeExports).toContain('projectTerminalSourceOffset')
     expect(terminalPublicRuntimeExports).toContain('projectTerminalCursor')
     expect(terminalPublicRuntimeExports).toContain('projectTerminalRow')
+    expect(terminalIncubatingRuntimeExports).toContain('projectTerminalCoordinate')
+    expect(terminalIncubatingRuntimeExports).toContain('projectTerminalSourceRange')
+    expect(terminalIncubatingRuntimeExports).toContain('createTerminalLayoutBundle')
+    expect(terminalIncubatingRuntimeExports).toContain('getTerminalLayoutBundlePage')
+    expect(terminalIncubatingRuntimeExports).toContain('invalidateTerminalLayoutBundle')
+    expect(terminalIncubatingRuntimeExports).toContain('createTerminalRangeIndex')
+    expect(terminalIncubatingRuntimeExports).toContain('getTerminalRangesAtSourceOffset')
+    expect(terminalIncubatingRuntimeExports).toContain('getTerminalRangesForSourceRange')
+    expect(terminalStableRuntimeExports).toContain('prepareTerminal')
+    expect(terminalStableRuntimeExports).not.toContain('projectTerminalCoordinate')
+    expect(terminalStableRuntimeExports).not.toContain('createTerminalLayoutBundle')
+    expect(terminalStableRuntimeExports).not.toContain('appendTerminalCellFlow')
     expect(Object.keys(publicFacade).sort()).toEqual([...terminalPublicRuntimeExports])
     expect(Object.keys(root).sort()).toEqual([...terminalPublicRuntimeExports])
     expect(Object.keys(rich).sort()).toEqual([...richPublicRuntimeExports])
@@ -56,9 +72,11 @@ describe('public API boundary', () => {
     const sourceIndex = root.createTerminalSourceOffsetIndex(prepared)
     const lineIndex = root.createTerminalLineIndex(prepared, { columns: 16 })
     const pageCache = root.createTerminalPageCache(prepared, lineIndex)
+    const bundle = root.createTerminalLayoutBundle(prepared, { columns: 16 })
     const flow = root.prepareTerminalCellFlow('streaming terminal text', { whiteSpace: 'pre-wrap' })
+    const rangeIndex = root.createTerminalRangeIndex([{ id: 'a', kind: 'generic', sourceStart: 0, sourceEnd: 8 }])
 
-    for (const handle of [prepared, sourceIndex, lineIndex, pageCache, flow]) {
+    for (const handle of [prepared, sourceIndex, lineIndex, pageCache, bundle, flow, rangeIndex]) {
       expect(Reflect.ownKeys(handle)).toEqual(['kind'])
       expect(Object.isFrozen(handle)).toBe(true)
     }
@@ -72,6 +90,8 @@ describe('public API boundary', () => {
     const forgedSourceIndex = Object.freeze({ kind: 'terminal-source-offset-index@1' }) as TerminalSourceOffsetIndex
     const forgedLineIndex = Object.freeze({ kind: 'terminal-line-index@1' }) as TerminalLineIndex
     const forgedPageCache = Object.freeze({ kind: 'terminal-page-cache@1' }) as TerminalPageCache
+    const forgedBundle = Object.freeze({ kind: 'terminal-layout-bundle@1' }) as TerminalLayoutBundle
+    const forgedRangeIndex = Object.freeze({ kind: 'terminal-range-index@1' }) as TerminalRangeIndex
     const forgedFlow = Object.freeze({ kind: 'prepared-terminal-cell-flow@1' }) as PreparedTerminalCellFlow
 
     expect(() => root.layoutTerminal(forgedPrepared, { columns: 8 })).toThrow('Invalid prepared terminal text handle')
@@ -80,6 +100,11 @@ describe('public API boundary', () => {
     expect(() => root.getTerminalCursorForSourceOffset(prepared, forgedSourceIndex, 0)).toThrow('Invalid terminal source offset index handle')
     expect(() => root.getTerminalLineRangeAtRow(prepared, forgedLineIndex, 0)).toThrow('Invalid terminal line index handle')
     expect(() => root.getTerminalLinePage(prepared, forgedPageCache, lineIndex, { startRow: 0, rowCount: 1 })).toThrow('Invalid terminal page cache handle')
+    expect(() => root.getTerminalLayoutBundlePage(prepared, forgedBundle, { startRow: 0, rowCount: 1 })).toThrow('Invalid terminal layout bundle handle')
+    expect(() => root.invalidateTerminalLayoutBundle(prepared, forgedBundle, { generation: 1 })).toThrow('Invalid terminal layout bundle handle')
+    expect(() => root.projectTerminalSourceOffset(prepared, forgedBundle, 0)).toThrow('Invalid terminal layout bundle handle')
+    expect(() => root.getTerminalRangesAtSourceOffset(forgedRangeIndex, 0)).toThrow('Invalid terminal range index handle')
+    expect(() => root.getTerminalRangesForSourceRange(forgedRangeIndex, { sourceStart: 0, sourceEnd: 1 })).toThrow('Invalid terminal range index handle')
     expect(() => root.getTerminalCellFlowPrepared(forgedFlow)).toThrow('Invalid terminal cell flow handle')
   })
 

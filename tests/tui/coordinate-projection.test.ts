@@ -5,15 +5,19 @@ import {
   createTerminalSourceOffsetIndex,
   materializeTerminalLineRange,
   prepareTerminal,
+  projectTerminalCoordinate,
   projectTerminalCursor,
   projectTerminalRow,
+  projectTerminalSourceRange,
   projectTerminalSourceOffset,
+  type TerminalCoordinateSourceProjection,
   type PreparedTerminalText,
   type TerminalCoordinateProjection,
   type TerminalLineIndex,
   type TerminalPrepareOptions,
   type TerminalRowProjection,
   type TerminalSourceOffsetIndex,
+  type TerminalSourceRangeProjection,
 } from '../../src/index.js'
 
 type ProjectionView = {
@@ -64,6 +68,49 @@ function coordinateSignature(
     requestedSourceOffset: projection.requestedSourceOffset,
     row: projection.row,
     sourceOffset: projection.sourceOffset,
+  }
+}
+
+function coordinateHitSignature(
+  projection: TerminalCoordinateSourceProjection | null,
+): {
+  bias: string
+  column: number
+  exact: boolean
+  requested: [number, number]
+  row: number
+  sourceOffset: number
+} | null {
+  if (projection === null) return null
+  return {
+    bias: projection.bias,
+    column: projection.column,
+    exact: projection.exact,
+    requested: [projection.requestedCoordinate.row, projection.requestedCoordinate.column],
+    row: projection.row,
+    sourceOffset: projection.sourceOffset,
+  }
+}
+
+function rangeSignature(
+  projection: TerminalSourceRangeProjection,
+): {
+  fragments: Array<{
+    columns: [number, number]
+    row: number
+    source: [number, number]
+  }>
+  requested: [number, number]
+  source: [number, number]
+} {
+  return {
+    requested: [projection.requestedSourceStart, projection.requestedSourceEnd],
+    source: [projection.sourceStart, projection.sourceEnd],
+    fragments: projection.fragments.map(fragment => ({
+      row: fragment.row,
+      source: [fragment.sourceStart, fragment.sourceEnd],
+      columns: [fragment.startColumn, fragment.endColumn],
+    })),
   }
 }
 
@@ -259,6 +306,118 @@ describe('coordinate projection public API', () => {
       lineSourceRange: [3, 6],
       row: 1,
       sourceOffset: 4,
+    })
+  })
+
+  test('projects terminal row and cell column back to grapheme-safe source offsets', () => {
+    const view = createProjectionView(
+      'A\tB界e\u0301\u200Btail',
+      6,
+      { whiteSpace: 'pre-wrap', tabSize: 4 },
+      1,
+    )
+    const indexes = { sourceIndex: view.sourceIndex, lineIndex: view.lineIndex }
+
+    expect(coordinateHitSignature(projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 0, column: 3, bias: 'before' },
+    ))).toEqual({
+      bias: 'before',
+      column: 2,
+      exact: false,
+      requested: [0, 3],
+      row: 0,
+      sourceOffset: 1,
+    })
+    expect(coordinateHitSignature(projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 0, column: 3, bias: 'after' },
+    ))).toEqual({
+      bias: 'after',
+      column: 4,
+      exact: false,
+      requested: [0, 3],
+      row: 0,
+      sourceOffset: 2,
+    })
+    expect(coordinateHitSignature(projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 1, column: 1, bias: 'after' },
+    ))).toMatchObject({
+      column: 2,
+      exact: false,
+      row: 1,
+      sourceOffset: 4,
+    })
+    expect(coordinateHitSignature(projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 2, column: 99 },
+    ))).toMatchObject({
+      column: 4,
+      exact: false,
+      row: 2,
+      sourceOffset: 11,
+    })
+    expect(projectTerminalCoordinate(view.prepared, indexes, { row: 99, column: 0 })).toBeNull()
+  })
+
+  test('projects source ranges into terminal row fragments without host semantics', () => {
+    const view = createProjectionView('hello world', 5, { whiteSpace: 'normal' })
+    const indexes = { sourceIndex: view.sourceIndex, lineIndex: view.lineIndex }
+
+    expect(rangeSignature(projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 0, sourceEnd: 11 },
+    ))).toEqual({
+      requested: [0, 11],
+      source: [0, 11],
+      fragments: [
+        { row: 0, source: [0, 5], columns: [0, 5] },
+        { row: 1, source: [6, 11], columns: [0, 5] },
+      ],
+    })
+    expect(rangeSignature(projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 4, sourceEnd: 8 },
+    ))).toEqual({
+      requested: [4, 8],
+      source: [4, 8],
+      fragments: [
+        { row: 0, source: [4, 5], columns: [4, 5] },
+        { row: 1, source: [6, 8], columns: [0, 2] },
+      ],
+    })
+  })
+
+  test('source range projection expands partial grapheme clusters and keeps collapsed ranges empty', () => {
+    const view = createProjectionView('e\u0301x', 8, { whiteSpace: 'pre-wrap' })
+    const indexes = { sourceIndex: view.sourceIndex, lineIndex: view.lineIndex }
+
+    expect(rangeSignature(projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 1, sourceEnd: 2 },
+    ))).toEqual({
+      requested: [1, 2],
+      source: [0, 2],
+      fragments: [
+        { row: 0, source: [0, 2], columns: [0, 1] },
+      ],
+    })
+    expect(rangeSignature(projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 1, sourceEnd: 1 },
+    ))).toEqual({
+      requested: [1, 1],
+      source: [0, 0],
+      fragments: [],
     })
   })
 
@@ -634,11 +793,44 @@ describe('coordinate projection public API', () => {
       cursor,
       { bias: 'sideways' as never },
     )).toThrow('Terminal source offset bias')
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 0, column: 0, bias: 'sideways' as never },
+    )).toThrow('Terminal source offset bias')
+  })
+
+  test('rejects invalid coordinate and source-range projection requests', () => {
+    const view = createProjectionView('hello world', 8)
+    const indexes = { sourceIndex: view.sourceIndex, lineIndex: view.lineIndex }
+
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: -1, column: 0 },
+    )).toThrow('Terminal coordinate row')
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      indexes,
+      { row: 0, column: 1.5 },
+    )).toThrow('Terminal coordinate column')
+    expect(() => projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 2.5, sourceEnd: 4 },
+    )).toThrow('Terminal source range start')
+    expect(() => projectTerminalSourceRange(
+      view.prepared,
+      indexes,
+      { sourceStart: 4, sourceEnd: 3 },
+    )).toThrow('source range end')
   })
 
   test('rejects forged or mismatched prepared, source-index, and line-index handles', () => {
     const view = createProjectionView('hello world', 8)
     const otherPrepared = prepareTerminal('different source', { whiteSpace: 'pre-wrap' })
+    const otherLineIndex = createTerminalLineIndex(otherPrepared, { columns: 8 })
+    const otherSourceIndex = createTerminalSourceOffsetIndex(otherPrepared)
     const forgedPrepared = Object.freeze({ kind: 'prepared-terminal-text@1' }) as PreparedTerminalText
     const forgedSourceIndex = Object.freeze({ kind: 'terminal-source-offset-index@1' }) as TerminalSourceOffsetIndex
     const forgedLineIndex = Object.freeze({ kind: 'terminal-line-index@1' }) as TerminalLineIndex
@@ -677,5 +869,40 @@ describe('coordinate projection public API', () => {
     expect(() => projectTerminalRow(view.prepared, forgedLineIndex, 0)).toThrow(
       'Invalid terminal line index handle',
     )
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      { sourceIndex: view.sourceIndex, lineIndex: forgedLineIndex },
+      { row: 0, column: 0 },
+    )).toThrow('Invalid terminal line index handle')
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      { sourceIndex: forgedSourceIndex, lineIndex: view.lineIndex },
+      { row: 0, column: 0 },
+    )).toThrow('Invalid terminal source offset index handle')
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      { sourceIndex: forgedSourceIndex, lineIndex: view.lineIndex },
+      { row: 99, column: 0 },
+    )).toThrow('Invalid terminal source offset index handle')
+    expect(() => projectTerminalCoordinate(
+      view.prepared,
+      { sourceIndex: view.sourceIndex, lineIndex: otherLineIndex },
+      { row: 0, column: 0 },
+    )).toThrow(/different prepared/)
+    expect(() => projectTerminalSourceRange(
+      view.prepared,
+      { sourceIndex: forgedSourceIndex, lineIndex: view.lineIndex },
+      { sourceStart: 0, sourceEnd: 1 },
+    )).toThrow('Invalid terminal source offset index handle')
+    expect(() => projectTerminalSourceRange(
+      view.prepared,
+      { sourceIndex: view.sourceIndex, lineIndex: forgedLineIndex },
+      { sourceStart: 0, sourceEnd: 1 },
+    )).toThrow('Invalid terminal line index handle')
+    expect(() => projectTerminalSourceRange(
+      view.prepared,
+      { sourceIndex: otherSourceIndex, lineIndex: view.lineIndex },
+      { sourceStart: 0, sourceEnd: 1 },
+    )).toThrow(/different prepared/)
   })
 })

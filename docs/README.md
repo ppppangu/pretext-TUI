@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于承载 pretext-TUI 从浏览器版 Pretext 迁移到纯 TUI 方案时的设计、执行与发布说明；当前进度：已包含 contracts、evidence、production notes、recipes、plans、marketing notes 与 roadmap，本页作为文档 reference map 与 fact-source hierarchy 入口。 -->
+<!-- 补建说明：该目录为后续补建，用于承载 pretext-TUI 从浏览器版 Pretext 迁移到纯 TUI 方案时的设计、执行与发布说明；当前进度：已包含 contracts、decisions、evidence、production notes、recipes、plans、marketing notes 与 roadmap，本页作为文档 reference map 与 fact-source hierarchy 入口。 -->
 # Documentation Reference Map
 
 This directory was added as part of the TUI migration planning work for `pretext-TUI`.
@@ -27,6 +27,7 @@ Public examples should use the canonical public facade: the package root `pretex
 ## Directory Map
 
 - `docs/contracts/` contains public API, terminal behavior, host-boundary, and terminal-security contracts
+- `docs/decisions/` contains phase approval records, residual risks, and claim restrictions
 - `docs/evidence/` contains benchmark evidence rules, claim guardrails, and optional report output locations
 - `docs/production/` contains production and security readiness notes
 - `docs/plans/` contains the detailed terminal-layout implementation plan and the post-publishability master plan

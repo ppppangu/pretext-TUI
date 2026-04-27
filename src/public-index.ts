@@ -33,14 +33,38 @@ import {
   invalidateTerminalPageCache as internalInvalidateTerminalPageCache,
 } from './terminal-page-cache.js'
 import {
+  createTerminalLayoutBundle as internalCreateTerminalLayoutBundle,
+  getTerminalLayoutBundlePage as internalGetTerminalLayoutBundlePage,
+  invalidateTerminalLayoutBundle as internalInvalidateTerminalLayoutBundle,
+} from './terminal-layout-bundle.js'
+import {
   createTerminalSourceOffsetIndex as internalCreateTerminalSourceOffsetIndex,
   getTerminalCursorForSourceOffset as internalGetTerminalCursorForSourceOffset,
   getTerminalSourceOffsetForCursor as internalGetTerminalSourceOffsetForCursor,
 } from './terminal-source-offset-index.js'
 import {
+  createTerminalRangeIndex as internalCreateTerminalRangeIndex,
+  getTerminalRangesAtSourceOffset as internalGetTerminalRangesAtSourceOffset,
+  getTerminalRangesForSourceRange as internalGetTerminalRangesForSourceRange,
+} from './terminal-range-index.js'
+import {
+  createTerminalSearchSession as internalCreateTerminalSearchSession,
+  getTerminalSearchMatchAfterSourceOffset as internalGetTerminalSearchMatchAfterSourceOffset,
+  getTerminalSearchMatchBeforeSourceOffset as internalGetTerminalSearchMatchBeforeSourceOffset,
+  getTerminalSearchMatchesForSourceRange as internalGetTerminalSearchMatchesForSourceRange,
+  getTerminalSearchSessionMatchCount as internalGetTerminalSearchSessionMatchCount,
+} from './terminal-search-session.js'
+import {
+  createTerminalSelectionFromCoordinates as internalCreateTerminalSelectionFromCoordinates,
+  extractTerminalSelection as internalExtractTerminalSelection,
+  extractTerminalSourceRange as internalExtractTerminalSourceRange,
+} from './terminal-selection.js'
+import {
+  projectTerminalCoordinate as internalProjectTerminalCoordinate,
   projectTerminalCursor as internalProjectTerminalCursor,
   projectTerminalRow as internalProjectTerminalRow,
   projectTerminalSourceOffset as internalProjectTerminalSourceOffset,
+  projectTerminalSourceRange as internalProjectTerminalSourceRange,
 } from './terminal-coordinate-projection.js'
 
 export type AmbiguousWidthPolicy = 'narrow' | 'wide'
@@ -371,6 +395,309 @@ export function invalidateTerminalPageCache(
   internalInvalidateTerminalPageCache(cache as never, invalidation)
 }
 
+export type TerminalLayoutBundleOptions = TerminalFixedLayoutOptions & TerminalPageCacheOptions
+
+export type TerminalLayoutBundleInvalidation =
+  | TerminalAppendInvalidation
+  | Readonly<TerminalLineIndexInvalidation & { previousGeneration?: number }>
+
+export type TerminalLayoutBundleInvalidationResult = Readonly<{
+  kind: 'terminal-layout-bundle-invalidation@1'
+  generation: number
+  previousGeneration: number
+  firstInvalidRow?: number
+  firstInvalidSourceOffset?: number
+  lineIndex: TerminalLineIndexInvalidationResult
+}>
+
+declare const terminalLayoutBundleBrand: unique symbol
+export type TerminalLayoutBundle = Readonly<{
+  kind: 'terminal-layout-bundle@1'
+  readonly [terminalLayoutBundleBrand]: true
+}>
+
+export function createTerminalLayoutBundle(
+  prepared: PreparedTerminalText,
+  options: TerminalLayoutBundleOptions,
+): TerminalLayoutBundle {
+  return internalCreateTerminalLayoutBundle(prepared as never, options) as unknown as TerminalLayoutBundle
+}
+
+export function getTerminalLayoutBundlePage(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  request: TerminalLinePageRequest,
+): TerminalLinePage {
+  return internalGetTerminalLayoutBundlePage(
+    prepared as never,
+    bundle as never,
+    request,
+  ) as TerminalLinePage
+}
+
+export function invalidateTerminalLayoutBundle(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  invalidation: TerminalLayoutBundleInvalidation,
+): TerminalLayoutBundleInvalidationResult {
+  return internalInvalidateTerminalLayoutBundle(
+    prepared as never,
+    bundle as never,
+    invalidation as never,
+  ) as TerminalLayoutBundleInvalidationResult
+}
+
+export type TerminalRangeData =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly TerminalRangeData[]
+  | { readonly [key: string]: TerminalRangeData }
+
+export type TerminalRange = Readonly<{
+  id: string
+  kind: string
+  sourceStart: number
+  sourceEnd: number
+  data?: TerminalRangeData
+  tags?: readonly string[]
+}>
+
+export type TerminalRangeQuery = Readonly<{
+  sourceStart: number
+  sourceEnd: number
+}>
+
+declare const terminalRangeIndexBrand: unique symbol
+export type TerminalRangeIndex = Readonly<{
+  kind: 'terminal-range-index@1'
+  readonly [terminalRangeIndexBrand]: true
+}>
+
+export function createTerminalRangeIndex(
+  ranges: readonly TerminalRange[],
+): TerminalRangeIndex {
+  return internalCreateTerminalRangeIndex(ranges as never) as unknown as TerminalRangeIndex
+}
+
+export function getTerminalRangesAtSourceOffset(
+  index: TerminalRangeIndex,
+  sourceOffset: number,
+): readonly TerminalRange[] {
+  return internalGetTerminalRangesAtSourceOffset(
+    index as never,
+    sourceOffset,
+  ) as readonly TerminalRange[]
+}
+
+export function getTerminalRangesForSourceRange(
+  index: TerminalRangeIndex,
+  query: TerminalRangeQuery,
+): readonly TerminalRange[] {
+  return internalGetTerminalRangesForSourceRange(
+    index as never,
+    query,
+  ) as readonly TerminalRange[]
+}
+
+export type TerminalSearchMode = 'literal' | 'regex'
+
+export type TerminalSearchQuery = string | RegExp | Readonly<{
+  pattern?: string
+  text?: string
+}>
+
+export type TerminalSearchSourceRangeQuery = Readonly<{
+  limit?: number
+  scopeId?: string
+  sourceEnd?: number
+  sourceStart?: number
+}>
+
+export type TerminalSearchRangeIndexScope = Readonly<{
+  rangeIndex: TerminalRangeIndex
+  sourceEnd?: number
+  sourceStart?: number
+}>
+
+export type TerminalSearchScope =
+  | TerminalSearchRangeIndexScope
+  | TerminalSearchSourceRangeQuery
+  | readonly TerminalSearchSourceRangeQuery[]
+
+export type TerminalSearchOptions = Readonly<{
+  caseSensitive?: boolean
+  indexes?: TerminalProjectionIndexInput
+  mode?: TerminalSearchMode
+  scope?: TerminalSearchScope
+  wholeWord?: boolean
+}>
+
+export type TerminalSearchMatch = Readonly<{
+  kind: 'terminal-search-match@1'
+  matchIndex: number
+  matchText: string
+  projection?: TerminalSourceRangeProjection
+  scopeId?: string
+  sourceEnd: number
+  sourceStart: number
+}>
+
+declare const terminalSearchSessionBrand: unique symbol
+export type TerminalSearchSession = Readonly<{
+  kind: 'terminal-search-session@1'
+  readonly [terminalSearchSessionBrand]: true
+}>
+
+export function createTerminalSearchSession(
+  prepared: PreparedTerminalText,
+  query: TerminalSearchQuery,
+  options?: TerminalSearchOptions,
+): TerminalSearchSession {
+  return internalCreateTerminalSearchSession(
+    prepared as never,
+    query as never,
+    options as never,
+  ) as unknown as TerminalSearchSession
+}
+
+export function getTerminalSearchSessionMatchCount(
+  session: TerminalSearchSession,
+): number {
+  return internalGetTerminalSearchSessionMatchCount(session as never)
+}
+
+export function getTerminalSearchMatchesForSourceRange(
+  session: TerminalSearchSession,
+  query?: TerminalSearchSourceRangeQuery,
+): readonly TerminalSearchMatch[] {
+  return internalGetTerminalSearchMatchesForSourceRange(
+    session as never,
+    query as never,
+  ) as readonly TerminalSearchMatch[]
+}
+
+export function getTerminalSearchMatchAfterSourceOffset(
+  session: TerminalSearchSession,
+  sourceOffset: number,
+): TerminalSearchMatch | null {
+  return internalGetTerminalSearchMatchAfterSourceOffset(
+    session as never,
+    sourceOffset,
+  ) as TerminalSearchMatch | null
+}
+
+export function getTerminalSearchMatchBeforeSourceOffset(
+  session: TerminalSearchSession,
+  sourceOffset: number,
+): TerminalSearchMatch | null {
+  return internalGetTerminalSearchMatchBeforeSourceOffset(
+    session as never,
+    sourceOffset,
+  ) as TerminalSearchMatch | null
+}
+
+export type TerminalSelectionMode = 'linear'
+export type TerminalSelectionDirection = 'forward' | 'backward' | 'collapsed'
+
+export type TerminalSelectionCoordinate = Readonly<{
+  bias?: TerminalSourceOffsetBias
+  column: number
+  row: number
+}>
+
+export type TerminalSelectionRequest = Readonly<{
+  anchor: TerminalSelectionCoordinate
+  focus: TerminalSelectionCoordinate
+  mode?: TerminalSelectionMode
+}>
+
+export type TerminalSelection = Readonly<{
+  kind: 'terminal-selection@1'
+  anchor: TerminalCoordinateSourceProjection
+  collapsed: boolean
+  direction: TerminalSelectionDirection
+  focus: TerminalCoordinateSourceProjection
+  mode: TerminalSelectionMode
+  projection: TerminalSourceRangeProjection
+  rowEnd: number
+  rowStart: number
+  sourceEnd: number
+  sourceStart: number
+}>
+
+export type TerminalSourceRangeExtractionRequest = TerminalSourceRangeProjectionRequest
+
+export type TerminalSelectionExtractionOptions = Readonly<{
+  indexes: TerminalProjectionIndexInput
+  rangeIndex?: TerminalRangeIndex
+}>
+
+export type TerminalSelectionExtractionFragment = Readonly<{
+  kind: 'terminal-selection-extraction-fragment@1'
+  endColumn: number
+  line: TerminalLineRange
+  row: number
+  sourceEnd: number
+  sourceStart: number
+  sourceText: string
+  startColumn: number
+  text: string
+}>
+
+export type TerminalSelectionExtraction = Readonly<{
+  kind: 'terminal-selection-extraction@1'
+  projection: TerminalSourceRangeProjection
+  rangeMatches?: readonly TerminalRange[]
+  requestedSourceEnd: number
+  requestedSourceStart: number
+  rowEnd: number
+  rowFragments: readonly TerminalSelectionExtractionFragment[]
+  rowStart: number
+  sourceEnd: number
+  sourceStart: number
+  sourceText: string
+  visibleRows: readonly string[]
+  visibleText: string
+}>
+
+export function createTerminalSelectionFromCoordinates(
+  prepared: PreparedTerminalText,
+  indexes: TerminalProjectionIndexInput,
+  request: TerminalSelectionRequest,
+): TerminalSelection | null {
+  return internalCreateTerminalSelectionFromCoordinates(
+    prepared as never,
+    indexes as never,
+    request as never,
+  ) as TerminalSelection | null
+}
+
+export function extractTerminalSourceRange(
+  prepared: PreparedTerminalText,
+  request: TerminalSourceRangeExtractionRequest,
+  options: TerminalSelectionExtractionOptions,
+): TerminalSelectionExtraction {
+  return internalExtractTerminalSourceRange(
+    prepared as never,
+    request as never,
+    options as never,
+  ) as TerminalSelectionExtraction
+}
+
+export function extractTerminalSelection(
+  prepared: PreparedTerminalText,
+  selection: TerminalSelection,
+  options: TerminalSelectionExtractionOptions,
+): TerminalSelectionExtraction {
+  return internalExtractTerminalSelection(
+    prepared as never,
+    selection as never,
+    options as never,
+  ) as TerminalSelectionExtraction
+}
+
 export type TerminalSourceOffsetBias = 'before' | 'after' | 'closest'
 
 export type TerminalSourceLookupResult = Readonly<{
@@ -392,6 +719,8 @@ export type TerminalProjectionIndexes = Readonly<{
   sourceIndex: TerminalSourceOffsetIndex
 }>
 
+export type TerminalProjectionIndexInput = TerminalProjectionIndexes | TerminalLayoutBundle
+
 export type TerminalCellCoordinate = Readonly<{
   column: number
   row: number
@@ -399,6 +728,12 @@ export type TerminalCellCoordinate = Readonly<{
 
 export type TerminalSourceProjectionOptions = Readonly<{
   bias?: TerminalSourceOffsetBias
+}>
+
+export type TerminalCoordinateProjectionRequest = Readonly<{
+  bias?: TerminalSourceOffsetBias
+  column: number
+  row: number
 }>
 
 export type TerminalSourceProjection = Readonly<{
@@ -416,6 +751,11 @@ export type TerminalSourceProjection = Readonly<{
 
 export type TerminalCoordinateProjection = TerminalSourceProjection
 
+export type TerminalCoordinateSourceProjection = TerminalSourceProjection & Readonly<{
+  bias: TerminalSourceOffsetBias
+  requestedCoordinate: TerminalCellCoordinate
+}>
+
 export type TerminalRowProjection = Readonly<{
   kind: 'terminal-row-projection@1'
   endColumn: number
@@ -424,6 +764,32 @@ export type TerminalRowProjection = Readonly<{
   startColumn: number
   sourceEnd: number
   sourceStart: number
+}>
+
+export type TerminalSourceRangeProjectionRequest = Readonly<{
+  sourceEnd: number
+  sourceStart: number
+}>
+
+export type TerminalSourceRangeProjectionFragment = Readonly<{
+  kind: 'terminal-source-range-fragment@1'
+  endColumn: number
+  line: TerminalLineRange
+  row: number
+  sourceEnd: number
+  sourceStart: number
+  startColumn: number
+}>
+
+export type TerminalSourceRangeProjection = Readonly<{
+  kind: 'terminal-source-range-projection@1'
+  end: TerminalSourceProjection
+  fragments: readonly TerminalSourceRangeProjectionFragment[]
+  requestedSourceEnd: number
+  requestedSourceStart: number
+  sourceEnd: number
+  sourceStart: number
+  start: TerminalSourceProjection
 }>
 
 export function createTerminalSourceOffsetIndex(
@@ -462,6 +828,12 @@ export function projectTerminalSourceOffset(
 ): TerminalSourceProjection
 export function projectTerminalSourceOffset(
   prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  sourceOffset: number,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalSourceOffset(
+  prepared: PreparedTerminalText,
   sourceIndex: TerminalSourceOffsetIndex,
   lineIndex: TerminalLineIndex,
   sourceOffset: number,
@@ -469,7 +841,7 @@ export function projectTerminalSourceOffset(
 ): TerminalSourceProjection
 export function projectTerminalSourceOffset(
   prepared: PreparedTerminalText,
-  indexesOrSourceIndex: TerminalProjectionIndexes | TerminalSourceOffsetIndex,
+  indexesOrSourceIndex: TerminalProjectionIndexInput | TerminalSourceOffsetIndex,
   lineIndexOrSourceOffset: TerminalLineIndex | number,
   sourceOffsetOrOptions?: number | TerminalSourceOffsetBias | TerminalSourceProjectionOptions,
   biasOrOptions?: TerminalSourceOffsetBias | TerminalSourceProjectionOptions,
@@ -491,6 +863,12 @@ export function projectTerminalCursor(
 ): TerminalSourceProjection
 export function projectTerminalCursor(
   prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  cursor: TerminalCursor,
+  options?: TerminalSourceProjectionOptions,
+): TerminalSourceProjection
+export function projectTerminalCursor(
+  prepared: PreparedTerminalText,
   sourceIndex: TerminalSourceOffsetIndex,
   lineIndex: TerminalLineIndex,
   cursor: TerminalCursor,
@@ -498,7 +876,7 @@ export function projectTerminalCursor(
 ): TerminalSourceProjection
 export function projectTerminalCursor(
   prepared: PreparedTerminalText,
-  indexesOrSourceIndex: TerminalProjectionIndexes | TerminalSourceOffsetIndex,
+  indexesOrSourceIndex: TerminalProjectionIndexInput | TerminalSourceOffsetIndex,
   lineIndexOrCursor: TerminalLineIndex | TerminalCursor,
   cursorOrOptions?: TerminalCursor | TerminalSourceProjectionOptions,
   options?: TerminalSourceProjectionOptions,
@@ -512,9 +890,33 @@ export function projectTerminalCursor(
   ) as TerminalSourceProjection
 }
 
+export function projectTerminalCoordinate(
+  prepared: PreparedTerminalText,
+  indexes: TerminalProjectionIndexInput,
+  request: TerminalCoordinateProjectionRequest,
+): TerminalCoordinateSourceProjection | null {
+  return internalProjectTerminalCoordinate(
+    prepared as never,
+    indexes as never,
+    request,
+  ) as TerminalCoordinateSourceProjection | null
+}
+
+export function projectTerminalSourceRange(
+  prepared: PreparedTerminalText,
+  indexes: TerminalProjectionIndexInput,
+  request: TerminalSourceRangeProjectionRequest,
+): TerminalSourceRangeProjection {
+  return internalProjectTerminalSourceRange(
+    prepared as never,
+    indexes as never,
+    request,
+  ) as TerminalSourceRangeProjection
+}
+
 export function projectTerminalRow(
   prepared: PreparedTerminalText,
-  lineIndex: TerminalLineIndex,
+  lineIndex: TerminalLineIndex | TerminalLayoutBundle,
   row: number,
 ): TerminalRowProjection | null {
   return internalProjectTerminalRow(

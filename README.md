@@ -60,7 +60,7 @@ The release benchmark gate is separate:
 bun run benchmark-check:tui
 ```
 
-That gate checks deterministic counters and conservative wall-clock budgets for the package itself. Its explicit validation instrumentation is default-off in normal runtime code and tracks prepared geometry reuse plus remaining materialization-time segmentation as regression telemetry. The competitive benchmark is an optional local comparison harness, not a release guarantee and not a full application renderer or event-loop benchmark.
+That gate checks deterministic counters and conservative wall-clock budgets for the package itself. Its explicit validation instrumentation is default-off in normal runtime code and tracks prepared geometry reuse plus rich index lookup behavior as regression telemetry. The competitive benchmark is an optional local comparison harness, not a release guarantee and not a full application renderer or event-loop benchmark.
 
 ## What Makes It Different
 
@@ -68,7 +68,9 @@ That gate checks deterministic counters and conservative wall-clock budgets for 
 - **Terminal cells, not browser pixels.** Width is integer terminal cells. There is no DOM, Canvas, CSS, font string, or browser measurement contract in the active runtime.
 - **Ranges before strings.** You can walk line ranges without materializing text, then materialize only visible rows.
 - **Large text primitives.** Sparse row anchors, fixed-column page caches, source-offset lookup, and append invalidation metadata are designed for long transcripts and logs.
-- **Rich metadata sidecar.** Plain text stays strict. ANSI `SGR` and `OSC8` links use an opt-in rich path that keeps style/link metadata separate from layout.
+- **Generic range sidecar.** Hosts can index source ranges with inert ids, kinds, tags, and data without teaching the package any application semantics.
+- **Source-first search sessions.** Hosts can search sanitized visible source text and project hits into rows only when they need layout coordinates.
+- **Rich metadata sidecar.** Plain text stays strict. ANSI `SGR` and `OSC8` links use an opt-in rich path that keeps style/link metadata separate from layout, with package-owned span indexes behind the public snapshot data.
 - **Host-neutral by design.** Works under a renderer, pane system, CLI, editor plugin, terminal dashboard, or terminal UI framework without importing any of them.
 
 ## Target Use Cases
@@ -80,7 +82,8 @@ That gate checks deterministic counters and conservative wall-clock budgets for 
 | Structured terminal transcripts | Command/session logs, review streams, notebooks, patches, code, tables, and prose can share one source-aware wrapping and visible-window materialization path. |
 | Long log viewers | Sparse anchors and page caches avoid wrapping and materializing the entire buffer for every scroll jump. |
 | Terminal panes | Resize can relayout prepared text across new column widths without carrying browser or renderer state. |
-| Editor and terminal plugins | Source offsets and grapheme-safe ranges are useful for search, copy, cursor mapping, diagnostics, and preview panes. |
+| Editor and terminal plugins | Source offsets and grapheme-safe ranges are useful for host-owned search, selection, copy, cursor mapping, diagnostics, and preview panes. |
+| Structured block metadata | Generic source ranges let hosts map visible rows back to their own blocks, diagnostics, records, or annotations without adding a host adapter. |
 | Rich ANSI transcript viewers | The rich sidecar preserves inline style/link spans while keeping unsupported terminal controls out of core layout. |
 | Multilingual terminal UIs | CJK, emoji, combining marks, tabs, zero-width breaks, and soft hyphens are handled through deterministic terminal-width profiles. |
 
@@ -120,24 +123,27 @@ walkTerminalLineRanges(prepared, { columns: 40 }, line => {
 
 ## Large Text Paging
 
-For large terminal buffers, use the fixed-column virtual text helpers:
+For large terminal buffers, use the fixed-column virtual text helpers. `createTerminalLayoutBundle()` is the recommended convenience handle when one viewport needs a source-offset index, sparse row index, and page cache that invalidate together.
 
-These helpers are public but incubating before the first stable `0.1` contract. The stable core remains `prepare -> layout/range -> materialize`; sparse line indexes, page caches, source-offset indexes, and append invalidation metadata may still be refined while staying host-neutral.
+These helpers are public but incubating before the first stable `0.1` contract. The stable core remains `prepare -> layout/range -> materialize`; sparse line indexes, page caches, source-offset indexes, layout bundles, and append invalidation metadata may still be refined while staying host-neutral.
 
 ```ts
 import {
-  createTerminalLineIndex,
-  createTerminalPageCache,
-  getTerminalLinePage,
+  createTerminalLayoutBundle,
+  getTerminalLayoutBundlePage,
   materializeTerminalLinePage,
   prepareTerminal,
 } from 'pretext-tui'
 
 const prepared = prepareTerminal(transcript, { whiteSpace: 'pre-wrap', tabSize: 4 })
-const index = createTerminalLineIndex(prepared, { columns: 80, anchorInterval: 64 })
-const cache = createTerminalPageCache(prepared, index, { pageSize: 32, maxPages: 8 })
+const bundle = createTerminalLayoutBundle(prepared, {
+  columns: 80,
+  anchorInterval: 64,
+  pageSize: 32,
+  maxPages: 8,
+})
 
-const page = getTerminalLinePage(prepared, cache, index, {
+const page = getTerminalLayoutBundlePage(prepared, bundle, {
   startRow: 1200,
   rowCount: 24,
 })
@@ -145,9 +151,103 @@ const page = getTerminalLinePage(prepared, cache, index, {
 const visibleRows = materializeTerminalLinePage(prepared, page)
 ```
 
-These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text/index that created them, so hosts can use them without depending on anchor or page internals.
+These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text/index that created them, so hosts can use them without depending on anchor or page internals. Lower-level line-index and page-cache primitives remain available for advanced custom choreography; the bundle reduces handle plumbing for the common viewport case.
 
 Append support is deliberately honest today: the public API exposes bounded invalidation metadata, while the current implementation still counts full reprepare cost. That leaves room for future chunked storage without pretending it already exists.
+
+## Coordinate And Source Mapping
+
+Coordinate projection helpers are public but incubating. They map between UTF-16 source offsets, package-owned terminal cursors, terminal rows, terminal cell columns, and source-range fragments over a fixed-column line index.
+
+Projection helpers accept either explicit `{ sourceIndex, lineIndex }` handles or a `TerminalLayoutBundle`. Bundle invalidation refreshes the bundle's source-offset index together with line/page invalidation for the supplied prepared text.
+
+Hosts own search UI, selection state, caret behavior, hover behavior, and highlighting. The package only returns source offsets, rows, columns, cursors, and generic range fragments that a host can use to implement those workflows.
+
+## Selection And Extraction
+
+Selection and extraction helpers are public but incubating. They turn host-provided terminal coordinates or source ranges into immutable source-first data. They do not store active selection state and they do not copy to a clipboard.
+
+```ts
+import {
+  createTerminalLayoutBundle,
+  createTerminalSelectionFromCoordinates,
+  extractTerminalSelection,
+  prepareTerminal,
+} from 'pretext-tui'
+
+const prepared = prepareTerminal(text, { whiteSpace: 'pre-wrap' })
+const bundle = createTerminalLayoutBundle(prepared, { columns: 80 })
+const selection = createTerminalSelectionFromCoordinates(prepared, bundle, {
+  anchor: { row: 10, column: 2 },
+  focus: { row: 12, column: 18 },
+  mode: 'linear',
+})
+
+if (selection) {
+  const extracted = extractTerminalSelection(prepared, selection, {
+    indexes: bundle,
+  })
+  console.log(extracted.sourceText)
+  console.log(extracted.visibleText)
+}
+```
+
+Extraction returns `sourceText`, deterministic `visibleText`, row fragments, optional generic range matches, and source/row bounds. Hosts still own drag behavior, selection state, rendering, copy formatting, clipboard writes, and active-result policy. Rich extraction helpers live under `pretext-tui/terminal-rich-inline` so style/link fragments stay in the rich sidecar.
+
+## Generic Range Sidecar
+
+`TerminalRangeIndex` is a public but incubating host-neutral index over UTF-16 source ranges. It is useful when the host has block, annotation, diagnostic, or record metadata keyed to the same visible source string used by `prepareTerminal()`.
+
+```ts
+import {
+  createTerminalRangeIndex,
+  getTerminalRangesAtSourceOffset,
+  getTerminalRangesForSourceRange,
+} from 'pretext-tui'
+
+const ranges = createTerminalRangeIndex([
+  {
+    id: 'block-1',
+    kind: 'block',
+    sourceStart: 0,
+    sourceEnd: 42,
+    tags: ['visible'],
+    data: { payloadId: 'host-owned-id' },
+  },
+])
+
+const atCaret = getTerminalRangesAtSourceOffset(ranges, 12)
+const overlapping = getTerminalRangesForSourceRange(ranges, {
+  sourceStart: 8,
+  sourceEnd: 20,
+})
+```
+
+Range metadata is inert data. The package validates, clones, freezes, indexes, and returns ranges, but it does not interpret `id`, `kind`, `tags`, or `data`, and it does not implement domain actions.
+
+## Source-First Search
+
+Search sessions are public but incubating. They search the same sanitized visible source text used by `prepareTerminal()`, so a hit is first a UTF-16 source range. Row and column data are optional projection metadata when the host supplies a source/line index pair or a `TerminalLayoutBundle`.
+
+```ts
+import {
+  createTerminalLayoutBundle,
+  createTerminalSearchSession,
+  getTerminalSearchMatchesForSourceRange,
+  prepareTerminal,
+} from 'pretext-tui'
+
+const prepared = prepareTerminal(logText, { whiteSpace: 'pre-wrap' })
+const bundle = createTerminalLayoutBundle(prepared, { columns: 80 })
+const session = createTerminalSearchSession(prepared, /error \d+/i, {
+  mode: 'regex',
+  indexes: bundle,
+})
+
+const hits = getTerminalSearchMatchesForSourceRange(session, { limit: 20 })
+```
+
+Supported modes are literal and regex search, with optional case-insensitive matching, ASCII whole-word filtering, explicit source scopes, and generic range-index scopes. Regex searches reject zero-width matches so scans cannot loop forever. The package returns immutable hit data with `sourceStart`, `sourceEnd`, `matchText`, optional `scopeId`, and optional projection fragments. Hosts own search boxes, active-match state, result panes, highlighting, keyboard shortcuts, and persistence.
 
 ## Rich ANSI Metadata
 

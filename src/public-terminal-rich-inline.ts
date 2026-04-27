@@ -1,6 +1,8 @@
 // 补建说明：该文件为后续补建，用于作为 terminal-rich-inline 发布子路径的唯一 TypeScript 公共契约与运行时 facade；当前进度：Task 2 review 修正，将 rich 公共声明从 build 脚本迁回源码契约。
 import {
   layoutNextTerminalRichLineRange as internalLayoutNextTerminalRichLineRange,
+  extractTerminalRichSelection as internalExtractTerminalRichSelection,
+  extractTerminalRichSourceRange as internalExtractTerminalRichSourceRange,
   materializeTerminalRichLineRange as internalMaterializeTerminalRichLineRange,
   prepareTerminalRichInline as internalPrepareTerminalRichInline,
   walkTerminalRichLineRanges as internalWalkTerminalRichLineRanges,
@@ -8,10 +10,14 @@ import {
 import type {
   MaterializedTerminalLine,
   PreparedTerminalText,
+  TerminalSelection,
+  TerminalSelectionExtraction,
+  TerminalSelectionExtractionOptions,
   TerminalCursor,
   TerminalLayoutOptions,
   TerminalLineRange,
   TerminalPrepareOptions,
+  TerminalSourceRangeExtractionRequest,
 } from './public-index.js'
 
 export type TerminalRichSecurityProfileName = 'default' | 'transcript' | 'audit-strict'
@@ -168,6 +174,15 @@ export type MaterializedTerminalRichLine = MaterializedTerminalLine & {
   ansiText?: string
 }
 
+export type TerminalRichSelectionExtractionFragment = TerminalRichFragment & Readonly<{
+  kind: 'terminal-rich-selection-extraction-fragment@1'
+  row: number
+}>
+
+export type TerminalRichSelectionExtraction = TerminalSelectionExtraction & Readonly<{
+  richFragments: readonly TerminalRichSelectionExtractionFragment[]
+}>
+
 export type TerminalRichMaterializeOptions = Readonly<{
   ansiText?: TerminalRichAnsiReemitPolicy
 }>
@@ -205,4 +220,28 @@ export function materializeTerminalRichLineRange(
     line as never,
     options,
   ) as unknown as MaterializedTerminalRichLine
+}
+
+export function extractTerminalRichSourceRange(
+  prepared: PreparedTerminalRichInline,
+  request: TerminalSourceRangeExtractionRequest,
+  options: TerminalSelectionExtractionOptions,
+): TerminalRichSelectionExtraction {
+  return internalExtractTerminalRichSourceRange(
+    prepared as never,
+    request as never,
+    options as never,
+  ) as unknown as TerminalRichSelectionExtraction
+}
+
+export function extractTerminalRichSelection(
+  prepared: PreparedTerminalRichInline,
+  selection: TerminalSelection,
+  options: TerminalSelectionExtractionOptions,
+): TerminalRichSelectionExtraction {
+  return internalExtractTerminalRichSelection(
+    prepared as never,
+    selection as never,
+    options as never,
+  ) as unknown as TerminalRichSelectionExtraction
 }
