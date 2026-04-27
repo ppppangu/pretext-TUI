@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI 正确性证据与覆盖边界；当前进度：Phase 10 DOCS-A 首版，链接现有 gates/tests 而不复制动态 benchmark 数字。 -->
+<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI 正确性证据与覆盖边界；当前进度：Phase 10 已 approve with documented residual risk，链接现有 gates/tests 而不复制动态 benchmark 数字。 -->
 # Correctness Matrix
 
 This matrix links correctness claims to the current validation stack. It is not a guarantee that every terminal dialect or host workflow is modeled; it is a review map for the package-owned terminal text kernel.

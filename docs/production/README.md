@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于记录 pretext-TUI 的生产化、安全与支持边界；当前进度：Phase 10 DOCS-A 更新，补齐 security/support/provenance matrix 并收紧 host-neutral claim 边界。 -->
+<!-- 补建说明：该目录为后续补建，用于记录 pretext-TUI 的生产化、安全与支持边界；当前进度：Phase 10 已 approve with documented residual risk，补齐 security/support/provenance matrix 并收紧 host-neutral claim 边界。 -->
 # Production Notes
 
 `pretext-TUI` is a host-neutral terminal text kernel. Production readiness here means the package exposes clear data contracts, explicit policy inputs, validation gates, and support boundaries for package-owned terminal text data.

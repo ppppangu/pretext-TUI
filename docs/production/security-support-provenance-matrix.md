@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI production/security/support/provenance 证据矩阵；当前进度：Phase 10 DOCS-A 首版，保持 host-neutral 并避免未实现的集成或广义安全/性能声明。 -->
+<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI production/security/support/provenance 证据矩阵；当前进度：Phase 10 已 approve with documented residual risk，保持 host-neutral 并避免未实现的集成或广义安全/性能声明。 -->
 # Security, Support, And Provenance Matrix
 
 This matrix describes the production posture of the package-owned terminal text kernel. It is scoped to public data APIs, validation gates, package metadata, and documented limitations.

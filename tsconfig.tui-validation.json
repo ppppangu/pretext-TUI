@@ -14,6 +14,8 @@
     "scripts/package-smoke-test.ts",
     "scripts/terminal-demo.ts",
     "scripts/terminal-demo-check.ts",
+    "scripts/terminal-feel-demo.ts",
+    "scripts/terminal-feel-demo-check.ts",
     "scripts/tui-*.ts",
     "tests/tui/**/*.ts"
   ],

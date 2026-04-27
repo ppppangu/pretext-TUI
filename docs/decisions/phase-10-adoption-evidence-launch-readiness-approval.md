@@ -86,4 +86,4 @@ Phase close-out gate:
 
 Conclusion: **approve with documented residual risk**.
 
-Phase 10 completed the adoption evidence pack, capability/correctness/security matrices, incubating API approval index, generic agent transcript recipe, clean local evidence report citation, public-import recipe scan, package-smoke recipe consumer coverage, and launch-copy guardrails. No incubating public API is promoted to stable `0.1`.
+Phase 10 completed the adoption evidence pack, capability/correctness/security matrices, incubating API approval index, generic agent transcript recipe, clean local evidence report citation, public-import recipe scan, package-smoke recipe consumer coverage, launch-copy guardrails, and `0.1.0-alpha.0` release-candidate packaging. No incubating public API is promoted to stable `0.1`.

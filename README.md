@@ -8,6 +8,14 @@ Host-neutral terminal-cell text layout primitives for TUIs, CLIs, log viewers, t
 
 It is not a renderer, not a terminal emulator, and not a full TUI framework. It is the text layout engine you put under one.
 
+## Release Status
+
+Current package version: `0.1.0-alpha.0`.
+
+This is a pre-1.0 alpha release candidate. The core `prepare -> layout/range -> materialize` surface is the stable-candidate contract. Advanced public surfaces such as fixed-column indexes, page caches, layout bundles, source projection, range sidecars, search sessions, selection/extraction, append-only cell flows, and rich inline metadata remain incubating unless a future approval record explicitly promotes them.
+
+Repository-only evidence docs are not shipped in the npm tarball. Browse the current evidence pack, contracts, recipes, and production notes in the repository: <https://github.com/ppppangu/pretext-TUI/tree/main/docs>.
+
 ## Why
 
 Modern terminal apps are becoming text-heavy again:
@@ -31,6 +39,14 @@ visible terminal text
 ```
 
 ## Performance Snapshot
+
+For a quick local feel check, run:
+
+```sh
+bun run demo:compare:tui
+```
+
+It prints frame-budget meters for the same repeated viewport-scroll workload: a conventional full-wrap-and-slice loop versus a `pretext-TUI` prepared text plus sparse page-cache loop. Treat this as a tactile developer demo, not public benchmark evidence.
 
 Optional local comparison command from the repository:
 
@@ -100,7 +116,7 @@ That gate uses a documented model for kernel-owned structures such as layout bun
 ## Install
 
 ```sh
-npm install pretext-tui
+npm install pretext-tui@0.1.0-alpha.0
 ```
 
 The package root exports the terminal API. `./terminal` is an alias for the same API. `./terminal-rich-inline` is the opt-in rich metadata path.

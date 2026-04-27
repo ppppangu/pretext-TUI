@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于把 Phase 10 adoption review 所需的证据入口、允许引用与剩余风险整理成一页；当前进度：DOCS-A 首版，host-neutral 且不复制动态 benchmark 数字。 -->
+<!-- 补建说明：该文件为后续补建，用于把 Phase 10 adoption review 所需的证据入口、允许引用与剩余风险整理成一页；当前进度：Phase 10 已 approve with documented residual risk，host-neutral 且不复制动态 benchmark 数字。 -->
 # Adoption Evidence Pack
 
 This pack gives reviewers one place to find Phase 10 adoption evidence for `pretext-TUI`. Phase 10 is approved with documented residual risk; this pack should be used with the contracts and release gates, not as a replacement for them, and it does not promote incubating APIs to stable `0.1`.

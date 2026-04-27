@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于保存 pretext-TUI 可复现证据资料的规则与入口；当前进度：Phase 10 DOCS-A 更新，补齐 capability/correctness/adoption evidence 索引并保持动态数字只存在于 JSON reports。 -->
+<!-- 补建说明：该目录为后续补建，用于保存 pretext-TUI 可复现证据资料的规则与入口；当前进度：Phase 10 evidence entry points 已 approve with documented residual risk，并保持动态数字只存在于 JSON reports。 -->
 # Evidence
 
 This directory is the home for reproducible evidence that supports public claims about `pretext-TUI`.
@@ -16,7 +16,7 @@ Phase 10 evidence entry points are approved with documented residual risk. They 
 
 - [Kernel Capability Matrix](kernel-capability-matrix.md): current public capability areas, evidence anchors, stability status, and adoption boundaries.
 - [Correctness Matrix](correctness-matrix.md): validation coverage and residual risk by correctness area.
-- [Adoption Evidence Pack](adoption-evidence-pack.md): reviewer-facing bundle of claim shapes, clean report citation, and pending launch-readiness checklist.
+- [Adoption Evidence Pack](adoption-evidence-pack.md): reviewer-facing bundle of claim shapes, clean report citation, approved launch-readiness checklist, and residual risks.
 - [Benchmark Claim Guardrails](benchmark-claims.md): wording rules for optional comparison evidence.
 - [Benchmark Reports](benchmark-reports/): JSON reports that remain the numeric source of truth.
 

@@ -25,6 +25,7 @@ bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run memory-budget-check:tui
 bun run terminal-demo-check
+bun run terminal-feel-demo-check
 bun run api-snapshot-check
 bun run package-smoke-test
 ```
@@ -45,11 +46,14 @@ bun run tui-fuzz --seed=ci --cases=2000
 bun run benchmark-check:tui
 bun run memory-budget-check:tui
 bun run terminal-demo-check
+bun run terminal-feel-demo-check
 bun run api-snapshot-check
 bun run package-smoke-test
 ```
 
 `terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
+
+`terminal-feel-demo-check` gates the local tactile comparison demo. The demo compares a conventional full-wrap-and-slice viewport loop with a `pretext-TUI` prepared/page-cache loop, but it is a developer feel check rather than public benchmark evidence.
 
 The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work plus rich/search/selection lookup behavior; these counters are release-regression telemetry, not public benchmark evidence. `memory-budget-check:tui` separately models kernel-owned structure sizes for layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows; it is not process heap telemetry.
 
@@ -62,6 +66,14 @@ bun run benchmark:competitive:tui
 ```
 
 This command is intentionally not part of `prepublishOnly`. It depends on dev-only comparison packages such as `wrap-ansi`, `string-width`, and `strip-ansi`, measures local wall-clock time, and compares text-layout primitives rather than complete application renderers or event loops.
+
+For a quick local feel check that prints frame-budget meters for a conventional full-wrap viewport loop and a `pretext-TUI` hot-page viewport loop, run:
+
+```sh
+bun run demo:compare:tui
+```
+
+This is intentionally a tactile developer demo, not claimable benchmark evidence.
 
 For report-shaped benchmark evidence that can be cited by report id and workload id, run:
 

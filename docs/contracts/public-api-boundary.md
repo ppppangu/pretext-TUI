@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 10 launch-readiness 草案复核公共/孵化/私有边界，尚未把任何 incubating API 提升为 stable 0.1。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 10 launch-readiness 已 approve with documented residual risk，尚未把任何 incubating API 提升为 stable 0.1。 -->
 # Public API Boundary
 
 ## Purpose
@@ -164,4 +164,4 @@ Public documentation should:
 - Performance wording is tied to reproducible evidence or kept qualitative.
 - Internal storage is not part of the public data contract.
 - Internal debug snapshots are copied repository-only validation data and are absent from public package exports.
-- Phase 10 launch-readiness wording remains pending final review/gates until the release gate, public-doc claim scan, recipe public-import scan, and evidence freshness check have passed.
+- Phase 10 launch-readiness wording is approved with documented residual risk after the release gate, public-doc claim scan, recipe public-import scan, and evidence freshness check pass; future launch copy still needs human claim review before publication.

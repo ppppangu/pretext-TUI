@@ -1,6 +1,6 @@
 # TODO
 
-Current priorities for hardening the publishable `pretext-TUI` baseline into a host-neutral terminal text kernel.
+Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretext-TUI` host-neutral terminal text kernel.
 
 ## Active Next
 
@@ -12,7 +12,8 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 - Treat `memory-budget-check:tui` as modelled kernel-owned structure evidence, not process heap or host UI evidence.
 - Add memory/perf evidence only from reproducible counters and clean/declared benchmark baselines.
 - Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
-- Prepare launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
+- Maintain launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
+- Refresh claimable benchmark evidence after release-source changes before citing a new report id in public copy.
 - Cite report ids such as `competitive-tui-20260427-3e95bef-clean-8760e911` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
 
 ## Completed
@@ -43,6 +44,7 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 - Phase 8 append-only chunked storage has landed behind `PreparedTerminalCellFlow` with focused parity, seam, invalidation, benchmark evidence, and review status `approve with documented residual risk`.
 - Phase 9 performance, memory-budget, and evidence work has landed with approval status `approve with documented residual risk`: search/selection/range counters, modelled memory budgets, `memory-budget-check:tui`, release-gate consistency tests, and claim guardrails are implemented.
 - Phase 10 adoption evidence and launch-readiness work has landed with approval status `approve with documented residual risk`: capability/correctness/security matrices, incubating API approval index, generic agent transcript recipe, clean local evidence report citation, recipe public-import scan, package-smoke recipe consumer coverage, and launch-copy guardrails are implemented.
+- Release-candidate polish has landed for `0.1.0-alpha.0`: versioned package metadata, alpha changelog wording, package `SECURITY.md`, and a local compare feel demo.
 
 ## Not Worth Doing Now
 

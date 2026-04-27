@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI terminal text kernel 的公开能力、证据入口与采用边界；当前进度：Phase 10 DOCS-A 首版，保持 host-neutral 且不复制动态 benchmark 数字。 -->
+<!-- 补建说明：该文件为后续补建，用于汇总 pretext-TUI terminal text kernel 的公开能力、证据入口与采用边界；当前进度：Phase 10 已 approve with documented residual risk，保持 host-neutral 且不复制动态 benchmark 数字。 -->
 # Kernel Capability Matrix
 
 This matrix is an adoption-facing map of what the package currently exposes, what evidence supports each area, and where the package boundary remains intentionally narrow.

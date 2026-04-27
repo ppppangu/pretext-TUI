@@ -13,6 +13,7 @@ const canonicalGateScripts = [
   'benchmark-check:tui',
   'memory-budget-check:tui',
   'terminal-demo-check',
+  'terminal-feel-demo-check',
   'api-snapshot-check',
   'package-smoke-test',
 ]
