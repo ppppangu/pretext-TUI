@@ -3,7 +3,7 @@
 
 This matrix is an adoption-facing map of what the package currently exposes, what evidence supports each area, and where the package boundary remains intentionally narrow.
 
-Public capability claims should cite evidence IDs, commands, contracts, or tests. Timing values stay in JSON evidence reports, especially report `competitive-tui-20260427-3e95bef-clean-8760e911`.
+Public capability claims should cite evidence IDs, commands, contracts, or tests. Timing values stay in JSON evidence reports, especially report `competitive-tui-20260427-b7106de-clean-a9dfeebf`.
 
 | Capability area | Public surface | Evidence anchors | Current status | Adoption boundary |
 | --- | --- | --- | --- | --- |
@@ -21,7 +21,7 @@ Public capability claims should cite evidence IDs, commands, contracts, or tests
 ## Claim Rules
 
 - Cite tests, release gates, contracts, or the clean report id before making adoption claims.
-- Cite report `competitive-tui-20260427-3e95bef-clean-8760e911` for optional local comparison evidence, and leave timing values in the JSON.
+- Cite report `competitive-tui-20260427-b7106de-clean-a9dfeebf` for optional local comparison evidence, and leave timing values in the JSON.
 - Treat incubating APIs as useful but not frozen for the first stable contract.
 - Keep package claims about terminal text data. Host behavior, product lifecycle, and integration layers stay outside this matrix.
 

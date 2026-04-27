@@ -14,7 +14,7 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 - Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
 - Maintain launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
 - Refresh claimable benchmark evidence after release-source changes before citing a new report id in public copy.
-- Cite report ids such as `competitive-tui-20260427-3e95bef-clean-8760e911` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
+- Cite report ids such as `competitive-tui-20260427-b7106de-clean-a9dfeebf` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
 
 ## Completed
 

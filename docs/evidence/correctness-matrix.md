@@ -22,5 +22,5 @@ This matrix links correctness claims to the current validation stack. It is not 
 
 - `bun run benchmark-check:tui` is regression telemetry for package-owned operations.
 - `bun run memory-budget-check:tui` is a deterministic model for package-owned structures.
-- Clean comparison report `competitive-tui-20260427-3e95bef-clean-8760e911` may be cited by id for optional local comparison evidence; dynamic numbers remain in its JSON file.
+- Clean comparison report `competitive-tui-20260427-b7106de-clean-a9dfeebf` may be cited by id for optional local comparison evidence; dynamic numbers remain in its JSON file.
 - If a claim cannot be tied to one of the evidence anchors above, treat it as unproven adoption copy.

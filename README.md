@@ -64,7 +64,7 @@ bun run benchmark:evidence:tui
 
 That writes a local `pretext-tui-benchmark-evidence@1` JSON report under `docs/evidence/benchmark-reports/`. Treat report ids, not copied numbers, as the durable citation target.
 
-Current repository evidence includes report `competitive-tui-20260427-3e95bef-clean-8760e911`, including workload `large-page-seek` and a comparator semantic matrix. It is local text-layout evidence for a clean commit, not a renderer benchmark, not a release guarantee, and not a broad speed claim.
+Current repository evidence includes report `competitive-tui-20260427-b7106de-clean-a9dfeebf`, including workload `large-page-seek` and a comparator semantic matrix. It is local text-layout evidence for a clean commit, not a renderer benchmark, not a release guarantee, and not a broad speed claim.
 
 Evidence reports include a hot viewport-seeking workload over a long fixed-column terminal buffer: prepared text, sparse row index, and page cache are reused, and only requested rows are materialized.
 

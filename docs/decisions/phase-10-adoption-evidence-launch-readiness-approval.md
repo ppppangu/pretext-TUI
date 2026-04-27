@@ -35,7 +35,7 @@ Primary evidence and adoption references:
 - [Incubating API approval index](incubating-api-approval-index.md) for phase status and blockers before stable `0.1`.
 - [Adoption evidence pack](../evidence/adoption-evidence-pack.md), [kernel capability matrix](../evidence/kernel-capability-matrix.md), and [correctness matrix](../evidence/correctness-matrix.md) for the Phase 10 evidence-map view.
 - [Evidence README](../evidence/README.md) and [benchmark claim guardrails](../evidence/benchmark-claims.md) for report-id citation rules.
-- Report `competitive-tui-20260427-3e95bef-clean-8760e911` under [benchmark reports](../evidence/benchmark-reports/competitive-tui-20260427-3e95bef-clean-8760e911.json), especially workload `large-page-seek` and the report semantic matrix.
+- Report `competitive-tui-20260427-b7106de-clean-a9dfeebf` under [benchmark reports](../evidence/benchmark-reports/competitive-tui-20260427-b7106de-clean-a9dfeebf.json), especially workload `large-page-seek` and the report semantic matrix.
 - [Host-neutral recipes](../recipes/README.md): structured transcript viewport, generic agent transcript, terminal pane resize, editor source mapping, and rich ANSI log viewer.
 - [Production notes](../production/README.md), [security/support/provenance matrix](../production/security-support-provenance-matrix.md), and [terminal security profile](../contracts/terminal-security-profile.md) for supported rich sidecar posture and non-goals.
 - [Adoption growth playbook](../marketing/adoption-growth-playbook.md) for launch-copy shape, forbidden benchmark wording, and channel checklist.

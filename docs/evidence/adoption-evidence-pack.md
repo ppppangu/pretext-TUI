@@ -14,14 +14,14 @@ This pack gives reviewers one place to find Phase 10 adoption evidence for `pret
 | What validates append-only flow? | `tests/tui/chunked-append-parity.test.ts`, `tests/tui/layout-bundle.test.ts`, `benchmarks/tui.json`, `benchmarks/tui-memory-budgets.json` | Append-only flow is incubating and covered by parity, invalidation, counter, and modeled budget evidence. |
 | What validates rich metadata safety? | `docs/production/security-support-provenance-matrix.md`, `docs/contracts/terminal-security-profile.md`, `tests/tui/rich-security-gate.test.ts` | Rich inline metadata is opt-in, policy-bound, redacted by default where diagnostics are exposed, and data-only. |
 | What validates package consumption? | `bun run package-smoke-test`, `bun run api-snapshot-check`, `scripts/build-package.ts`, `package.json` files list | JS and TS consumers are checked against the packaged public surface. |
-| What supports comparison evidence? | `docs/evidence/benchmark-reports/competitive-tui-20260427-3e95bef-clean-8760e911.json`, `docs/evidence/benchmark-claims.md`, `tests/tui/benchmark-evidence.test.ts` | Optional local text-layout comparison evidence can cite the clean report id and workload ids, with numbers left in JSON. |
+| What supports comparison evidence? | `docs/evidence/benchmark-reports/competitive-tui-20260427-b7106de-clean-a9dfeebf.json`, `docs/evidence/benchmark-claims.md`, `tests/tui/benchmark-evidence.test.ts` | Optional local text-layout comparison evidence can cite the clean report id and workload ids, with numbers left in JSON. |
 
 ## Clean Report Citation
 
 Use this exact citation when adoption copy needs a benchmark evidence reference:
 
 ```text
-See clean evidence report competitive-tui-20260427-3e95bef-clean-8760e911 for raw samples, provenance metadata, workload ids, and semantic caveats.
+See clean evidence report competitive-tui-20260427-b7106de-clean-a9dfeebf for raw samples, provenance metadata, workload ids, and semantic caveats.
 ```
 
 Timing values, ratios, percentiles, and sample tables remain in the JSON report. Markdown prose should cite only the report id, workload ids, provenance metadata, and semantic caveats.

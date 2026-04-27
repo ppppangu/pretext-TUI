@@ -32,7 +32,7 @@
     "appendOnlyChunkedStorage": "Phase 8 append-only chunked storage landed behind existing cell-flow/bundle boundaries with documented residual risk",
     "performanceMemoryEvidence": "Phase 9 approved with documented residual risk: benchmark counters, modelled memory budgets, release gate consistency evidence, and claim guardrails are implemented",
     "releaseStatus": "0.1.0-alpha.0 release candidate: pre-1.0, public package surface prepared for publish with incubating advanced APIs clearly labelled.",
-    "phase10LaunchReadiness": "Approved with documented residual risk. Evidence anchors include public API boundary, incubating API approval index, adoption evidence pack, kernel capability matrix, correctness matrix, public-only recipes, production notes, benchmark claim guardrails, and report competitive-tui-20260427-3e95bef-clean-8760e911. No stable 0.1, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claim."
+    "phase10LaunchReadiness": "Approved with documented residual risk. Evidence anchors include public API boundary, incubating API approval index, adoption evidence pack, kernel capability matrix, correctness matrix, public-only recipes, production notes, benchmark claim guardrails, and report competitive-tui-20260427-b7106de-clean-a9dfeebf. No stable 0.1, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claim."
   },
   "phase10": {
     "approvalState": "approve with documented residual risk",
@@ -44,7 +44,7 @@
       "docs/evidence/correctness-matrix.md",
       "docs/production/security-support-provenance-matrix.md"
     ],
-    "evidenceReportId": "competitive-tui-20260427-3e95bef-clean-8760e911",
+    "evidenceReportId": "competitive-tui-20260427-b7106de-clean-a9dfeebf",
     "evidenceWorkloadIds": [
       "large-page-seek"
     ],
