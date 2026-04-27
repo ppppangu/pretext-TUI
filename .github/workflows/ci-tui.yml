@@ -1,4 +1,4 @@
-# 补建说明：该 workflow 为后续补建，用于运行 pretext-TUI 的 TUI-only 发布验证门禁；当前进度：覆盖 typecheck/test/static/oracle/corpus/fuzz/benchmark/terminal demo/API snapshot/package smoke。
+# 补建说明：该 workflow 为后续补建，用于运行 pretext-TUI 的 TUI-only 发布验证门禁；当前进度：覆盖 release-gate:tui 等价验证，并使用完整 git 历史支持 evidence provenance 检查。
 name: TUI validation
 
 on:
@@ -12,7 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -40,8 +42,14 @@ jobs:
       - name: Benchmark check
         run: bun run benchmark-check:tui
 
+      - name: Memory budget check
+        run: bun run memory-budget-check:tui
+
       - name: Terminal demo
         run: bun run terminal-demo-check
+
+      - name: Terminal feel demo
+        run: bun run terminal-feel-demo-check
 
       - name: API snapshot check
         run: bun run api-snapshot-check

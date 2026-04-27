@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
@@ -832,22 +833,28 @@ function run(
     env?: Record<string, string>
   },
 ): { exitCode: number, stdout: string, stderr: string } {
-  const result = Bun.spawnSync(cmd, {
+  const [command, ...args] = cmd
+  if (command === undefined) throw new Error('Cannot run an empty command')
+
+  const result = spawnSync(command, args, {
     cwd: options.cwd,
-    stdout: options.stdout,
-    stderr: options.stderr,
+    shell: process.platform === 'win32',
+    stdio: ['ignore', options.stdout, options.stderr],
     env: options.env ? { ...process.env, ...options.env } : process.env,
   })
 
-  const stdout = options.stdout === 'pipe' ? new TextDecoder().decode(result.stdout) : ''
-  const stderr = options.stderr === 'pipe' ? new TextDecoder().decode(result.stderr) : ''
+  if (result.error !== undefined) throw result.error
 
-  if (!options.allowFailure && result.exitCode !== 0) {
-    throw new Error(`Command failed (${result.exitCode}): ${cmd.join(' ')}`)
+  const stdout = options.stdout === 'pipe' ? result.stdout?.toString() ?? '' : ''
+  const stderr = options.stderr === 'pipe' ? result.stderr?.toString() ?? '' : ''
+  const exitCode = result.status ?? 1
+
+  if (!options.allowFailure && exitCode !== 0) {
+    throw new Error(`Command failed (${exitCode}): ${cmd.join(' ')}`)
   }
 
   return {
-    exitCode: result.exitCode,
+    exitCode,
     stdout,
     stderr,
   }
