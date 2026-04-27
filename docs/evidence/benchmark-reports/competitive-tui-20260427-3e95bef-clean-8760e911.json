@@ -1,0 +1,2024 @@
+{
+  "metadata": {
+    "note": "补建说明：该 JSON evidence report 为后续补建，用于 Phase 10 adoption evidence pack 引用 clean local benchmark report；当前进度：accepted as local-evidence-only report for commit 3e95bef, with dynamic measurements kept in JSON only."
+  },
+  "schema": "pretext-tui-benchmark-evidence@1",
+  "reportId": "competitive-tui-20260427-3e95bef-clean-8760e911",
+  "reportKind": "competitive-tui",
+  "generatedAt": "2026-04-27T05:49:54.688Z",
+  "caveat": "This is a local competitive benchmark for text-layout primitives, not a release gate and not a full TUI renderer/event-loop benchmark.",
+  "claimability": "local-evidence-only",
+  "command": {
+    "argv": [
+      "--report-dir",
+      "docs/evidence/benchmark-reports",
+      "--package-script",
+      "benchmark:evidence:tui"
+    ],
+    "cwd": "<repo-root>",
+    "cwdRedacted": true,
+    "packageScript": "benchmark:evidence:tui"
+  },
+  "git": {
+    "commit": "3e95befaa553ad265e62a26031c46913a54ba2ea",
+    "shortCommit": "3e95bef",
+    "branch": "main",
+    "dirty": false,
+    "statusHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "sources": {
+    "scriptHashes": {
+      "scripts/competitive-tui-benchmark.ts": "e3c69b688fec834dbcdc45c66a9f6fb9efe71b57c79ef80081f3263922962c00",
+      "scripts/tui-benchmark-evidence.ts": "f15bdba09787665569441d6b56c567d413e4076fbfb402edd25c430d54d2d87b",
+      "benchmarks/competitive-tui.json": "56af7fdbee2105ece57077419ee0119a05485175b477f65fd788e2abfa353259"
+    },
+    "configPath": "benchmarks/competitive-tui.json",
+    "configHash": "56af7fdbee2105ece57077419ee0119a05485175b477f65fd788e2abfa353259",
+    "packageJsonHash": "4fd282340fde25e3fe51592b825db8ef67f911e589dafa8fff5ea04c2f0235ba",
+    "lockfileHash": "6b4ad92890b8669bb7820d30b1136fdd3bf3b5a3674d5a5c5ac1eb5c9872ee0c"
+  },
+  "runtime": {
+    "bun": "1.3.3",
+    "node": "24.3.0",
+    "v8": "13.6.233.10-node.18",
+    "platform": "win32",
+    "arch": "x64",
+    "osType": "Windows_NT",
+    "osRelease": "10.0.26200"
+  },
+  "hardware": {
+    "cpuModel": "AMD Ryzen 9 7945HX with Radeon Graphics        ",
+    "logicalCpus": 32,
+    "totalMemoryBytes": 67836293120
+  },
+  "dependencies": {
+    "pretext-tui": "0.0.0",
+    "wrap-ansi": "10.0.0",
+    "string-width": "8.2.0",
+    "strip-ansi": "7.2.0"
+  },
+  "workloads": [
+    {
+      "id": "plain-full-wrap",
+      "scenario": "full-document",
+      "description": "Full-document plain terminal wrapping with CJK, emoji, tabs, hard breaks, and terminal-session prose.",
+      "columns": [
+        52
+      ],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "warmupIterations": 2,
+      "iterationsPerSample": 10,
+      "sampleCount": 5,
+      "source": {
+        "kind": "corpusFile",
+        "rawInputHash": "68716f3beef576010fb990109043ca59a8866df31d66939d2c6c1a5f569a296f",
+        "effectiveInputHash": "b0e669894d74c71bb74a0475d78f37448fd30f8ae4c151bd12abbeffaeae6c9e",
+        "effectiveInputCodeUnits": 4396,
+        "corpusFile": "mixed-app-text.txt",
+        "repeat": 4
+      }
+    },
+    {
+      "id": "unicode-resize-relayout",
+      "scenario": "prepared-resize",
+      "description": "Repeated resize relayout over one prepared mixed-language buffer.",
+      "columns": [
+        36,
+        52,
+        80,
+        100
+      ],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4,
+        "widthProfile": {
+          "ambiguousWidth": "wide"
+        }
+      },
+      "warmupIterations": 2,
+      "iterationsPerSample": 10,
+      "sampleCount": 5,
+      "source": {
+        "kind": "text",
+        "rawInputHash": "f511409ce152d669d891f25049604c19189f3a00fdfc148819e7a3ee7c9e05f5",
+        "effectiveInputHash": "50bdfda0bfbf45da2895b9ba7633751e3430c0534d8316c46f2b3f08cf8b8e6c",
+        "effectiveInputCodeUnits": 2840,
+        "repeat": 40
+      }
+    },
+    {
+      "id": "rich-sgr-wrap",
+      "scenario": "rich-sgr",
+      "description": "ANSI SGR inline style wrapping with plain text materialization plus ANSI re-emission.",
+      "columns": [
+        48
+      ],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "warmupIterations": 2,
+      "iterationsPerSample": 10,
+      "sampleCount": 5,
+      "source": {
+        "kind": "rawText",
+        "rawInputHash": "7f7214a25c641f4d6cb217efa25413455ecc4807bc453de24defdc2e77e4113c",
+        "effectiveInputHash": "67db3a61d791422079a1fcf8555b37ae82e3563051c4bd859aac6cec73e896ee",
+        "effectiveInputCodeUnits": 3660,
+        "repeat": 30
+      }
+    },
+    {
+      "id": "rich-osc8-wrap",
+      "scenario": "rich-sgr",
+      "description": "OSC8 hyperlink metadata wrapping with URI policy and explicit ANSI re-emission.",
+      "columns": [
+        48
+      ],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "warmupIterations": 2,
+      "iterationsPerSample": 8,
+      "sampleCount": 5,
+      "source": {
+        "kind": "rawText",
+        "rawInputHash": "802cb5243ea5a1aa5d4cd480b17407b9813cfce38f8195cd42c09cb751079f47",
+        "effectiveInputHash": "ad696bc72c8d2f141deecc73fb3dd67de76a01a7dde53cf58c2f1bf015e01178",
+        "effectiveInputCodeUnits": 1840,
+        "repeat": 20
+      }
+    },
+    {
+      "id": "large-page-seek",
+      "scenario": "large-page-seek",
+      "description": "Large fixed-column viewport page lookup, comparing range/page materialization against full-wrap-and-slice baselines.",
+      "columns": [
+        52
+      ],
+      "prepare": {
+        "whiteSpace": "pre-wrap",
+        "tabSize": 4
+      },
+      "pageSize": 16,
+      "pageStarts": [
+        0,
+        64,
+        128,
+        256,
+        64
+      ],
+      "warmupIterations": 2,
+      "iterationsPerSample": 3,
+      "sampleCount": 5,
+      "source": {
+        "kind": "corpusFile",
+        "rawInputHash": "68716f3beef576010fb990109043ca59a8866df31d66939d2c6c1a5f569a296f",
+        "effectiveInputHash": "d915f5492dbc0fab5e847554033b8dacb59e2d908dcb321d4dfee5a02eb99ba1",
+        "effectiveInputCodeUnits": 32970,
+        "corpusFile": "mixed-app-text.txt",
+        "repeat": 30
+      }
+    }
+  ],
+  "semanticMatrix": [
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "pretext-cold-full",
+      "comparatorKind": "pretext",
+      "operation": "cold-full",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "native",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Pretext results include source-range capable terminal layout work. OSC8 policy is not exercised by this workload."
+      ]
+    },
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "wrap-ansi-full",
+      "comparatorKind": "wrap-ansi",
+      "operation": "cold-full",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles."
+      ]
+    },
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "string-width-greedy-full",
+      "comparatorKind": "string-width-greedy",
+      "operation": "cold-full",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles."
+      ]
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "pretext-prepared-resize",
+      "comparatorKind": "pretext",
+      "operation": "prepared-resize",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "native",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": false,
+        "cacheState": "not-applicable",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Prepare time is intentionally excluded to measure resize relayout over one prepared buffer."
+      ]
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "wrap-ansi-resize",
+      "comparatorKind": "wrap-ansi",
+      "operation": "prepared-resize",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles."
+      ]
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "string-width-greedy-resize",
+      "comparatorKind": "string-width-greedy",
+      "operation": "prepared-resize",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles."
+      ]
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "pretext-rich-sgr",
+      "comparatorKind": "pretext",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "metadata",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "native",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Pretext results include source-range capable terminal layout work. OSC8 policy is not exercised by this workload."
+      ]
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "wrap-ansi-rich-sgr",
+      "comparatorKind": "wrap-ansi",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "preserved-text",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Rich metadata semantics differ; hashes are not expected to match pretext rich fragments.",
+        "OSC8 behavior is not exercised by this workload."
+      ]
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "string-width-greedy-strip-ansi",
+      "comparatorKind": "string-width-greedy",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "stripped",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Rich metadata semantics differ; hashes are not expected to match pretext rich fragments.",
+        "OSC8 behavior is not exercised by this workload."
+      ]
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "pretext-rich-sgr",
+      "comparatorKind": "pretext",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "metadata",
+        "osc8": "policy-checked",
+        "sanitizer": "native",
+        "rangeOnlyOutput": "native",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Pretext results include source-range capable terminal layout work and exercise OSC8 URI policy."
+      ]
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "wrap-ansi-rich-sgr",
+      "comparatorKind": "wrap-ansi",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "preserved-text",
+        "osc8": "preserved-text",
+        "sanitizer": "dependency",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Rich metadata semantics differ; hashes are not expected to match pretext rich fragments."
+      ]
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "string-width-greedy-strip-ansi",
+      "comparatorKind": "string-width-greedy",
+      "operation": "rich-sgr",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "stripped",
+        "osc8": "stripped",
+        "sanitizer": "dependency",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Rich metadata semantics differ; hashes are not expected to match pretext rich fragments."
+      ]
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "pretext-virtual-cold-pages",
+      "comparatorKind": "pretext",
+      "operation": "virtual-pages",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "native",
+        "pageCache": "native",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "cold",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Prepared text, sparse index, and page cache are rebuilt inside each cold-page sample iteration."
+      ]
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "pretext-virtual-hot-pages",
+      "comparatorKind": "pretext",
+      "operation": "virtual-pages",
+      "features": {
+        "terminalWidth": "native",
+        "graphemeSafety": "native",
+        "tabs": "layout-time",
+        "whitespace": "pre-wrap",
+        "sourceOffsets": "native",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "native",
+        "pageCache": "native",
+        "appendInvalidation": "absent",
+        "prepareIncluded": false,
+        "cacheState": "hot",
+        "outputHashComparable": true
+      },
+      "caveats": [
+        "Prepared text, sparse index, and page cache are reused for the hot-page adapter."
+      ]
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "wrap-ansi-full-slice-pages",
+      "comparatorKind": "wrap-ansi",
+      "operation": "virtual-pages",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Baseline wraps the full input before slicing requested rows."
+      ]
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "string-width-greedy-full-slice-pages",
+      "comparatorKind": "string-width-greedy",
+      "operation": "virtual-pages",
+      "features": {
+        "terminalWidth": "partial",
+        "graphemeSafety": "partial",
+        "tabs": "expanded",
+        "whitespace": "partial",
+        "sourceOffsets": "absent",
+        "richSgr": "absent",
+        "osc8": "absent",
+        "sanitizer": "absent",
+        "rangeOnlyOutput": "absent",
+        "pageCache": "absent",
+        "appendInvalidation": "absent",
+        "prepareIncluded": true,
+        "cacheState": "not-applicable",
+        "outputHashComparable": false
+      },
+      "caveats": [
+        "Comparator does not provide source-offset ranges, sparse page caches, or host-neutral layout handles.",
+        "Baseline wraps the full input before slicing requested rows."
+      ]
+    }
+  ],
+  "results": [
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "pretext-cold-full",
+      "notes": "prepareTerminal + walk/materialize all rows per sample iteration.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 210.84,
+          "opsPerSecond": 47.43,
+          "output": {
+            "rows": 116,
+            "materializedLines": 116,
+            "codeUnits": 4324,
+            "hash": "be7ed23d"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 191.76,
+          "opsPerSecond": 52.15,
+          "output": {
+            "rows": 116,
+            "materializedLines": 116,
+            "codeUnits": 4324,
+            "hash": "be7ed23d"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 225.7,
+          "opsPerSecond": 44.31,
+          "output": {
+            "rows": 116,
+            "materializedLines": 116,
+            "codeUnits": 4324,
+            "hash": "be7ed23d"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 206.58,
+          "opsPerSecond": 48.41,
+          "output": {
+            "rows": 116,
+            "materializedLines": 116,
+            "codeUnits": 4324,
+            "hash": "be7ed23d"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 206.96,
+          "opsPerSecond": 48.32,
+          "output": {
+            "rows": 116,
+            "materializedLines": 116,
+            "codeUnits": 4324,
+            "hash": "be7ed23d"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 191.76,
+        "maxMs": 225.7,
+        "meanMs": 208.37,
+        "stdevMs": 12.12,
+        "coefficientOfVariation": 0.06,
+        "p50Ms": 206.96,
+        "p95Ms": 222.73,
+        "meanOpsPerSecond": 48.12,
+        "p50OpsPerSecond": 48.32
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-cold-full",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1
+      },
+      "referenceAdapter": "pretext-cold-full"
+    },
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "wrap-ansi-full",
+      "notes": "wrapAnsi hard-wraps the whole input per sample iteration.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 2932.31,
+          "opsPerSecond": 3.41,
+          "output": {
+            "rows": 117,
+            "materializedLines": 117,
+            "codeUnits": 4336,
+            "hash": "56e12981"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 2618.11,
+          "opsPerSecond": 3.82,
+          "output": {
+            "rows": 117,
+            "materializedLines": 117,
+            "codeUnits": 4336,
+            "hash": "56e12981"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 2575.13,
+          "opsPerSecond": 3.88,
+          "output": {
+            "rows": 117,
+            "materializedLines": 117,
+            "codeUnits": 4336,
+            "hash": "56e12981"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 2983.18,
+          "opsPerSecond": 3.35,
+          "output": {
+            "rows": 117,
+            "materializedLines": 117,
+            "codeUnits": 4336,
+            "hash": "56e12981"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 2798.58,
+          "opsPerSecond": 3.57,
+          "output": {
+            "rows": 117,
+            "materializedLines": 117,
+            "codeUnits": 4336,
+            "hash": "56e12981"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 2575.13,
+        "maxMs": 2983.18,
+        "meanMs": 2781.46,
+        "stdevMs": 182.34,
+        "coefficientOfVariation": 0.07,
+        "p50Ms": 2798.58,
+        "p95Ms": 2973.01,
+        "meanOpsPerSecond": 3.61,
+        "p50OpsPerSecond": 3.57
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-cold-full",
+        "meanElapsedToReference": 13.35,
+        "p50ElapsedToReference": 13.52
+      },
+      "referenceAdapter": "pretext-cold-full"
+    },
+    {
+      "workloadId": "plain-full-wrap",
+      "adapter": "string-width-greedy-full",
+      "notes": "Intl.Segmenter + string-width greedy hard wrap per sample iteration.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 208.88,
+          "opsPerSecond": 47.87,
+          "output": {
+            "rows": 113,
+            "materializedLines": 113,
+            "codeUnits": 4336,
+            "hash": "6d3e4d35"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 205.19,
+          "opsPerSecond": 48.73,
+          "output": {
+            "rows": 113,
+            "materializedLines": 113,
+            "codeUnits": 4336,
+            "hash": "6d3e4d35"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 211.16,
+          "opsPerSecond": 47.36,
+          "output": {
+            "rows": 113,
+            "materializedLines": 113,
+            "codeUnits": 4336,
+            "hash": "6d3e4d35"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 210.83,
+          "opsPerSecond": 47.43,
+          "output": {
+            "rows": 113,
+            "materializedLines": 113,
+            "codeUnits": 4336,
+            "hash": "6d3e4d35"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 209.09,
+          "opsPerSecond": 47.83,
+          "output": {
+            "rows": 113,
+            "materializedLines": 113,
+            "codeUnits": 4336,
+            "hash": "6d3e4d35"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 205.19,
+        "maxMs": 211.16,
+        "meanMs": 209.03,
+        "stdevMs": 2.37,
+        "coefficientOfVariation": 0.01,
+        "p50Ms": 209.09,
+        "p95Ms": 211.09,
+        "meanOpsPerSecond": 47.84,
+        "p50OpsPerSecond": 47.83
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-cold-full",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1.01
+      },
+      "referenceAdapter": "pretext-cold-full"
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "pretext-prepared-resize",
+      "notes": "prepare once, relayout/materialize across resize widths per sample iteration.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 32.05,
+          "opsPerSecond": 311.99,
+          "output": {
+            "rows": 360,
+            "materializedLines": 360,
+            "codeUnits": 11160,
+            "hash": "37932a2d"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 36.65,
+          "opsPerSecond": 272.83,
+          "output": {
+            "rows": 360,
+            "materializedLines": 360,
+            "codeUnits": 11160,
+            "hash": "37932a2d"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 29.62,
+          "opsPerSecond": 337.63,
+          "output": {
+            "rows": 360,
+            "materializedLines": 360,
+            "codeUnits": 11160,
+            "hash": "37932a2d"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 29.89,
+          "opsPerSecond": 334.56,
+          "output": {
+            "rows": 360,
+            "materializedLines": 360,
+            "codeUnits": 11160,
+            "hash": "37932a2d"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 31.43,
+          "opsPerSecond": 318.13,
+          "output": {
+            "rows": 360,
+            "materializedLines": 360,
+            "codeUnits": 11160,
+            "hash": "37932a2d"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 29.62,
+        "maxMs": 36.65,
+        "meanMs": 31.93,
+        "stdevMs": 2.83,
+        "coefficientOfVariation": 0.09,
+        "p50Ms": 31.43,
+        "p95Ms": 35.73,
+        "meanOpsPerSecond": 315.03,
+        "p50OpsPerSecond": 318.13
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-prepared-resize",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1
+      },
+      "referenceAdapter": "pretext-prepared-resize"
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "wrap-ansi-resize",
+      "notes": "wrapAnsi rewraps raw input for every resize width.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 6290.69,
+          "opsPerSecond": 1.59,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 10880,
+            "hash": "dec37a0d"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 6987.86,
+          "opsPerSecond": 1.43,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 10880,
+            "hash": "dec37a0d"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 6488.21,
+          "opsPerSecond": 1.54,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 10880,
+            "hash": "dec37a0d"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 6851.52,
+          "opsPerSecond": 1.46,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 10880,
+            "hash": "dec37a0d"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 6164.19,
+          "opsPerSecond": 1.62,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 10880,
+            "hash": "dec37a0d"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 6164.19,
+        "maxMs": 6987.86,
+        "meanMs": 6556.49,
+        "stdevMs": 354.38,
+        "coefficientOfVariation": 0.05,
+        "p50Ms": 6488.21,
+        "p95Ms": 6960.59,
+        "meanOpsPerSecond": 1.53,
+        "p50OpsPerSecond": 1.54
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-prepared-resize",
+        "meanElapsedToReference": 205.34,
+        "p50ElapsedToReference": 206.43
+      },
+      "referenceAdapter": "pretext-prepared-resize"
+    },
+    {
+      "workloadId": "unicode-resize-relayout",
+      "adapter": "string-width-greedy-resize",
+      "notes": "string-width greedy wrapper rewraps raw input for every resize width.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 948.08,
+          "opsPerSecond": 10.55,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 11520,
+            "hash": "4306fd55"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 973.74,
+          "opsPerSecond": 10.27,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 11520,
+            "hash": "4306fd55"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 995.76,
+          "opsPerSecond": 10.04,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 11520,
+            "hash": "4306fd55"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 1174.76,
+          "opsPerSecond": 8.51,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 11520,
+            "hash": "4306fd55"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 1358.6,
+          "opsPerSecond": 7.36,
+          "output": {
+            "rows": 364,
+            "materializedLines": 364,
+            "codeUnits": 11520,
+            "hash": "4306fd55"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 948.08,
+        "maxMs": 1358.6,
+        "meanMs": 1090.19,
+        "stdevMs": 174.55,
+        "coefficientOfVariation": 0.16,
+        "p50Ms": 995.76,
+        "p95Ms": 1321.83,
+        "meanOpsPerSecond": 9.35,
+        "p50OpsPerSecond": 10.04
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-prepared-resize",
+        "meanElapsedToReference": 34.14,
+        "p50ElapsedToReference": 31.68
+      },
+      "referenceAdapter": "pretext-prepared-resize"
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "pretext-rich-sgr",
+      "notes": "tokenize SGR metadata, terminal layout, materialize rich lines with explicit ANSI sidecar.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 182.04,
+          "opsPerSecond": 54.93,
+          "output": {
+            "rows": 90,
+            "materializedLines": 90,
+            "codeUnits": 3630,
+            "hash": "2e3d48f1"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 171.98,
+          "opsPerSecond": 58.15,
+          "output": {
+            "rows": 90,
+            "materializedLines": 90,
+            "codeUnits": 3630,
+            "hash": "2e3d48f1"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 175.69,
+          "opsPerSecond": 56.92,
+          "output": {
+            "rows": 90,
+            "materializedLines": 90,
+            "codeUnits": 3630,
+            "hash": "2e3d48f1"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 164.85,
+          "opsPerSecond": 60.66,
+          "output": {
+            "rows": 90,
+            "materializedLines": 90,
+            "codeUnits": 3630,
+            "hash": "2e3d48f1"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 176.07,
+          "opsPerSecond": 56.79,
+          "output": {
+            "rows": 90,
+            "materializedLines": 90,
+            "codeUnits": 3630,
+            "hash": "2e3d48f1"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 164.85,
+        "maxMs": 182.04,
+        "meanMs": 174.13,
+        "stdevMs": 6.31,
+        "coefficientOfVariation": 0.04,
+        "p50Ms": 175.69,
+        "p95Ms": 180.85,
+        "meanOpsPerSecond": 57.49,
+        "p50OpsPerSecond": 56.92
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "wrap-ansi-rich-sgr",
+      "notes": "wrapAnsi wraps SGR-decorated input directly.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 680.24,
+          "opsPerSecond": 14.7,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3630,
+            "hash": "848a6ce5"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 677.47,
+          "opsPerSecond": 14.76,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3630,
+            "hash": "848a6ce5"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 662.11,
+          "opsPerSecond": 15.1,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3630,
+            "hash": "848a6ce5"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 681.39,
+          "opsPerSecond": 14.68,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3630,
+            "hash": "848a6ce5"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 687.66,
+          "opsPerSecond": 14.54,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3630,
+            "hash": "848a6ce5"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 662.11,
+        "maxMs": 687.66,
+        "meanMs": 677.77,
+        "stdevMs": 9.52,
+        "coefficientOfVariation": 0.01,
+        "p50Ms": 680.24,
+        "p95Ms": 686.41,
+        "meanOpsPerSecond": 14.76,
+        "p50OpsPerSecond": 14.7
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 3.89,
+        "p50ElapsedToReference": 3.87
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "rich-sgr-wrap",
+      "adapter": "string-width-greedy-strip-ansi",
+      "notes": "strip ANSI then greedy hard-wrap visible text only.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 10,
+          "elapsedMs": 48.15,
+          "opsPerSecond": 207.7,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3120,
+            "hash": "50e43583"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 10,
+          "elapsedMs": 46.24,
+          "opsPerSecond": 216.28,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3120,
+            "hash": "50e43583"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 10,
+          "elapsedMs": 42.35,
+          "opsPerSecond": 236.14,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3120,
+            "hash": "50e43583"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 10,
+          "elapsedMs": 43.2,
+          "opsPerSecond": 231.47,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3120,
+            "hash": "50e43583"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 10,
+          "elapsedMs": 41.25,
+          "opsPerSecond": 242.4,
+          "output": {
+            "rows": 91,
+            "materializedLines": 91,
+            "codeUnits": 3120,
+            "hash": "50e43583"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 10,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 41.25,
+        "maxMs": 48.15,
+        "meanMs": 44.24,
+        "stdevMs": 2.87,
+        "coefficientOfVariation": 0.06,
+        "p50Ms": 43.2,
+        "p95Ms": 47.77,
+        "meanOpsPerSecond": 226.8,
+        "p50OpsPerSecond": 231.47
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 0.25,
+        "p50ElapsedToReference": 0.25
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "pretext-rich-sgr",
+      "notes": "tokenize SGR metadata, terminal layout, materialize rich lines with explicit ANSI sidecar.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 8,
+          "elapsedMs": 45.98,
+          "opsPerSecond": 174,
+          "output": {
+            "rows": 40,
+            "materializedLines": 40,
+            "codeUnits": 1820,
+            "hash": "d1f6f1f9"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 8,
+          "elapsedMs": 48,
+          "opsPerSecond": 166.66,
+          "output": {
+            "rows": 40,
+            "materializedLines": 40,
+            "codeUnits": 1820,
+            "hash": "d1f6f1f9"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 8,
+          "elapsedMs": 44.3,
+          "opsPerSecond": 180.58,
+          "output": {
+            "rows": 40,
+            "materializedLines": 40,
+            "codeUnits": 1820,
+            "hash": "d1f6f1f9"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 8,
+          "elapsedMs": 41.78,
+          "opsPerSecond": 191.46,
+          "output": {
+            "rows": 40,
+            "materializedLines": 40,
+            "codeUnits": 1820,
+            "hash": "d1f6f1f9"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 8,
+          "elapsedMs": 44.03,
+          "opsPerSecond": 181.69,
+          "output": {
+            "rows": 40,
+            "materializedLines": 40,
+            "codeUnits": 1820,
+            "hash": "d1f6f1f9"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 8,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 41.78,
+        "maxMs": 48,
+        "meanMs": 44.82,
+        "stdevMs": 2.32,
+        "coefficientOfVariation": 0.05,
+        "p50Ms": 44.3,
+        "p95Ms": 47.6,
+        "meanOpsPerSecond": 178.88,
+        "p50OpsPerSecond": 180.58
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "wrap-ansi-rich-sgr",
+      "notes": "wrapAnsi wraps SGR-decorated input directly.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 8,
+          "elapsedMs": 4.68,
+          "opsPerSecond": 1709.91,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1820,
+            "hash": "7abee189"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 8,
+          "elapsedMs": 5.27,
+          "opsPerSecond": 1519.27,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1820,
+            "hash": "7abee189"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 8,
+          "elapsedMs": 4.71,
+          "opsPerSecond": 1699.96,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1820,
+            "hash": "7abee189"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 8,
+          "elapsedMs": 6.77,
+          "opsPerSecond": 1181.06,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1820,
+            "hash": "7abee189"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 8,
+          "elapsedMs": 5.71,
+          "opsPerSecond": 1401.59,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1820,
+            "hash": "7abee189"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 8,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 4.68,
+        "maxMs": 6.77,
+        "meanMs": 5.43,
+        "stdevMs": 0.86,
+        "coefficientOfVariation": 0.16,
+        "p50Ms": 5.27,
+        "p95Ms": 6.56,
+        "meanOpsPerSecond": 1502.36,
+        "p50OpsPerSecond": 1519.27
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 0.12,
+        "p50ElapsedToReference": 0.12
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "rich-osc8-wrap",
+      "adapter": "string-width-greedy-strip-ansi",
+      "notes": "strip ANSI then greedy hard-wrap visible text only.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 8,
+          "elapsedMs": 4.45,
+          "opsPerSecond": 1799.73,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1040,
+            "hash": "f29d7c05"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 8,
+          "elapsedMs": 4.2,
+          "opsPerSecond": 1903.09,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1040,
+            "hash": "f29d7c05"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 8,
+          "elapsedMs": 4.21,
+          "opsPerSecond": 1898.48,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1040,
+            "hash": "f29d7c05"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 8,
+          "elapsedMs": 4.15,
+          "opsPerSecond": 1927.34,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1040,
+            "hash": "f29d7c05"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 8,
+          "elapsedMs": 3.95,
+          "opsPerSecond": 2026.19,
+          "output": {
+            "rows": 41,
+            "materializedLines": 41,
+            "codeUnits": 1040,
+            "hash": "f29d7c05"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 8,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 3.95,
+        "maxMs": 4.45,
+        "meanMs": 4.19,
+        "stdevMs": 0.18,
+        "coefficientOfVariation": 0.04,
+        "p50Ms": 4.2,
+        "p95Ms": 4.4,
+        "meanOpsPerSecond": 1910.97,
+        "p50OpsPerSecond": 1903.09
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-rich-sgr",
+        "meanElapsedToReference": 0.09,
+        "p50ElapsedToReference": 0.09
+      },
+      "referenceAdapter": "pretext-rich-sgr"
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "pretext-virtual-cold-pages",
+      "notes": "prepare, build fixed-column index/cache, fetch requested pages per sample iteration.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 3,
+          "elapsedMs": 209.7,
+          "opsPerSecond": 14.31,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 3,
+          "elapsedMs": 226.24,
+          "opsPerSecond": 13.26,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 3,
+          "elapsedMs": 215.97,
+          "opsPerSecond": 13.89,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 3,
+          "elapsedMs": 210.45,
+          "opsPerSecond": 14.26,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 3,
+          "elapsedMs": 231.82,
+          "opsPerSecond": 12.94,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 3,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 209.7,
+        "maxMs": 231.82,
+        "meanMs": 218.84,
+        "stdevMs": 9.82,
+        "coefficientOfVariation": 0.04,
+        "p50Ms": 215.97,
+        "p95Ms": 230.7,
+        "meanOpsPerSecond": 13.73,
+        "p50OpsPerSecond": 13.89
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-virtual-hot-pages",
+        "meanElapsedToReference": 72.46,
+        "p50ElapsedToReference": 75.51
+      },
+      "referenceAdapter": "pretext-virtual-hot-pages"
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "pretext-virtual-hot-pages",
+      "notes": "reuse prepared text, sparse index, and page cache across repeated viewport page requests.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 3,
+          "elapsedMs": 3.69,
+          "opsPerSecond": 813.43,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 3,
+          "elapsedMs": 3.03,
+          "opsPerSecond": 990.56,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 3,
+          "elapsedMs": 2.77,
+          "opsPerSecond": 1081.12,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 3,
+          "elapsedMs": 2.86,
+          "opsPerSecond": 1048.22,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 3,
+          "elapsedMs": 2.74,
+          "opsPerSecond": 1093.97,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3073,
+            "hash": "17acf949"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 3,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 2.74,
+        "maxMs": 3.69,
+        "meanMs": 3.02,
+        "stdevMs": 0.39,
+        "coefficientOfVariation": 0.13,
+        "p50Ms": 2.86,
+        "p95Ms": 3.56,
+        "meanOpsPerSecond": 1005.46,
+        "p50OpsPerSecond": 1048.22
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-virtual-hot-pages",
+        "meanElapsedToReference": 1,
+        "p50ElapsedToReference": 1
+      },
+      "referenceAdapter": "pretext-virtual-hot-pages"
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "wrap-ansi-full-slice-pages",
+      "notes": "best-case baseline: wrap full input once, then slice requested viewport pages.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 3,
+          "elapsedMs": 6459.46,
+          "opsPerSecond": 0.46,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3070,
+            "hash": "fa41b5d5"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 3,
+          "elapsedMs": 5855.39,
+          "opsPerSecond": 0.51,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3070,
+            "hash": "fa41b5d5"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 3,
+          "elapsedMs": 6726.05,
+          "opsPerSecond": 0.45,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3070,
+            "hash": "fa41b5d5"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 3,
+          "elapsedMs": 5952.79,
+          "opsPerSecond": 0.5,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3070,
+            "hash": "fa41b5d5"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 3,
+          "elapsedMs": 5876.57,
+          "opsPerSecond": 0.51,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3070,
+            "hash": "fa41b5d5"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 3,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 5855.39,
+        "maxMs": 6726.05,
+        "meanMs": 6174.05,
+        "stdevMs": 395.33,
+        "coefficientOfVariation": 0.06,
+        "p50Ms": 5952.79,
+        "p95Ms": 6672.73,
+        "meanOpsPerSecond": 0.49,
+        "p50OpsPerSecond": 0.5
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-virtual-hot-pages",
+        "meanElapsedToReference": 2044.39,
+        "p50ElapsedToReference": 2081.4
+      },
+      "referenceAdapter": "pretext-virtual-hot-pages"
+    },
+    {
+      "workloadId": "large-page-seek",
+      "adapter": "string-width-greedy-full-slice-pages",
+      "notes": "best-case greedy baseline: full wrap once, then slice requested viewport pages.",
+      "ratioDirection": "elapsedMs / referenceElapsedMs; lower is faster",
+      "samples": [
+        {
+          "sampleIndex": 0,
+          "iterations": 3,
+          "elapsedMs": 485.55,
+          "opsPerSecond": 6.18,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3003,
+            "hash": "8d321401"
+          }
+        },
+        {
+          "sampleIndex": 1,
+          "iterations": 3,
+          "elapsedMs": 474.23,
+          "opsPerSecond": 6.33,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3003,
+            "hash": "8d321401"
+          }
+        },
+        {
+          "sampleIndex": 2,
+          "iterations": 3,
+          "elapsedMs": 669,
+          "opsPerSecond": 4.48,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3003,
+            "hash": "8d321401"
+          }
+        },
+        {
+          "sampleIndex": 3,
+          "iterations": 3,
+          "elapsedMs": 588.34,
+          "opsPerSecond": 5.1,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3003,
+            "hash": "8d321401"
+          }
+        },
+        {
+          "sampleIndex": 4,
+          "iterations": 3,
+          "elapsedMs": 515.97,
+          "opsPerSecond": 5.81,
+          "output": {
+            "rows": 80,
+            "materializedLines": 80,
+            "codeUnits": 3003,
+            "hash": "8d321401"
+          }
+        }
+      ],
+      "stats": {
+        "sampleCount": 5,
+        "iterationsPerSample": 3,
+        "minSamplesForP95": 5,
+        "warmupIterations": 2,
+        "minMs": 474.23,
+        "maxMs": 669,
+        "meanMs": 546.62,
+        "stdevMs": 81.59,
+        "coefficientOfVariation": 0.15,
+        "p50Ms": 515.97,
+        "p95Ms": 652.87,
+        "meanOpsPerSecond": 5.58,
+        "p50OpsPerSecond": 5.81
+      },
+      "ratios": {
+        "referenceAdapter": "pretext-virtual-hot-pages",
+        "meanElapsedToReference": 181,
+        "p50ElapsedToReference": 180.41
+      },
+      "referenceAdapter": "pretext-virtual-hot-pages"
+    }
+  ]
+}

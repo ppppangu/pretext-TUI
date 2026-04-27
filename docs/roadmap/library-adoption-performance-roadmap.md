@@ -5,6 +5,8 @@ This roadmap turns the technical swarm review into staged work for making `prete
 
 The north star is host-neutral adoption: any terminal host that already owns rendering, input, pane state, and product behavior should be able to use the layout core without this package becoming a renderer, terminal emulator, pane system, command runner, or named-host integration layer.
 
+Current Phase 10 status: adoption evidence and launch-readiness review is approved with documented residual risk. No incubating API has been promoted to stable `0.1`.
+
 ## Non-Negotiable Boundary
 
 Keep these inside `pretext-TUI`:
@@ -195,6 +197,8 @@ Definition of done:
 
 Goal: give external developers and companies enough proof to try the package.
 
+Status: Phase 10 collected this pack into an approval record with documented residual risk. The current anchors are [public-api-boundary.md](../contracts/public-api-boundary.md), [incubating-api-approval-index.md](../decisions/incubating-api-approval-index.md), [adoption evidence pack](../evidence/adoption-evidence-pack.md), [kernel capability matrix](../evidence/kernel-capability-matrix.md), [correctness matrix](../evidence/correctness-matrix.md), [recipes](../recipes/README.md), [production notes](../production/README.md), [security/support/provenance matrix](../production/security-support-provenance-matrix.md), [benchmark claim guardrails](../evidence/benchmark-claims.md), and report `competitive-tui-20260427-3e95bef-clean-8760e911` with workload `large-page-seek` and semantic matrix caveats.
+
 Evidence pack contents:
 
 - correctness matrix: terminal width profiles, CJK, emoji, combining marks, tabs, source offsets, rich sanitizer, oracle, corpus, fuzz
@@ -210,3 +214,4 @@ Definition of done:
 - A skeptical maintainer can reproduce the cited benchmark and understand its limits.
 - A company reviewer can identify support/security/version risks without reverse-engineering the repo.
 - Developers can copy a recipe into their host without depending on private internals.
+- Final approval requires the release gate, public-doc claim scan, recipe public-import scan, production/security review, evidence freshness check, and incubating API boundary review to pass without creating stable `0.1`, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claims.

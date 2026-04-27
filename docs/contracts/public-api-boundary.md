@@ -1,4 +1,4 @@
-<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 8 保持 canonical 公共 API 边界不扩张，chunked append storage 仅进入既有 opaque cell-flow capability。 -->
+<!-- 补建说明：该文件为后续补建，用于冻结 pretext-TUI 面向公开消费者的 API 稳定性边界；当前进度：Phase 10 launch-readiness 草案复核公共/孵化/私有边界，尚未把任何 incubating API 提升为 stable 0.1。 -->
 # Public API Boundary
 
 ## Purpose
@@ -46,6 +46,8 @@ The package root `pretext-tui` is the canonical public facade for core terminal 
 Internal implementation modules, validation helpers, benchmarks, fixtures, and generated status data are not public facades. Public docs must not import them, and future host-specific convenience layers must be built outside this package unless a new host-neutral contract explicitly expands the facade.
 
 ## Stability Classes
+
+Phase 10 launch-readiness review does not change the stability classes below. It only gathers evidence for a cautious adoption story while keeping advanced public APIs incubating until a future stable `0.1` approval explicitly promotes them.
 
 ### Stable Candidates
 
@@ -150,6 +152,7 @@ Public documentation should:
 - keep benchmark numbers in evidence reports, not repeated public narrative
 - distinguish release gates from optional local comparison commands
 - link to this document when explaining API stability or private internals
+- link Phase 10 adoption claims to the incubating API approval index, host-neutral recipes, production notes, and benchmark report ids instead of implying stable `0.1`
 
 ## Acceptance Checklist
 
@@ -161,3 +164,4 @@ Public documentation should:
 - Performance wording is tied to reproducible evidence or kept qualitative.
 - Internal storage is not part of the public data contract.
 - Internal debug snapshots are copied repository-only validation data and are absent from public package exports.
+- Phase 10 launch-readiness wording remains pending final review/gates until the release gate, public-doc claim scan, recipe public-import scan, and evidence freshness check have passed.

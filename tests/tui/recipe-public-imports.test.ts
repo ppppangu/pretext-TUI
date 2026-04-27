@@ -9,10 +9,17 @@ const recipesDir = path.join(repoRoot, 'docs/recipes')
 const requiredRecipeFiles = [
   'README.md',
   'transcript-viewport.md',
+  'agent-transcript-generic.md',
   'terminal-pane-resize.md',
   'editor-source-mapping.md',
   'log-viewer-rich-ansi.md',
 ]
+
+const allowedRecipeImportSpecifiers = Object.freeze([
+  'pretext-tui',
+  'pretext-tui/terminal',
+  'pretext-tui/terminal-rich-inline',
+])
 
 const forbiddenImportPatterns = [
   /from ['"][^'"]*(?:src\/|dist\/internal)/,
@@ -22,7 +29,9 @@ const forbiddenImportPatterns = [
 const forbiddenHostSpecificPatterns = [
   /\btmux control\b/i,
   /\bnvim RPC\b/i,
-  /\bnamed-host integration\b/i,
+  dashedPhrasePattern('named', 'host'),
+  spacedPhrasePattern('host', 'runtime'),
+  spacedPhrasePattern('runtime', 'behavior'),
   /\bReact renderer\b/i,
   /\bInk\b/,
   /\bBlessed\b/,
@@ -54,6 +63,12 @@ describe('host-neutral recipe docs', () => {
       }
 
       if (file !== 'README.md') {
+        const importSpecifiers = extractTypeScriptImportSpecifiers(content)
+        expect(importSpecifiers.length).toBeGreaterThan(0)
+        for (const specifier of importSpecifiers) {
+          expect(allowedRecipeImportSpecifiers).toContain(specifier)
+        }
+
         for (const phrase of requiredHostBoundaryPhrases) {
           expect(content).toContain(phrase)
         }
@@ -76,3 +91,31 @@ describe('host-neutral recipe docs', () => {
     }
   })
 })
+
+function extractTypeScriptImportSpecifiers(markdown: string): string[] {
+  const specifiers: string[] = []
+  const codeFencePattern = /```(?:ts|typescript)\r?\n([\s\S]*?)```/g
+  for (const fence of markdown.matchAll(codeFencePattern)) {
+    const code = fence[1] ?? ''
+    const importPattern =
+      /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s*)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+    for (const match of code.matchAll(importPattern)) {
+      const specifier = match[1] ?? match[2] ?? match[3]
+      if (specifier === undefined) continue
+      specifiers.push(specifier)
+    }
+  }
+  return specifiers
+}
+
+function dashedPhrasePattern(...words: readonly string[]): RegExp {
+  return new RegExp(`\\b${words.map(escapeRegExp).join('-')}\\b`, 'i')
+}
+
+function spacedPhrasePattern(...words: readonly string[]): RegExp {
+  return new RegExp(`\\b${words.map(escapeRegExp).join('\\s+')}\\b`, 'i')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}

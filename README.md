@@ -48,6 +48,8 @@ bun run benchmark:evidence:tui
 
 That writes a local `pretext-tui-benchmark-evidence@1` JSON report under `docs/evidence/benchmark-reports/`. Treat report ids, not copied numbers, as the durable citation target.
 
+Current repository evidence includes report `competitive-tui-20260427-3e95bef-clean-8760e911`, including workload `large-page-seek` and a comparator semantic matrix. It is local text-layout evidence for a clean commit, not a renderer benchmark, not a release guarantee, and not a broad speed claim.
+
 Evidence reports include a hot viewport-seeking workload over a long fixed-column terminal buffer: prepared text, sparse row index, and page cache are reused, and only requested rows are materialized.
 
 Treat local comparison output as workload-specific evidence: cache state, fixed columns, reused indexes, comparator semantics, runtime, hardware, and corpus all matter. Hard numbers belong in reproducible evidence reports, not copied into the public package story.
@@ -88,7 +90,7 @@ That gate uses a documented model for kernel-owned structures such as layout bun
 | Host scenario | Why it helps |
 | --- | --- |
 | Structured terminal transcripts | Command/session logs, review streams, notebooks, patches, code, tables, and prose can share one source-aware wrapping and visible-window materialization path. |
-| Long log viewers | Sparse anchors and page caches avoid wrapping and materializing the entire buffer for every scroll jump. |
+| Long log viewers | Sparse anchors and page caches let fixed-column viewport workflows reuse range/page metadata for repeated jumps instead of treating every jump as a fresh whole-buffer materialization problem. |
 | Terminal panes | Resize can relayout prepared text across new column widths without carrying browser or renderer state. |
 | Editor and terminal plugins | Source offsets and grapheme-safe ranges are useful for host-owned search, selection, copy, cursor mapping, diagnostics, and preview panes. |
 | Structured block metadata | Generic source ranges let hosts map visible rows back to their own blocks, diagnostics, records, or annotations without adding a host adapter. |
@@ -133,7 +135,7 @@ walkTerminalLineRanges(prepared, { columns: 40 }, line => {
 
 For large terminal buffers, use the fixed-column virtual text helpers. `createTerminalLayoutBundle()` is the recommended convenience handle when one viewport needs a source-offset index, sparse row index, and page cache that invalidate together.
 
-These helpers are public but incubating before the first stable `0.1` contract. The stable core remains `prepare -> layout/range -> materialize`; sparse line indexes, page caches, source-offset indexes, layout bundles, and append invalidation metadata may still be refined while staying host-neutral.
+These helpers are public but incubating until a future approval record explicitly promotes them. The stable core remains `prepare -> layout/range -> materialize`; sparse line indexes, page caches, source-offset indexes, layout bundles, and append invalidation metadata may still be refined while staying host-neutral.
 
 ```ts
 import {
@@ -352,6 +354,8 @@ Host applications own rendering, input, panes, focus, scrolling, persistence, fi
 This keeps the package useful for many hosts without bundling application-specific adapter code for any one of them.
 
 Repository contributors can use `docs/roadmap/` for future adoption planning and `docs/marketing/` for launch-copy guardrails. Those files are planning artifacts, not shipped package documentation.
+
+Phase 10 launch-readiness work is approved with documented residual risk in the repository decision docs. It links the public API boundary, incubating API index, evidence matrices, recipes, production notes, and evidence report ids, but it does not promote incubating APIs to stable `0.1`.
 
 ## Provenance And Product Boundary
 

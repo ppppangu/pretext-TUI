@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Phase 9 已将 release gate 对齐 memory budget 与 benchmark evidence guard，review 结论为 approve with documented residual risk。",
+    "note": "补建说明：该文件为后续补建，用于记录 TUI validation gate 的机器可读状态；当前进度：Phase 10 adoption evidence/launch-readiness 已记录 approve with documented residual risk，不代表 stable 0.1。",
     "schema": "pretext-tui-status@1"
   },
   "gate": {
@@ -29,6 +29,31 @@
     "selectionExtraction": "Phase 6 incubating selection/extraction helpers landed; results are immutable source-first data with no clipboard or active selection state",
     "richMetadataHardening": "Phase 7 internal rich span/raw-visible indexes, rich materialize option validation, and benchmark schema guardrails landed without expanding public exports",
     "appendOnlyChunkedStorage": "Phase 8 append-only chunked storage landed behind existing cell-flow/bundle boundaries with documented residual risk",
-    "performanceMemoryEvidence": "Phase 9 approved with documented residual risk: benchmark counters, modelled memory budgets, release gate consistency evidence, and claim guardrails are implemented"
+    "performanceMemoryEvidence": "Phase 9 approved with documented residual risk: benchmark counters, modelled memory budgets, release gate consistency evidence, and claim guardrails are implemented",
+    "phase10LaunchReadiness": "Approved with documented residual risk. Evidence anchors include public API boundary, incubating API approval index, adoption evidence pack, kernel capability matrix, correctness matrix, public-only recipes, production notes, benchmark claim guardrails, and report competitive-tui-20260427-3e95bef-clean-8760e911. No stable 0.1, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claim."
+  },
+  "phase10": {
+    "approvalState": "approve with documented residual risk",
+    "approvalRecord": "docs/decisions/phase-10-adoption-evidence-launch-readiness-approval.md",
+    "incubatingApiIndex": "docs/decisions/incubating-api-approval-index.md",
+    "evidenceMatrices": [
+      "docs/evidence/adoption-evidence-pack.md",
+      "docs/evidence/kernel-capability-matrix.md",
+      "docs/evidence/correctness-matrix.md",
+      "docs/production/security-support-provenance-matrix.md"
+    ],
+    "evidenceReportId": "competitive-tui-20260427-3e95bef-clean-8760e911",
+    "evidenceWorkloadIds": [
+      "large-page-seek"
+    ],
+    "acceptedResidualRisks": [
+      "incubating APIs are not promoted to stable 0.1",
+      "clean report is local-evidence-only and must be refreshed after benchmark-source changes before new performance copy cites it",
+      "memory-budget evidence is modelled package-owned structure evidence, not heap evidence",
+      "source-first search stores initial matches",
+      "long unbroken append tails remain conservative",
+      "rich raw-visible provenance is map data, not a public audit API",
+      "human review remains required for new launch copy"
+    ]
   }
 }

@@ -21,7 +21,7 @@ Use this pattern when a host already owns a terminal pane and needs wrapped rows
 
 ## Incubating API Note
 
-This recipe uses sparse line indexes and page caches. They are public and useful for large fixed-width views, but still incubating before the stable `0.1` contract.
+This recipe uses sparse line indexes and page caches. They are public and useful for large fixed-width views, but remain incubating unless a future approval record explicitly promotes them.
 
 ## Public Imports
 

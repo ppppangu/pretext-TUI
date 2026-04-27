@@ -21,7 +21,7 @@ Use this pattern when a host has its own source model and wants wrapped terminal
 
 ## Incubating API Note
 
-This recipe uses source-offset indexes, sparse line indexes, and coordinate projection helpers. They are public, host-neutral data APIs, but still incubating before the stable `0.1` contract.
+This recipe uses source-offset indexes, sparse line indexes, and coordinate projection helpers. They are public, host-neutral data APIs, but remain incubating unless a future approval record explicitly promotes them.
 
 ## Public Imports
 

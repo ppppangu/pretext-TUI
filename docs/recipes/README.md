@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于保存只依赖公开 API 的 host-neutral adoption recipes；当前进度：Task 3 首版，覆盖结构化视图、resize、source mapping 与 rich log viewer 四类通用宿主场景。 -->
+<!-- 补建说明：该目录为后续补建，用于保存只依赖公开 API 的 host-neutral adoption recipes；当前进度：Phase 10 补充 generic agent transcript recipe，并继续覆盖结构化视图、resize、source mapping 与 rich log viewer 通用宿主场景。 -->
 # Host-Neutral Recipes
 
 These recipes show how a host can compose `pretext-TUI` as a terminal text algorithm layer without turning the package into a renderer, pane manager, command runner, or application framework.
@@ -7,7 +7,7 @@ The recipes are intentionally generic. They describe reusable host patterns for 
 
 ## Incubating API Note
 
-Several recipes use advanced public surfaces such as sparse line indexes, page caches, source-offset indexes, append invalidation metadata, and rich inline metadata. Those surfaces are public and copyable, but still incubating before the first stable `0.1` contract.
+Several recipes use advanced public surfaces such as sparse line indexes, page caches, source-offset indexes, append invalidation metadata, and rich inline metadata. Those surfaces are public and copyable, but remain incubating unless a future approval record explicitly promotes them.
 
 Use these recipes as adoption patterns, not as a promise that every advanced type name is frozen forever. The stable core remains `prepare -> layout/range -> materialize`.
 
@@ -22,6 +22,7 @@ Use these recipes as adoption patterns, not as a promise that every advanced typ
 ## Recipes
 
 - [Structured Transcript Viewport](transcript-viewport.md): concatenate host blocks into a source stream, page visible rows, and map rows back to block ranges.
+- [Generic Agent Transcript](agent-transcript-generic.md): page ordered transcript records, keep record semantics host-owned, and combine rich fragments with generic source ranges.
 - [Terminal Pane Resize](terminal-pane-resize.md): rebuild width-dependent indexes while keeping a semantic source-offset anchor stable.
 - [Editor Source Mapping](editor-source-mapping.md): map host-owned source positions to terminal wrapped rows and terminal rows back to source ranges.
 - [Log Viewer With Rich ANSI](log-viewer-rich-ansi.md): sanitize SGR/OSC8 input, page rich fragments, and keep link/action behavior outside the package.

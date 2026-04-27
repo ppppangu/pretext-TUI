@@ -4,7 +4,8 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 
 ## Active Next
 
-- Start Phase 10 adoption evidence and launch-readiness work from the approved Phase 9 performance/memory evidence baseline.
+- Maintain the Phase 10 adoption evidence pack as claims, recipes, and public API boundaries evolve.
+- Use [docs/decisions/incubating-api-approval-index.md](docs/decisions/incubating-api-approval-index.md) to prevent accidental stable `0.1` promotion of incubating APIs.
 - Keep append claims narrow: append-only chunked storage is internal and incubating; arbitrary editing, destructive prefix eviction, and host retention policy are not implemented.
 - Keep Phase 8 benchmark counters inside Phase 9 memory/performance evidence instead of converting them into broad speed claims.
 - Keep Phase 10 host-neutral: no renderer, PTY, clipboard, filesystem, named-host adapter, or second public pipeline.
@@ -12,6 +13,7 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 - Add memory/perf evidence only from reproducible counters and clean/declared benchmark baselines.
 - Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
 - Prepare launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
+- Cite report ids such as `competitive-tui-20260427-3e95bef-clean-8760e911` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
 
 ## Completed
 
@@ -40,6 +42,7 @@ Current priorities for hardening the publishable `pretext-TUI` baseline into a h
 - Phase 7 rich metadata hardening recovery has landed with approval status `approve with documented residual risk`.
 - Phase 8 append-only chunked storage has landed behind `PreparedTerminalCellFlow` with focused parity, seam, invalidation, benchmark evidence, and review status `approve with documented residual risk`.
 - Phase 9 performance, memory-budget, and evidence work has landed with approval status `approve with documented residual risk`: search/selection/range counters, modelled memory budgets, `memory-budget-check:tui`, release-gate consistency tests, and claim guardrails are implemented.
+- Phase 10 adoption evidence and launch-readiness work has landed with approval status `approve with documented residual risk`: capability/correctness/security matrices, incubating API approval index, generic agent transcript recipe, clean local evidence report citation, recipe public-import scan, package-smoke recipe consumer coverage, and launch-copy guardrails are implemented.
 
 ## Not Worth Doing Now
 

@@ -5,6 +5,8 @@ Use this pattern when a host has many ordered text blocks and wants a virtual te
 
 The blocks might be chat turns, command entries, notebook cells, build steps, review comments, or any other host-owned records. `pretext-TUI` does not need to know their domain meaning. It only receives visible terminal text and returns row/range/source-offset data.
 
+For turn-oriented transcript records that need rich inline fragments and append invalidation, see [Generic Agent Transcript](agent-transcript-generic.md).
+
 ## Host Owns
 
 - block ids, block kinds, timestamps, persistence, and loading
@@ -22,7 +24,7 @@ The blocks might be chat turns, command entries, notebook cells, build steps, re
 
 ## Incubating API Note
 
-This recipe uses sparse line indexes, page caches, and generic range sidecar indexes. They are public and covered by package smoke tests, but remain incubating until the first stable `0.1` API contract.
+This recipe uses sparse line indexes, page caches, and generic range sidecar indexes. They are public and covered by package smoke tests, but remain incubating unless a future approval record explicitly promotes them.
 
 ## Public Imports
 
