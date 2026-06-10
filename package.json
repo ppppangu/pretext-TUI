@@ -76,6 +76,7 @@
     "tui-corpus-check": "bun run scripts/tui-corpus-check.ts",
     "tui-fuzz": "bun run scripts/tui-fuzz.ts",
     "tui-oracle-check": "bun run scripts/tui-reference-check.ts",
+    "tui-reference-regenerate": "bun run scripts/tui-reference-regenerate.ts",
     "tui-static-gate": "bun run scripts/tui-static-gate.ts",
     "terminal-demo": "bun run scripts/terminal-demo.ts",
     "terminal-demo-check": "bun run scripts/terminal-demo-check.ts",

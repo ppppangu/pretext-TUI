@@ -30,6 +30,7 @@ assertJsonEqual([...(packageJson.files ?? [])].sort(), [...expectedPackageFiles]
 type RuntimeModule = Record<string, unknown>
 
 const publicFacadeRuntime = await import('../src/public-index.js') as RuntimeModule
+const publicRichFacadeRuntime = await import('../src/public-terminal-rich-inline.js') as RuntimeModule
 const rootRuntime = await import('../src/index.js') as RuntimeModule
 const richRuntime = await import('../src/terminal-rich-inline.js') as RuntimeModule
 const builtRootRuntime = await importDistRuntime('index')
@@ -42,6 +43,10 @@ assertRuntimeExportNames(builtRootRuntime, terminalPublicRuntimeExports, 'built 
 assertRuntimeExportNames(builtTerminalRuntime, terminalPublicRuntimeExports, 'built terminal runtime exports')
 assertRuntimeExportNames(richRuntime, richPublicRuntimeExports, 'rich runtime exports')
 assertRuntimeExportNames(builtRichRuntime, richPublicRuntimeExports, 'built rich runtime exports')
+assertRuntimeExportNames(publicRichFacadeRuntime, richPublicRuntimeExports, 'canonical rich public facade runtime exports')
+// The src rich facade and the compiled dist wrapper do not share binding identity (dist functions are
+// compiled copies, not the same references as the bun-loaded src facade), so this stays an export-name
+// check; type-only coverage for the canonical rich facade is asserted via the dist .d.ts declaration check below.
 assertSameRuntimeBindings(
   rootRuntime,
   publicFacadeRuntime,
