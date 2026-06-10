@@ -4,6 +4,7 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Active Next
 
+- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks.
 - Maintain the Phase 10 adoption evidence pack as claims, recipes, and public API boundaries evolve.
 - Use [docs/decisions/incubating-api-approval-index.md](docs/decisions/incubating-api-approval-index.md) to prevent accidental stable `0.1` promotion of incubating APIs.
 - Keep append claims narrow: append-only chunked storage is internal and incubating; arbitrary editing, destructive prefix eviction, and host retention policy are not implemented.

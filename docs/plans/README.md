@@ -11,3 +11,4 @@ Current progress:
 - `2026-04-23-pretext-tui-terminal-layout-plan.md` is the package-only execution plan for the terminal layout baseline
 - `2026-04-24-post-publishability-master-plan.md` is the master plan for API stability, production/security, recipes, benchmark evidence, performance work, chunked append, and launch readiness
 - `2026-04-27-phase-8-true-chunked-append-plan.md` is the active Phase 8 plan for append-only chunked storage, parity gates, benchmark evidence, and claim restrictions
+- `2026-06-10-kernel-refinement-and-agent-tui-roadmap.md` is the post-Phase-10 direction plan for kernel refinement, directory layering migration, streaming maturity, and host-neutral adoption tracks

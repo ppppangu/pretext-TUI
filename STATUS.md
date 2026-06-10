@@ -64,6 +64,7 @@ Start with [docs/README.md](docs/README.md) for the fact-source hierarchy. The l
 - [docs/decisions/phase-10-adoption-evidence-launch-readiness-approval.md](docs/decisions/phase-10-adoption-evidence-launch-readiness-approval.md)
 - [docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md](docs/plans/2026-04-23-pretext-tui-terminal-layout-plan.md)
 - [docs/plans/2026-04-24-post-publishability-master-plan.md](docs/plans/2026-04-24-post-publishability-master-plan.md)
+- [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md)
 - [docs/roadmap/library-adoption-performance-roadmap.md](docs/roadmap/library-adoption-performance-roadmap.md)
 - [docs/marketing/README.md](docs/marketing/README.md)
 - [docs/marketing/adoption-growth-playbook.md](docs/marketing/adoption-growth-playbook.md)
