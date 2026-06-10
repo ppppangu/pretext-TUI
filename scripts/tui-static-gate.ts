@@ -26,7 +26,7 @@ const LAYER_RANK: Record<string, number> = {
   public: 9,
 }
 
-const layeredTerminalRuntimeFilePattern = /^src\/[^/]+\/terminal[^/]*\.ts$/
+const terminalRuntimeFilePattern = /^src\/(?:[^/]+\/)*terminal[^/]*\.ts$/
 
 const includeRoots = [
   'src',
@@ -152,8 +152,17 @@ function scanCode(file: string, raw: string): void {
 // Comments are stripped (string literals preserved) so commented-out imports are
 // ignored but real `from '...'`/`export ... from '...'` specifiers are inspected.
 function scanLayering(file: string, raw: string): void {
-  const ownLayer = layerOf(file)
-  if (ownLayer === null) return // src-root files (tests, *.d.ts) are exempt
+  const dirMatch = file.match(/^src\/([^/]+)\//)
+  if (dirMatch === null) return // src-root files (tests, *.d.ts) are exempt
+  const ownLayer = dirMatch[1]!
+  if (!(ownLayer in LAYER_RANK)) {
+    findings.push({
+      file,
+      pattern: `src/${ownLayer}/`,
+      reason: `layering violation: '${ownLayer}' is not a ranked layer directory; add it to LAYER_RANK or move the file into a ranked layer`,
+    })
+    return
+  }
 
   const source = stripComments(raw, { keepStringContents: true })
   const specifierPattern = /\bfrom\s+'(\.\.?\/[^']+)'/g
@@ -172,7 +181,14 @@ function scanLayering(file: string, raw: string): void {
     }
 
     const targetMatch = specifier.match(/^\.\.\/([^/]+)\//)
-    if (targetMatch === null) continue
+    if (targetMatch === null) {
+      findings.push({
+        file,
+        pattern: specifier,
+        reason: `layering violation: ${ownLayer} imports a src-root module; runtime modules must live in a ranked layer`,
+      })
+      continue
+    }
     const targetLayer = targetMatch[1]!
     if (!(targetLayer in LAYER_RANK)) {
       findings.push({
@@ -192,15 +208,9 @@ function scanLayering(file: string, raw: string): void {
   }
 }
 
-function layerOf(file: string): string | null {
-  const match = file.match(/^src\/([^/]+)\//)
-  if (match === null) return null // src-root file
-  const layer = match[1]!
-  return layer in LAYER_RANK ? layer : null
-}
 
 function isUnclassifiedTerminalRuntimeFile(file: string, stripped: string): boolean {
-  if (!layeredTerminalRuntimeFilePattern.test(file) || file.endsWith('.test.ts')) {
+  if (!terminalRuntimeFilePattern.test(file) || file.endsWith('.test.ts')) {
     return false
   }
   if (readerBoundaryRuntimeFileSet.has(file) || readerBoundaryStorageRuntimeFileSet.has(file)) {

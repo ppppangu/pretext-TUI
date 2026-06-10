@@ -51,7 +51,7 @@ assertSameRuntimeBindings(
   rootRuntime,
   publicFacadeRuntime,
   terminalPublicRuntimeExports,
-  'src/index.ts must re-export the canonical src/public-index.ts facade',
+  'src/public/index.ts must re-export the canonical src/public/public-index.ts facade',
 )
 assertSameRuntimeBindings(
   builtTerminalRuntime,

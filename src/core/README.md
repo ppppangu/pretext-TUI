@@ -3,4 +3,4 @@
 
 Terminal public API surface, line source, plain-input handling, shared terminal types, and normalized-source generation (rank 5).
 
-It may import from lower layers (prepared, wrap, unicode, telemetry); the virtual layer and above build their caches on top of it.
+It may import from any lower-ranked layer; it currently uses prepared, wrap, analyze, and unicode. The virtual layer and above build their caches on top of it.
