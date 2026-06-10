@@ -5,23 +5,16 @@ import {
   type TerminalWidthProfileInput,
 } from './terminal-width-profile.js'
 import { isTerminalBidiFormatControlCodePoint } from './terminal-control-policy.js'
+import { getGraphemeSegmenter, clearGraphemeSegmenters } from './grapheme-segmenter.js'
 
 export type TerminalSegmentMetrics = {
   width: number
   containsCJK: boolean
 }
 
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 const graphemeWidthCaches = new Map<string, Map<string, number>>()
 const segmentMetricCaches = new Map<string, Map<string, TerminalSegmentMetrics>>()
 const breakableAdvanceCaches = new Map<string, Map<string, number[] | null>>()
-
-function getSharedGraphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
-}
 
 function cacheFor<T>(store: Map<string, Map<string, T>>, key: string): Map<string, T> {
   let cache = store.get(key)
@@ -253,7 +246,7 @@ export function terminalGraphemeWidths(
   input?: TerminalWidthProfileInput,
 ): number[] | null {
   const widths: number[] = []
-  const segmenter = getSharedGraphemeSegmenter()
+  const segmenter = getGraphemeSegmenter()
   for (const { segment } of segmenter.segment(text)) {
     widths.push(terminalGraphemeWidth(segment, input))
   }
@@ -265,7 +258,7 @@ export function terminalStringWidth(
   input?: TerminalWidthProfileInput,
 ): number {
   let width = 0
-  const segmenter = getSharedGraphemeSegmenter()
+  const segmenter = getGraphemeSegmenter()
   for (const { segment } of segmenter.segment(text)) {
     width += terminalGraphemeWidth(segment, input)
   }
@@ -325,5 +318,5 @@ export function clearTerminalStringWidthCaches(): void {
   graphemeWidthCaches.clear()
   segmentMetricCaches.clear()
   breakableAdvanceCaches.clear()
-  sharedGraphemeSegmenter = null
+  clearGraphemeSegmenters()
 }

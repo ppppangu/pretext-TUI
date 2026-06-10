@@ -1,16 +1,9 @@
 import type { SegmentBreakKind } from './analysis.js'
 import type { PreparedTextWithSegments } from './layout.js'
 import { recordTerminalPerformanceCounter } from './terminal-performance-counters.js'
+import { getGraphemeSegmenter, clearGraphemeSegmenters } from './grapheme-segmenter.js'
 
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 let sharedLineTextCaches = new WeakMap<PreparedTextWithSegments, Map<number, string[]>>()
-
-function getSharedGraphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
-}
 
 function getSegmentGraphemes(
   segmentIndex: number,
@@ -22,7 +15,7 @@ function getSegmentGraphemes(
 
   graphemes = []
   recordTerminalPerformanceCounter('lineTextGraphemeSegmentations')
-  const graphemeSegmenter = getSharedGraphemeSegmenter()
+  const graphemeSegmenter = getGraphemeSegmenter()
   for (const gs of graphemeSegmenter.segment(segments[segmentIndex]!)) {
     graphemes.push(gs.segment)
   }
@@ -107,6 +100,6 @@ export function buildLineTextFromRange(
 }
 
 export function clearLineTextCaches(): void {
-  sharedGraphemeSegmenter = null
+  clearGraphemeSegmenters()
   sharedLineTextCaches = new WeakMap<PreparedTextWithSegments, Map<number, string[]>>()
 }

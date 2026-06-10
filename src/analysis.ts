@@ -1,3 +1,10 @@
+import {
+  clearGraphemeSegmenters,
+  getLocaleGraphemeSegmenter,
+  getLocaleWordSegmenter,
+  setSegmenterLocale,
+} from './grapheme-segmenter.js'
+
 export type WhiteSpaceMode = 'normal' | 'pre-wrap'
 export type WordBreakMode = 'normal' | 'keep-all'
 
@@ -80,35 +87,12 @@ function normalizeWhitespacePreWrap(text: string): string {
     .replace(/[\r\f]/g, '\n')
 }
 
-let sharedWordSegmenter: Intl.Segmenter | null = null
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
-let segmenterLocale: string | undefined
-
-function getSharedWordSegmenter(): Intl.Segmenter {
-  if (sharedWordSegmenter === null) {
-    sharedWordSegmenter = new Intl.Segmenter(segmenterLocale, { granularity: 'word' })
-  }
-  return sharedWordSegmenter
-}
-
-function getSharedGraphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(segmenterLocale, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
-}
-
 export function clearAnalysisCaches(): void {
-  sharedWordSegmenter = null
-  sharedGraphemeSegmenter = null
+  clearGraphemeSegmenters()
 }
 
 export function setAnalysisLocale(locale?: string): void {
-  const nextLocale = locale && locale.length > 0 ? locale : undefined
-  if (segmenterLocale === nextLocale) return
-  segmenterLocale = nextLocale
-  sharedWordSegmenter = null
-  sharedGraphemeSegmenter = null
+  setSegmenterLocale(locale)
 }
 
 const arabicScriptRe = /\p{Script=Arabic}/u
@@ -489,7 +473,7 @@ function splitSegmentByBreakKind(
   let currentWordLike = false
   let offset = 0
 
-  for (const { segment: grapheme } of getSharedGraphemeSegmenter().segment(segment)) {
+  for (const { segment: grapheme } of getLocaleGraphemeSegmenter().segment(segment)) {
     const kind = grapheme.length === 1
       ? classifySegmentBreakChar(grapheme, whiteSpaceProfile)
       : 'text'
@@ -932,7 +916,7 @@ function buildMergedSegmentation(
   profile: AnalysisProfile,
   whiteSpaceProfile: WhiteSpaceProfile,
 ): MergedSegmentation {
-  const wordSegmenter = getSharedWordSegmenter()
+  const wordSegmenter = getLocaleWordSegmenter()
   let mergedLen = 0
   const mergedTexts: string[] = []
   const mergedTextParts: string[][] = []

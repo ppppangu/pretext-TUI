@@ -11,6 +11,7 @@
     "src/analysis.ts",
     "src/bidi.ts",
     "src/generated/bidi-data.ts",
+    "src/grapheme-segmenter.ts",
     "src/index.ts",
     "src/layout.ts",
     "src/line-break.ts",

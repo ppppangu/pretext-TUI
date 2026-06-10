@@ -1,4 +1,5 @@
 import type { SegmentBreakKind } from './analysis.js'
+import { terminalTabAdvance } from './terminal-string-width.js'
 
 export type LineBreakCursor = {
   segmentIndex: number
@@ -68,6 +69,10 @@ function normalizeLineStartSegmentIndex(
 
 function getTabAdvance(lineWidth: number, tabStopAdvance: number): number {
   if (tabStopAdvance <= 0) return 0
+
+  if (Number.isInteger(lineWidth) && lineWidth >= 0) {
+    return terminalTabAdvance(lineWidth, tabStopAdvance)
+  }
 
   const remainder = lineWidth % tabStopAdvance
   if (Math.abs(remainder) <= 1e-6) return tabStopAdvance

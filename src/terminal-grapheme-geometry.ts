@@ -6,6 +6,7 @@ import { terminalGraphemeWidth } from './terminal-string-width.js'
 import {
   recordTerminalPerformanceCounter,
 } from './terminal-performance-counters.js'
+import { getGraphemeSegmenter } from './grapheme-segmenter.js'
 
 export type TerminalSegmentGeometry = Readonly<{
   cellWidthPrefixes: readonly number[] | null
@@ -18,8 +19,6 @@ export type PreparedTerminalGeometry = {
   readonly reader: PreparedTerminalReader
   readonly segmentGeometries: Array<TerminalSegmentGeometry | undefined>
 }
-
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
 
 export function createPreparedTerminalGeometry(
   reader: PreparedTerminalReader,
@@ -49,7 +48,7 @@ export function getTerminalSegmentGeometry(
   const graphemes: string[] = []
   const localSourceOffsets = [0]
   let localOffset = 0
-  for (const { segment: grapheme } of graphemeSegmenter().segment(segment)) {
+  for (const { segment: grapheme } of getGraphemeSegmenter().segment(segment)) {
     graphemes.push(grapheme)
     localOffset += grapheme.length
     localSourceOffsets.push(localOffset)
@@ -151,11 +150,4 @@ function clampGraphemeIndex(value: number, max: number): number {
   if (value <= 0) return 0
   if (value >= max) return max
   return value
-}
-
-function graphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
 }

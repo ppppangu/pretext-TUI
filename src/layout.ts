@@ -50,15 +50,7 @@ import {
   clearLineTextCaches,
   getLineTextCache,
 } from './line-text.js'
-
-let sharedGraphemeSegmenter: Intl.Segmenter | null = null
-
-function getSharedGraphemeSegmenter(): Intl.Segmenter {
-  if (sharedGraphemeSegmenter === null) {
-    sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  }
-  return sharedGraphemeSegmenter
-}
+import { getGraphemeSegmenter, clearGraphemeSegmenters } from './grapheme-segmenter.js'
 
 // --- Public types ---
 
@@ -242,7 +234,7 @@ function buildBaseCjkUnits(
     unitIsSingleKinsokuEnd = false
   }
 
-  for (const gs of getSharedGraphemeSegmenter().segment(segText)) {
+  for (const gs of getGraphemeSegmenter().segment(segText)) {
     const grapheme = gs.segment
     const graphemeContainsCJK = isCJK(grapheme)
 
@@ -345,7 +337,7 @@ function countRenderedSpacingGraphemes(
   if (kind === 'tab') return 1
 
   let count = 0
-  const graphemeSegmenter = getSharedGraphemeSegmenter()
+  const graphemeSegmenter = getGraphemeSegmenter()
   for (const _ of graphemeSegmenter.segment(text)) count++
   return count
 }
@@ -951,7 +943,7 @@ export function layoutWithLines(prepared: PreparedTextWithSegments, maxWidth: nu
 
 export function clearCache(): void {
   clearAnalysisCaches()
-  sharedGraphemeSegmenter = null
+  clearGraphemeSegmenters()
   clearLineTextCaches()
   clearMeasurementCaches()
 }
