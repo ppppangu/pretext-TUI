@@ -4,6 +4,11 @@
 
 Initial host-neutral terminal text kernel alpha release.
 
+- Promotes the seven core terminal APIs (`prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR`) and their option/result types to stable `0.1`; breaking changes to them before `1.0` require a minor version bump.
+- Adds incubating tail-follow row queries (`getTerminalLineIndexTailRanges`, `getTerminalLayoutBundleTailPage`, `measureTerminalLayoutBundleRows`) so follow-mode viewports can fetch the last rows of a growing transcript without re-deriving totals after every append.
+- Adds an incubating `appendTerminalRanges` so hosts with growing transcripts can extend a generic range index by validating only the newly appended ranges, with results identical to one-shot construction.
+- Adds an incubating opt-in `matchLimit` for search sessions plus `getTerminalSearchSessionStats`, so stored search matches follow an explicit configured limit with detectable truncation instead of growing with transcript length.
+
 - Exposes a terminal-first package story under `pretext-tui`.
 - Retargets the active package surface toward terminal cells, rows, ranges, and lazy materialization.
 - Removes browser demos, browser validation scripts, and browser snapshot dashboards from the active package surface.

@@ -43,7 +43,8 @@ Current hardening covers declaration-checked public API boundaries, host-neutral
 | Stable 0.1 core | Promoted; the core seven and their listed option/result shapes are stable within 0.1.x, with breaking changes requiring a minor bump pre-1.0 |
 | Track R1 kernel refinement | Complete and behavior-frozen; shared grapheme segmenter, single tab-advance owner, layered `analysis-*` split behind the `analysis` facade, decomposed measurement helpers, golden regeneration tooling, and rich-facade source export check landed with goldens byte-identical |
 | Track R2 directory layering | Complete and behavior-frozen; src runtime lives in ten ranked layer directories with per-directory READMEs, cross-directory imports point strictly downward, and the static gate enforces the layering DAG |
-| Track R4 adoption surface | In progress; stable 0.1 core promoted, repo-only conformance fixture kit and Unicode upgrade policy landed; external proof-of-concept hosts and docs-site continuity remain external or deferred |
+| Track R3 streaming maturity | Complete as incubating surfaces with approval records; tail-follow row queries, explicit search match limits with stats, append-friendly range indexes, and the prefix-eviction design RFC landed with counter and memory-budget evidence |
+| Track R4 adoption surface | In-repo items complete; stable 0.1 core promoted, repo-only conformance fixture kit and Unicode upgrade policy landed; external proof-of-concept hosts and docs-site continuity remain external or deferred |
 
 ## Reference Map
 

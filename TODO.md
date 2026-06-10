@@ -4,7 +4,8 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Active Next
 
-- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks; tracks R1 and R2 are complete and track R3 streaming maturity is next.
+- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record; tracks R1 (kernel refinement), R2 (directory layering), and R3 (streaming maturity) are complete, and track R4 (adoption surface) has landed its in-repo items with external proof-of-concept hosts remaining external.
+- The prefix-eviction design RFC under docs/plans/ is a design record only; implementing eviction requires its own approval record per the RFC's evidence prerequisites.
 - R4 adoption surface: external proof-of-concept host repositories live in separate repositories as adoption evidence and link back here; they never move into this package.
 - R4 adoption surface: the terminal conformance kit under fixtures/conformance/ is repo-only data verified by `bun run conformance-kit-check`; promote it into release-gate:tui only after the kit stabilizes.
 - R4 adoption surface: docs/production/unicode-upgrade-policy.md governs adopting new Unicode versions as new width-profile versions; no terminal-unicode-narrow@2 is adopted yet.
@@ -23,6 +24,8 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Completed
 
+- Track R3 streaming maturity has landed as incubating data APIs with approval records: tail-follow row queries with a tail-anchored measure fast path, explicit search match-count limits with a stats accessor, append-friendly incremental range indexes with one-shot parity, and a prefix-eviction design RFC.
+- Track R4 in-repo adoption surface has landed: the core seven are promoted to stable 0.1 with an exact partition assertion, a repo-only terminal conformance fixture kit is generated and checked from the engine, and the Unicode upgrade policy governs future width-profile versions.
 - Track R2 directory layering has landed behavior-frozen: src is split into ten ranked layer directories with per-directory READMEs, all cross-directory imports point strictly downward, and the static gate now enforces the layering DAG and rejects upward or escaping relative imports.
 - Track R1 kernel refinement has landed behavior-frozen: one shared grapheme-segmenter module, one tab-advance owner, a layered `analysis-*` module split behind the `analysis` facade, a shared keep-all grouping rule, decomposed measurement helpers, golden regeneration tooling with a byte-drift `--check` mode, and a source-level runtime export check for the rich public facade.
 - Initial package contracts are frozen.
