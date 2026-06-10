@@ -6,7 +6,7 @@ import {
   getTerminalRangesForSourceRange,
   type TerminalRange,
   type TerminalRangeIndex,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 
 function ids(ranges: readonly TerminalRange[]): readonly string[] {
   return ranges.map(range => range.id)

@@ -39,10 +39,10 @@ import {
   type TerminalLineRange,
   type TerminalPrepareOptions,
   type TerminalSourceOffsetBias,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   getTerminalLineRangesAtRows,
-} from '../../src/terminal-line-index.js'
+} from '../../src/virtual/terminal-line-index.js'
 import {
   createSingleStorePreparedTerminalText,
   createPreparedTerminalTextFromReader,
@@ -50,13 +50,13 @@ import {
   getInternalPreparedTerminalText,
   getInternalPreparedTerminalTextDebugSnapshot,
   type PreparedTerminalText as InternalPreparedTerminalText,
-} from '../../src/terminal-prepared-reader.js'
+} from '../../src/prepared/terminal-prepared-reader.js'
 import {
   assertPreparedTerminalReaderStoreInvariants,
   createCompositePreparedTerminalReaderStore,
   createPreparedTerminalReaderFromStore,
   createSingleStorePreparedTerminalReaderStore,
-} from '../../src/terminal-reader-store.js'
+} from '../../src/prepared/terminal-reader-store.js'
 
 type ParityCase = {
   id: string

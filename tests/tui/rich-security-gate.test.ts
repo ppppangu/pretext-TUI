@@ -1,11 +1,11 @@
 // 补建说明：该文件为后续补建，用于验证 terminal rich sidecar 的生产安全闸门；当前进度：Task 2 首版，覆盖 URI policy、控制序列清洗、bidi control、诊断脱敏与 opt-in ANSI 重放。
 import { describe, expect, test } from 'bun:test'
-import { TERMINAL_START_CURSOR } from '../../src/index.js'
+import { TERMINAL_START_CURSOR } from '../../src/public/index.js'
 import {
   layoutNextTerminalRichLineRange,
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
-} from '../../src/terminal-rich-inline.js'
+} from '../../src/rich/terminal-rich-inline.js'
 import {
   assert,
   assertNoUnsafeTerminalOutput,

@@ -5,20 +5,20 @@ import {
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
-} from './terminal-rich-inline.js'
+} from './rich/terminal-rich-inline.js'
 import {
   createTerminalRichRawVisibleIndex,
   createTerminalRichSpanIntervalIndex,
   getTerminalRichRawVisibleRangesForRawRange,
   getTerminalRichRawVisibleRangesForSourceRange,
   getTerminalRichSpansForSourceRange,
-} from './terminal-rich-span-index.js'
-import { TERMINAL_START_CURSOR } from './terminal.js'
-import { getInternalPreparedTerminalText } from './terminal-prepared-reader.js'
+} from './rich/terminal-rich-span-index.js'
+import { TERMINAL_START_CURSOR } from './core/terminal.js'
+import { getInternalPreparedTerminalText } from './prepared/terminal-prepared-reader.js'
 import {
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
-} from './terminal-performance-counters.js'
+} from './telemetry/terminal-performance-counters.js'
 
 describe('terminal rich inline tokenizer', () => {
   test('captures SGR style spans on visible offsets', () => {

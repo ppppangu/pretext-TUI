@@ -12,18 +12,18 @@ import {
   type TerminalLayoutOptions,
   type TerminalLineRange,
   type TerminalPrepareOptions,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   type PreparedTerminalText as InternalPreparedTerminalText,
   getInternalPreparedTerminalTextDebugSnapshot,
   type PreparedTerminalTextDebugSnapshot,
-} from '../../src/terminal-prepared-reader.js'
+} from '../../src/prepared/terminal-prepared-reader.js'
 import {
   terminalGraphemeWidth,
   terminalStringWidth,
   terminalTabAdvance,
-} from '../../src/terminal-string-width.js'
-import type { TerminalRichPrepareOptions } from '../../src/terminal-rich-inline.js'
+} from '../../src/unicode/terminal-string-width.js'
+import type { TerminalRichPrepareOptions } from '../../src/rich/terminal-rich-inline.js'
 
 export type CollectedTerminalLine = {
   range: TerminalLineRange

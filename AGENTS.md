@@ -31,19 +31,20 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `scripts/build-package.ts` — publish build orchestrator that emits internals under `dist/internal/` and public wrappers at root `dist/`.
 - `scripts/package-smoke-test.ts` — tarball-level JS/TS consumer verification.
 - `fixtures/` — deterministic package-level terminal demo fixtures.
-- `src/analysis.ts` — text-analysis facade re-exporting the split `analysis-*` modules (text predicates, segmentation, merge rules, keep-all grouping, analyze entry).
-- `src/measurement.ts` — terminal-width measurement adapter used by the prepared/layout pipeline.
-- `src/line-break.ts` — internal line-walking core.
-- `src/line-text.ts` — lazy line materialization helpers.
-- `src/terminal.ts` — terminal public API surface.
-- `src/terminal-cell-flow.ts` — appendable terminal source generation and invalidation boundary.
-- `src/terminal-line-index.ts` — fixed-column sparse row anchor index.
-- `src/terminal-materialize.ts` — bounded range/page materialization helpers.
-- `src/terminal-page-cache.ts` — fixed-column range-only page cache.
-- `src/terminal-source-offset-index.ts` — source offset/cursor lookup index independent from row caches.
-- `src/terminal-string-width.ts` — terminal cell-width backend.
-- `src/terminal-width-profile.ts` — terminal width profile model.
-- `src/terminal-rich-inline.ts` — terminal rich metadata surface.
+- `src/` — runtime is split into ranked layer directories (`telemetry` < `unicode` < `analyze` < `wrap` < `prepared` < `core` < `virtual` < `semantic` < `rich` < `public`); each has a `README.md`, cross-directory imports may only point at a strictly-lower-ranked layer, and `scripts/tui-static-gate.ts` enforces this layering DAG.
+- `src/analyze/analysis.ts` — text-analysis facade re-exporting the split `analysis-*` modules (text predicates, segmentation, merge rules, keep-all grouping, analyze entry).
+- `src/wrap/measurement.ts` — terminal-width measurement adapter used by the prepared/layout pipeline.
+- `src/wrap/line-break.ts` — internal line-walking core.
+- `src/wrap/line-text.ts` — lazy line materialization helpers.
+- `src/core/terminal.ts` — terminal public API surface.
+- `src/virtual/terminal-cell-flow.ts` — appendable terminal source generation and invalidation boundary.
+- `src/virtual/terminal-line-index.ts` — fixed-column sparse row anchor index.
+- `src/virtual/terminal-materialize.ts` — bounded range/page materialization helpers.
+- `src/virtual/terminal-page-cache.ts` — fixed-column range-only page cache.
+- `src/virtual/terminal-source-offset-index.ts` — source offset/cursor lookup index independent from row caches.
+- `src/unicode/terminal-string-width.ts` — terminal cell-width backend.
+- `src/unicode/terminal-width-profile.ts` — terminal width profile model.
+- `src/rich/terminal-rich-inline.ts` — terminal rich metadata surface.
 - `tests/tui/` — deterministic TUI tests and fixtures.
 - `scripts/terminal-demo.ts` — non-app vertical slice for prepare, resize reflow, and visible-window materialization.
 - `scripts/terminal-demo-check.ts` — deterministic terminal-demo output and JSON contract gate.

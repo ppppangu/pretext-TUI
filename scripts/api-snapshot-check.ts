@@ -29,10 +29,10 @@ assertJsonEqual([...(packageJson.files ?? [])].sort(), [...expectedPackageFiles]
 
 type RuntimeModule = Record<string, unknown>
 
-const publicFacadeRuntime = await import('../src/public-index.js') as RuntimeModule
-const publicRichFacadeRuntime = await import('../src/public-terminal-rich-inline.js') as RuntimeModule
-const rootRuntime = await import('../src/index.js') as RuntimeModule
-const richRuntime = await import('../src/terminal-rich-inline.js') as RuntimeModule
+const publicFacadeRuntime = await import('../src/public/public-index.js') as RuntimeModule
+const publicRichFacadeRuntime = await import('../src/public/public-terminal-rich-inline.js') as RuntimeModule
+const rootRuntime = await import('../src/public/index.js') as RuntimeModule
+const richRuntime = await import('../src/rich/terminal-rich-inline.js') as RuntimeModule
 const builtRootRuntime = await importDistRuntime('index')
 const builtTerminalRuntime = await importDistRuntime('terminal')
 const builtRichRuntime = await importDistRuntime('terminal-rich-inline')
@@ -134,7 +134,7 @@ async function readDistDeclaration(name: string): Promise<string> {
 }
 
 async function readSourceDeclaration(name: string): Promise<string> {
-  return readFile(path.join(root, 'dist', 'internal', `${name}.d.ts`), 'utf8')
+  return readFile(path.join(root, 'dist', 'internal', 'public', `${name}.d.ts`), 'utf8')
 }
 
 async function importDistRuntime(name: string): Promise<RuntimeModule> {

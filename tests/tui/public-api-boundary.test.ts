@@ -9,9 +9,9 @@ import {
   terminalStableRuntimeExports,
   terminalPublicRuntimeExports,
 } from '../../scripts/public-api-contract.js'
-import * as publicFacade from '../../src/public-index.js'
-import * as root from '../../src/index.js'
-import * as rich from '../../src/terminal-rich-inline.js'
+import * as publicFacade from '../../src/public/public-index.js'
+import * as root from '../../src/public/index.js'
+import * as rich from '../../src/rich/terminal-rich-inline.js'
 import type {
   PreparedTerminalCellFlow,
   PreparedTerminalText,
@@ -20,7 +20,7 @@ import type {
   TerminalPageCache,
   TerminalRangeIndex,
   TerminalSourceOffsetIndex,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 
 type RuntimeModule = Record<string, unknown>
 const repoRoot = path.resolve(import.meta.dir, '../..')
@@ -54,7 +54,7 @@ describe('public API boundary', () => {
   })
 
   test('source root stays a thin re-export of the canonical public facade', async () => {
-    const indexSource = await readFile(path.join(repoRoot, 'src/index.ts'), 'utf8')
+    const indexSource = await readFile(path.join(repoRoot, 'src/public/index.ts'), 'utf8')
     const executableLines = indexSource
       .split(/\r?\n/u)
       .map(line => line.trim())

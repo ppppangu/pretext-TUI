@@ -11,7 +11,7 @@ run('tsc', ['-p', 'tsconfig.build.json'])
 
 await writePublicWrapper({
   publicName: 'index',
-  internalName: 'public-index',
+  internalName: 'public/public-index',
 })
 await writePublicAlias({
   publicName: 'terminal',
@@ -19,7 +19,7 @@ await writePublicAlias({
 })
 await writePublicWrapper({
   publicName: 'terminal-rich-inline',
-  internalName: 'public-terminal-rich-inline',
+  internalName: 'public/public-terminal-rich-inline',
   declarationTransform: declaration => declaration.replaceAll('./public-index.js', './index.js'),
 })
 

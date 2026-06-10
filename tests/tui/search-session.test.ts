@@ -16,10 +16,10 @@ import {
   prepareTerminalCellFlow,
   type TerminalSearchMatch,
   type TerminalSearchSession,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   prepareTerminalRichInline,
-} from '../../src/public-terminal-rich-inline.js'
+} from '../../src/public/public-terminal-rich-inline.js'
 
 function positions(matches: readonly TerminalSearchMatch[]): ReadonlyArray<readonly [number, number, string, string | undefined]> {
   return matches.map(match => [match.sourceStart, match.sourceEnd, match.matchText, match.scopeId])

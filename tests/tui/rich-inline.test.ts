@@ -1,13 +1,13 @@
 // 补建说明：该文件为后续补建，用于验证 package-facing terminal-rich-inline public API 的 TUI-only metadata 行为；当前进度：Task 7 首版，覆盖 sanitized ANSI、OSC8、fragment/source 对齐与 ANSI 行重建安全性。
 import { describe, expect, test } from 'bun:test'
-import { TERMINAL_START_CURSOR, prepareTerminal, type TerminalLineRange } from '../../src/index.js'
+import { TERMINAL_START_CURSOR, prepareTerminal, type TerminalLineRange } from '../../src/public/index.js'
 import {
   layoutNextTerminalRichLineRange,
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
-} from '../../src/terminal-rich-inline.js'
-import { getInternalPreparedTerminalText } from '../../src/terminal-prepared-reader.js'
+} from '../../src/rich/terminal-rich-inline.js'
+import { getInternalPreparedTerminalText } from '../../src/prepared/terminal-prepared-reader.js'
 import {
   assertNoUnsafeTerminalOutput,
   assert,

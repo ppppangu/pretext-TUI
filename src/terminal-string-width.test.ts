@@ -3,12 +3,12 @@ import { describe, expect, test } from 'bun:test'
 import {
   resolveTerminalWidthProfile,
   TERMINAL_UNICODE_NARROW_PROFILE,
-} from './terminal-width-profile.js'
+} from './unicode/terminal-width-profile.js'
 import {
   terminalGraphemeWidth,
   terminalStringWidth,
   terminalTabAdvance,
-} from './terminal-string-width.js'
+} from './unicode/terminal-string-width.js'
 
 describe('terminal width profile', () => {
   test('default profile is stable and named', () => {

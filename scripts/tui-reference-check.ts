@@ -1,11 +1,11 @@
 // 补建说明：该文件为后续补建，用于执行 Task 7 的 deterministic TUI reference/golden 校验；当前进度：复用 tui-reference-cases 共享求值，覆盖 layout、rich inline 与 width profile goldens。
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { TERMINAL_START_CURSOR, prepareTerminal } from '../src/index.js'
+import { TERMINAL_START_CURSOR, prepareTerminal } from '../src/public/index.js'
 import {
   layoutNextTerminalRichLineRange,
   prepareTerminalRichInline,
-} from '../src/terminal-rich-inline.js'
+} from '../src/rich/terminal-rich-inline.js'
 import {
   assert,
   assertDeepEqual,

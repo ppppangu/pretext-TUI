@@ -11,14 +11,14 @@ import {
   type PreparedTerminalText,
   type TerminalLayoutOptions,
   type TerminalLineRange,
-} from './terminal.js'
+} from './core/terminal.js'
 import {
   materializeTerminalLineSourceRange,
-} from './terminal-line-source.js'
+} from './core/terminal-line-source.js'
 import {
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
-} from './terminal-performance-counters.js'
+} from './telemetry/terminal-performance-counters.js'
 
 function collectWalked(
   prepared: PreparedTerminalText,

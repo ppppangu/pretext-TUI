@@ -1,7 +1,7 @@
 // 补建说明：该文件为后续补建，用于执行 Task 7 的 TUI corpus invariant 校验；当前进度：首版从 corpora/tui-step10.json 引用既有语料并验证 public API 不变量。
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/index.js'
+import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/public/index.js'
 import {
   assert,
   assertTerminalInvariants,

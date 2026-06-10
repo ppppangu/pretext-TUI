@@ -1,13 +1,13 @@
 // 补建说明：该文件为后续补建，用于执行 Task 7 的 deterministic TUI fuzz invariant 校验；当前进度：首版生成 token stream 并打印失败复现，不自动写入 seed 目录。
-import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/index.js'
+import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/public/index.js'
 import {
   layoutNextTerminalRichLineRange,
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
-} from '../src/terminal-rich-inline.js'
+} from '../src/rich/terminal-rich-inline.js'
 import {
   TERMINAL_START_CURSOR,
-} from '../src/index.js'
+} from '../src/public/index.js'
 import {
   assert,
   assertTerminalInvariants,

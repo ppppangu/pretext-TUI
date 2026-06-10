@@ -23,7 +23,7 @@ import {
   type TerminalLayoutBundle,
   type TerminalLinePage,
   type TerminalLayoutOptions,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   collectTerminalLines,
   readInternalPreparedTerminalText,
@@ -31,7 +31,7 @@ import {
 import {
   getInternalPreparedTerminalReader,
   type PreparedTerminalText as InternalPreparedTerminalText,
-} from '../../src/terminal-prepared-reader.js'
+} from '../../src/prepared/terminal-prepared-reader.js'
 
 function makeLongTranscript(rowCount = 32): string {
   const rows: string[] = []

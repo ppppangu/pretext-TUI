@@ -26,11 +26,11 @@ import {
   type PreparedTerminalText,
   type TerminalLayoutOptions,
   type TerminalPrepareOptions,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   getInternalPreparedTerminalReader,
   type PreparedTerminalText as InternalPreparedTerminalText,
-} from '../../src/terminal-prepared-reader.js'
+} from '../../src/prepared/terminal-prepared-reader.js'
 
 type AppendParityCase = {
   appends: readonly string[]

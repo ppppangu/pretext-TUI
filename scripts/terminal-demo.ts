@@ -9,7 +9,7 @@ import {
   walkTerminalLineRanges,
   type PreparedTerminalText,
   type TerminalLineRange,
-} from '../src/index.js'
+} from '../src/public/index.js'
 
 type DemoFormat = 'pretty' | 'json'
 

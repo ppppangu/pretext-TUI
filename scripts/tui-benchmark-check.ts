@@ -32,37 +32,37 @@ import {
   type TerminalLayoutOptions,
   type TerminalPrepareOptions,
   type TerminalSearchMode,
-} from '../src/index.js'
+} from '../src/public/index.js'
 import {
   createTerminalLayoutBundle as createInternalTerminalLayoutBundle,
   getTerminalLayoutBundleStats,
-} from '../src/terminal-layout-bundle.js'
+} from '../src/virtual/terminal-layout-bundle.js'
 import {
   getTerminalCellFlowDebugStats,
-} from '../src/terminal-cell-flow.js'
+} from '../src/virtual/terminal-cell-flow.js'
 import {
   createTerminalSelectionFromCoordinates,
   extractTerminalSelection,
   extractTerminalSourceRange,
-} from '../src/terminal-selection.js'
-import { prepareTerminal as prepareTerminalForSelection } from '../src/terminal.js'
+} from '../src/semantic/terminal-selection.js'
+import { prepareTerminal as prepareTerminalForSelection } from '../src/core/terminal.js'
 import {
   layoutNextTerminalRichLineRange,
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
   extractTerminalRichSourceRange,
   walkTerminalRichLineRanges,
-} from '../src/terminal-rich-inline.js'
+} from '../src/rich/terminal-rich-inline.js'
 import {
   createTerminalRichRawVisibleIndex,
   getTerminalRichRawVisibleRangesForSourceRange,
-} from '../src/terminal-rich-span-index.js'
+} from '../src/rich/terminal-rich-span-index.js'
 import {
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
   terminalPerformanceCounterNames,
   type TerminalPerformanceCounterName,
-} from '../src/terminal-performance-counters.js'
+} from '../src/telemetry/terminal-performance-counters.js'
 import {
   assert,
   collectTerminalLines,

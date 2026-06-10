@@ -10,12 +10,12 @@ import {
   prepareTerminal,
   walkTerminalLineRanges,
   type TerminalPrepareOptions,
-} from '../src/index.js'
+} from '../src/public/index.js'
 import {
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
-} from '../src/terminal-rich-inline.js'
+} from '../src/rich/terminal-rich-inline.js'
 import {
   attachBenchmarkEvidenceRatios,
   BENCHMARK_EVIDENCE_SCHEMA,

@@ -9,6 +9,25 @@ import {
 } from './public-api-contract.js'
 
 const root = process.cwd()
+
+// Physical directory layering DAG: a src/<layer> module may only import from a
+// strictly-lower-ranked layer directory (or its own directory). Intra-directory
+// './x.js' imports are always allowed; src-root files (tests, *.d.ts) are exempt.
+const LAYER_RANK: Record<string, number> = {
+  telemetry: 0,
+  unicode: 1,
+  analyze: 2,
+  wrap: 3,
+  prepared: 4,
+  core: 5,
+  virtual: 6,
+  semantic: 7,
+  rich: 8,
+  public: 9,
+}
+
+const layeredTerminalRuntimeFilePattern = /^src\/[^/]+\/terminal[^/]*\.ts$/
+
 const includeRoots = [
   'src',
   'scripts',
@@ -76,7 +95,7 @@ async function scanPath(absolutePath: string): Promise<void> {
 }
 
 function scanCode(file: string, raw: string): void {
-  const stripped = stripCommentsAndStrings(raw)
+  const stripped = stripComments(raw)
   const codePatterns: Array<[RegExp, string]> = [
     [/\b(window|document|navigator|HTMLElement|HTMLCanvasElement|CanvasRenderingContext2D|OffscreenCanvas|Path2D|ImageBitmap)\b/g, 'browser or DOM global in active code'],
     [/\b(measureText|getBoundingClientRect|requestAnimationFrame)\b/g, 'browser measurement/rendering API in active code'],
@@ -125,10 +144,63 @@ function scanCode(file: string, raw: string): void {
       reason: 'terminal runtime file uses prepared reader/text capabilities but is not classified in the reader-boundary contract',
     })
   }
+
+  scanLayering(file, raw)
+}
+
+// Enforce the src/<layer> directory layering DAG on relative import specifiers.
+// Comments are stripped (string literals preserved) so commented-out imports are
+// ignored but real `from '...'`/`export ... from '...'` specifiers are inspected.
+function scanLayering(file: string, raw: string): void {
+  const ownLayer = layerOf(file)
+  if (ownLayer === null) return // src-root files (tests, *.d.ts) are exempt
+
+  const source = stripComments(raw, { keepStringContents: true })
+  const specifierPattern = /\bfrom\s+'(\.\.?\/[^']+)'/g
+  for (const match of source.matchAll(specifierPattern)) {
+    const specifier = match[1]!
+    if (specifier.startsWith('./')) continue // intra-directory imports are always allowed
+
+    // Any specifier that climbs more than one level escapes the src/<layer> boundary.
+    if (/^\.\.\/\.\.\//.test(specifier)) {
+      findings.push({
+        file,
+        pattern: specifier,
+        reason: `layering violation: ${ownLayer} import escapes the src/<layer> boundary (climbs more than one level)`,
+      })
+      continue
+    }
+
+    const targetMatch = specifier.match(/^\.\.\/([^/]+)\//)
+    if (targetMatch === null) continue
+    const targetLayer = targetMatch[1]!
+    if (!(targetLayer in LAYER_RANK)) {
+      findings.push({
+        file,
+        pattern: specifier,
+        reason: `layering violation: ${ownLayer} imports from non-layer directory '${targetLayer}'`,
+      })
+      continue
+    }
+    if (LAYER_RANK[targetLayer]! >= LAYER_RANK[ownLayer]!) {
+      findings.push({
+        file,
+        pattern: specifier,
+        reason: `layering violation: ${ownLayer} (rank ${LAYER_RANK[ownLayer]}) may not import upward from ${targetLayer} (rank ${LAYER_RANK[targetLayer]})`,
+      })
+    }
+  }
+}
+
+function layerOf(file: string): string | null {
+  const match = file.match(/^src\/([^/]+)\//)
+  if (match === null) return null // src-root file
+  const layer = match[1]!
+  return layer in LAYER_RANK ? layer : null
 }
 
 function isUnclassifiedTerminalRuntimeFile(file: string, stripped: string): boolean {
-  if (!file.startsWith('src/terminal') || !file.endsWith('.ts') || file.endsWith('.test.ts')) {
+  if (!layeredTerminalRuntimeFilePattern.test(file) || file.endsWith('.test.ts')) {
     return false
   }
   if (readerBoundaryRuntimeFileSet.has(file) || readerBoundaryStorageRuntimeFileSet.has(file)) {
@@ -165,7 +237,10 @@ function isStaticGateGuardrailLine(line: string): boolean {
   return /\b(?:do not|forbidden|avoid|must not|unsupported|must not imply|without|No)\b/i.test(line)
 }
 
-function stripCommentsAndStrings(source: string): string {
+// Blanks out comments (and, by default, string literal contents). Pass
+// keepStringContents to preserve string bodies — needed when inspecting import
+// specifiers, which live inside the quotes — while still dropping commented code.
+function stripComments(source: string, { keepStringContents = false }: { keepStringContents?: boolean } = {}): string {
   let output = ''
   let i = 0
   while (i < source.length) {
@@ -193,16 +268,16 @@ function stripCommentsAndStrings(source: string): string {
     }
     if (ch === '"' || ch === '\'' || ch === '`') {
       const quote = ch
-      output += ' '
+      output += keepStringContents ? ch : ' '
       i++
       while (i < source.length) {
         if (source[i] === '\\') {
-          output += '  '
+          output += keepStringContents ? source[i]! + (source[i + 1] ?? '') : '  '
           i += 2
           continue
         }
         const current = source[i]!
-        output += current === '\n' ? '\n' : ' '
+        output += keepStringContents ? current : (current === '\n' ? '\n' : ' ')
         i++
         if (current === quote) break
       }

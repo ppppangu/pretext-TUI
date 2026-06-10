@@ -14,12 +14,12 @@ import {
   type TerminalSelection,
   type TerminalSelectionExtraction,
   type TerminalSourceOffsetIndex,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   extractTerminalRichSourceRange,
   extractTerminalRichSelection,
   prepareTerminalRichInline,
-} from '../../src/public-terminal-rich-inline.js'
+} from '../../src/public/public-terminal-rich-inline.js'
 
 type SelectionView = {
   lineIndex: TerminalLineIndex

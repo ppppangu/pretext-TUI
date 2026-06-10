@@ -1,11 +1,11 @@
 // 补建说明：该文件为后续补建，用于在 reference 校验与再生成之间共享 case 求值与字节级序列化；当前进度：首版覆盖 width/layout/rich expected 计算与 accuracy/tui-reference.json 序列化。
-import type { TerminalLineRange } from '../src/index.js'
+import type { TerminalLineRange } from '../src/public/index.js'
 import {
   materializeTerminalRichLineRange,
   prepareTerminalRichInline,
   walkTerminalRichLineRanges,
-} from '../src/terminal-rich-inline.js'
-import { terminalStringWidth } from '../src/terminal-string-width.js'
+} from '../src/rich/terminal-rich-inline.js'
+import { terminalStringWidth } from '../src/unicode/terminal-string-width.js'
 import {
   assert,
   snapshotLayoutCase,

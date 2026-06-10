@@ -1,24 +1,24 @@
 // 补建说明：该文件为后续补建，用于验证 Phase 9 performance counter schema 覆盖 range/search/selection 证据路径；当前进度：首版确保新增 counters 被真实操作记录。
 import { describe, expect, test } from 'bun:test'
-import { prepareTerminal } from '../../src/terminal.js'
-import { createTerminalLayoutBundle } from '../../src/terminal-layout-bundle.js'
+import { prepareTerminal } from '../../src/core/terminal.js'
+import { createTerminalLayoutBundle } from '../../src/virtual/terminal-layout-bundle.js'
 import {
   createTerminalRangeIndex,
   getTerminalRangesForSourceRange,
-} from '../../src/terminal-range-index.js'
+} from '../../src/semantic/terminal-range-index.js'
 import {
   createTerminalSearchSession,
   getTerminalSearchMatchesForSourceRange,
-} from '../../src/terminal-search-session.js'
+} from '../../src/semantic/terminal-search-session.js'
 import {
   createTerminalSelectionFromCoordinates,
   extractTerminalSelection,
-} from '../../src/terminal-selection.js'
+} from '../../src/semantic/terminal-selection.js'
 import {
   disableTerminalPerformanceCounters,
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
-} from '../../src/terminal-performance-counters.js'
+} from '../../src/telemetry/terminal-performance-counters.js'
 
 describe('terminal performance counters', () => {
   test('range, search, and selection evidence counters are recorded by kernel operations', () => {

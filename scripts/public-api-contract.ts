@@ -46,12 +46,12 @@ export const requiredTarballFiles = Object.freeze([
   'dist/terminal.d.ts',
   'dist/terminal-rich-inline.js',
   'dist/terminal-rich-inline.d.ts',
-  'dist/internal/index.js',
-  'dist/internal/index.d.ts',
-  'dist/internal/terminal.js',
-  'dist/internal/terminal.d.ts',
-  'dist/internal/terminal-rich-inline.js',
-  'dist/internal/terminal-rich-inline.d.ts',
+  'dist/internal/public/index.js',
+  'dist/internal/public/index.d.ts',
+  'dist/internal/core/terminal.js',
+  'dist/internal/core/terminal.d.ts',
+  'dist/internal/rich/terminal-rich-inline.js',
+  'dist/internal/rich/terminal-rich-inline.d.ts',
 ])
 
 export const allowedRootDistFiles = Object.freeze([
@@ -270,26 +270,26 @@ export const forbiddenPreparedHandleDeclarationTokens = Object.freeze([
 ])
 
 export const readerBoundaryRuntimeFiles = Object.freeze([
-  'src/terminal.ts',
-  'src/terminal-cell-flow.ts',
-  'src/terminal-coordinate-projection.ts',
-  'src/terminal-grapheme-geometry.ts',
-  'src/terminal-layout-bundle.ts',
-  'src/terminal-line-index.ts',
-  'src/terminal-line-source.ts',
-  'src/terminal-materialize.ts',
-  'src/terminal-normalized-source.ts',
-  'src/terminal-page-cache.ts',
-  'src/terminal-range-index.ts',
-  'src/terminal-reader-store.ts',
-  'src/terminal-rich-inline.ts',
-  'src/terminal-search-session.ts',
-  'src/terminal-selection.ts',
-  'src/terminal-source-offset-index.ts',
+  'src/core/terminal.ts',
+  'src/virtual/terminal-cell-flow.ts',
+  'src/semantic/terminal-coordinate-projection.ts',
+  'src/prepared/terminal-grapheme-geometry.ts',
+  'src/virtual/terminal-layout-bundle.ts',
+  'src/virtual/terminal-line-index.ts',
+  'src/core/terminal-line-source.ts',
+  'src/virtual/terminal-materialize.ts',
+  'src/core/terminal-normalized-source.ts',
+  'src/virtual/terminal-page-cache.ts',
+  'src/semantic/terminal-range-index.ts',
+  'src/prepared/terminal-reader-store.ts',
+  'src/rich/terminal-rich-inline.ts',
+  'src/semantic/terminal-search-session.ts',
+  'src/semantic/terminal-selection.ts',
+  'src/virtual/terminal-source-offset-index.ts',
 ])
 
 export const readerBoundaryStorageRuntimeFiles = Object.freeze([
-  'src/terminal-prepared-reader.ts',
+  'src/prepared/terminal-prepared-reader.ts',
 ])
 
 export const readerBoundaryRuntimeClassificationTokens = Object.freeze([

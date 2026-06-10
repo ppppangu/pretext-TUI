@@ -6,7 +6,7 @@ import {
   layoutTerminal,
   materializeTerminalLinePage,
   prepareTerminal,
-} from '../src/index.js'
+} from '../src/public/index.js'
 import wrapAnsi from 'wrap-ansi'
 
 type DemoFormat = 'pretty' | 'json'

@@ -18,7 +18,7 @@ import {
   type TerminalRowProjection,
   type TerminalSourceOffsetIndex,
   type TerminalSourceRangeProjection,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 
 type ProjectionView = {
   lineIndex: TerminalLineIndex

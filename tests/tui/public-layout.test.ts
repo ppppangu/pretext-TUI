@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   layoutTerminal,
   prepareTerminal,
-} from '../../src/index.js'
+} from '../../src/public/index.js'
 import {
   assertDeepEqual,
   assertTerminalInvariants,

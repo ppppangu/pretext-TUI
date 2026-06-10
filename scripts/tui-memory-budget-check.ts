@@ -6,35 +6,35 @@ import {
   getTerminalLayoutBundlePage,
   getTerminalLayoutBundleProjectionIndexes,
   getTerminalLayoutBundleMemoryEstimate,
-} from '../src/terminal-layout-bundle.js'
+} from '../src/virtual/terminal-layout-bundle.js'
 import {
   appendTerminalCellFlow,
   getTerminalCellFlowMemoryEstimate,
   prepareTerminalCellFlow,
-} from '../src/terminal-cell-flow.js'
-import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/terminal.js'
+} from '../src/virtual/terminal-cell-flow.js'
+import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/core/terminal.js'
 import {
   createTerminalRangeIndex,
   getTerminalRangeIndexMemoryEstimate,
   type TerminalRange,
-} from '../src/terminal-range-index.js'
+} from '../src/semantic/terminal-range-index.js'
 import {
   createTerminalSearchSession,
   getTerminalSearchMatchesForSourceRange,
   getTerminalSearchSessionMemoryEstimate,
   type TerminalSearchMode,
-} from '../src/terminal-search-session.js'
+} from '../src/semantic/terminal-search-session.js'
 import {
   createTerminalSelectionFromCoordinates,
   extractTerminalSelection,
   getTerminalSelectionExtractionMemoryEstimate,
-} from '../src/terminal-selection.js'
-import { prepareTerminalRichInline } from '../src/terminal-rich-inline.js'
+} from '../src/semantic/terminal-selection.js'
+import { prepareTerminalRichInline } from '../src/rich/terminal-rich-inline.js'
 import type {
   TerminalMemoryBudgetCategory,
   TerminalMemoryBudgetEstimate,
-} from '../src/terminal-memory-budget.js'
-import { getTerminalRichInlineMemoryEstimate } from '../src/terminal-memory-budget.js'
+} from '../src/telemetry/terminal-memory-budget.js'
+import { getTerminalRichInlineMemoryEstimate } from '../src/telemetry/terminal-memory-budget.js'
 
 export type MemoryBudgetAssertion = Readonly<{
   category: TerminalMemoryBudgetCategory

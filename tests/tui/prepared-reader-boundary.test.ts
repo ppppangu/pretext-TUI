@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import * as root from '../../src/index.js'
+import * as root from '../../src/public/index.js'
 import {
   createPreparedTerminalTextFromReader,
   getInternalPreparedTerminalGeometry,
@@ -11,9 +11,9 @@ import {
   getInternalPreparedTerminalTextDebugSnapshot,
   type PreparedTerminalReader,
   type PreparedTerminalText as InternalPreparedTerminalText,
-} from '../../src/terminal-prepared-reader.js'
-import { materializePreparedTerminalSourceTextRange } from '../../src/terminal-line-source.js'
-import type { PreparedTerminalText } from '../../src/index.js'
+} from '../../src/prepared/terminal-prepared-reader.js'
+import { materializePreparedTerminalSourceTextRange } from '../../src/core/terminal-line-source.js'
+import type { PreparedTerminalText } from '../../src/public/index.js'
 import {
   findReaderBoundaryRuntimeFindings,
   forbiddenReaderBoundaryRuntimeTokens,
@@ -280,9 +280,9 @@ describe('prepared reader capability boundary', () => {
 
   test('public runtime modules do not import or export private prepared reader or geometry subpaths', async () => {
     const publicRuntimeFiles = [
-      'src/index.ts',
-      'src/public-index.ts',
-      'src/public-terminal-rich-inline.ts',
+      'src/public/index.ts',
+      'src/public/public-index.ts',
+      'src/public/public-terminal-rich-inline.ts',
     ]
     const forbiddenPublicRuntimeTokens = [
       "from './terminal-prepared-reader.js'",
