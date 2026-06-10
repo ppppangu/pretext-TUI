@@ -4,7 +4,8 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Active Next
 
-- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks.
+- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks; track R1 is complete and track R2 directory layering is next.
+- Add a source-level check for the stable/incubating partition inside `scripts/public-api-contract.ts` when the stable `0.1` promotion review happens; today only the union of the two lists is fully cross-checked.
 - Maintain the Phase 10 adoption evidence pack as claims, recipes, and public API boundaries evolve.
 - Use [docs/decisions/incubating-api-approval-index.md](docs/decisions/incubating-api-approval-index.md) to prevent accidental stable `0.1` promotion of incubating APIs.
 - Keep append claims narrow: append-only chunked storage is internal and incubating; arbitrary editing, destructive prefix eviction, and host retention policy are not implemented.
@@ -19,6 +20,7 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Completed
 
+- Track R1 kernel refinement has landed behavior-frozen: one shared grapheme-segmenter module, one tab-advance owner, a layered `analysis-*` module split behind the `analysis` facade, a shared keep-all grouping rule, decomposed measurement helpers, golden regeneration tooling with a byte-drift `--check` mode, and a source-level runtime export check for the rich public facade.
 - Initial package contracts are frozen.
 - Browser product surface has been removed from active package exports, scripts, workflow, and status docs.
 - Initial terminal width backend and measurement boundary have landed.

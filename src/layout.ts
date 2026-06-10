@@ -50,7 +50,7 @@ import {
   clearLineTextCaches,
   getLineTextCache,
 } from './line-text.js'
-import { getGraphemeSegmenter, clearGraphemeSegmenters } from './grapheme-segmenter.js'
+import { getGraphemeSegmenter } from './grapheme-segmenter.js'
 
 // --- Public types ---
 
@@ -954,7 +954,6 @@ export function layoutWithLines(prepared: PreparedTextWithSegments, maxWidth: nu
 
 export function clearCache(): void {
   clearAnalysisCaches()
-  clearGraphemeSegmenters()
   clearLineTextCaches()
   clearMeasurementCaches()
 }

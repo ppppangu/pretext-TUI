@@ -40,6 +40,7 @@ Current hardening covers declaration-checked public API boundaries, host-neutral
 | Append-only chunked storage | Phase 8 approved with documented residual risk behind the existing flow handle; incubating and evidence-gated, with no arbitrary editing or destructive prefix eviction |
 | Memory budget gate | Phase 9 approved with documented residual risk; `memory-budget-check:tui` models kernel-owned layout/search/selection/rich/range/chunked structures without host UI memory |
 | Phase 10 launch-readiness | Approved with documented residual risk; API matrix, evidence matrices, recipes, production notes, and benchmark report-id anchors are available; no stable `0.1` or named integration claim |
+| Track R1 kernel refinement | Complete and behavior-frozen; shared grapheme segmenter, single tab-advance owner, layered `analysis-*` split behind the `analysis` facade, decomposed measurement helpers, golden regeneration tooling, and rich-facade source export check landed with goldens byte-identical |
 
 ## Reference Map
 

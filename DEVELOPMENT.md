@@ -57,6 +57,22 @@ bun run package-smoke-test
 
 The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work plus rich/search/selection lookup behavior; these counters are release-regression telemetry, not public benchmark evidence. `memory-budget-check:tui` separately models kernel-owned structure sizes for layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows; it is not process heap telemetry.
 
+## Golden Maintenance
+
+When an intentional engine behavior change requires updating the layout/width/rich goldens, regenerate `accuracy/tui-reference.json` from the current engine instead of hand-editing JSON:
+
+```sh
+bun run tui-reference-regenerate
+```
+
+Review the resulting git diff like any other change. The script's `--check` mode recomputes and reserializes without writing and exits non-zero on any byte drift, which doubles as proof that a refactor is behavior-frozen:
+
+```sh
+bun run tui-reference-regenerate --check
+```
+
+This is a maintainer tool, not a release-gate step; the gate verifies goldens through `tui-oracle-check`.
+
 ## Competitive Benchmark
 
 Run the optional local competitive benchmark manually when comparing `pretext-TUI` against mainstream text wrapping primitives:
