@@ -1,13 +1,20 @@
 # Changelog
 
-## 0.1.0-alpha.0 - 2026-04-27
+## 0.1.0 - 2026-06-10
 
-Initial host-neutral terminal text kernel alpha release.
+First stable `0.1` release of the core terminal-cell layout surface.
 
 - Promotes the seven core terminal APIs (`prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR`) and their option/result types to stable `0.1`; breaking changes to them before `1.0` require a minor version bump.
 - Adds incubating tail-follow row queries (`getTerminalLineIndexTailRanges`, `getTerminalLayoutBundleTailPage`, `measureTerminalLayoutBundleRows`) so follow-mode viewports can fetch the last rows of a growing transcript without re-deriving totals after every append.
 - Adds an incubating `appendTerminalRanges` so hosts with growing transcripts can extend a generic range index by validating only the newly appended ranges, with results identical to one-shot construction.
 - Adds an incubating opt-in `matchLimit` for search sessions plus `getTerminalSearchSessionStats`, so stored search matches follow an explicit configured limit with detectable truncation instead of growing with transcript length.
+- Restructures `src/` into ranked layer directories (`unicode`, `analyze`, `wrap`, `core`, `prepared`, `virtual`, `semantic`, `rich`, `telemetry`, `public`) with a hardened layering gate; package exports and the public API surface are unchanged.
+- Adds a host-neutral conformance kit (`fixtures/conformance/`) with width, wrap, and offset cases plus generation and check tooling.
+- Adds a documented Unicode upgrade policy and a prefix-eviction design RFC.
+
+## 0.1.0-alpha.0 - 2026-04-27
+
+Initial host-neutral terminal text kernel alpha release.
 
 - Exposes a terminal-first package story under `pretext-tui`.
 - Retargets the active package surface toward terminal cells, rows, ranges, and lazy materialization.

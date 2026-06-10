@@ -10,9 +10,9 @@ It is not a renderer, not a terminal emulator, and not a full TUI framework. It 
 
 ## Release Status
 
-Current package version: `0.1.0-alpha.0`.
+Current package version: `0.1.0`.
 
-This is a pre-1.0 alpha release candidate. The core `prepare -> layout/range -> materialize` surface (`prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, and `TERMINAL_START_CURSOR`) is stable as of `0.1.0`; breaking changes to it before `1.0` require a minor version bump. Advanced public surfaces such as fixed-column indexes, page caches, layout bundles, source projection, range sidecars, search sessions, selection/extraction, append-only cell flows, and rich inline metadata remain incubating unless a future approval record explicitly promotes them.
+This is a pre-1.0 release. The core `prepare -> layout/range -> materialize` surface (`prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, and `TERMINAL_START_CURSOR`) is stable as of `0.1.0`; breaking changes to it before `1.0` require a minor version bump. Advanced public surfaces such as fixed-column indexes, page caches, layout bundles, source projection, range sidecars, search sessions, selection/extraction, append-only cell flows, and rich inline metadata remain incubating unless a future approval record explicitly promotes them.
 
 Repository-only evidence docs are not shipped in the npm tarball. Browse the current evidence pack, contracts, recipes, and production notes in the repository: <https://github.com/ppppangu/pretext-TUI/tree/main/docs>.
 
@@ -116,7 +116,7 @@ That gate uses a documented model for kernel-owned structures such as layout bun
 ## Install
 
 ```sh
-npm install pretext-tui@0.1.0-alpha.0
+npm install pretext-tui@0.1.0
 ```
 
 The package root exports the terminal API. `./terminal` is an alias for the same API. `./terminal-rich-inline` is the opt-in rich metadata path.

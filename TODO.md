@@ -1,6 +1,6 @@
 # TODO
 
-Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretext-TUI` host-neutral terminal text kernel.
+Current priorities for maintaining the `0.1.0` `pretext-TUI` host-neutral terminal text kernel.
 
 ## Active Next
 
