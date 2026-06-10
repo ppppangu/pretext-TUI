@@ -81,6 +81,27 @@
       ]
     },
     {
+      "id": "generic-range-index-append-memory",
+      "text": "range fixture",
+      "rangeIndex": {
+        "batches": 16,
+        "count": 2048,
+        "data": true,
+        "span": 12,
+        "stride": 8,
+        "tags": ["generic", "fixture"]
+      },
+      "prepare": { "whiteSpace": "normal" },
+      "layout": { "columns": 20 },
+      "budgets": [
+        {
+          "category": "range-index",
+          "maxEstimatedBytes": 1200000,
+          "maxRangeRecords": 2048
+        }
+      ]
+    },
+    {
       "id": "rich-inline-memory",
       "repeatText": {
         "text": "\u001b[31mred\u001b[0m \u001b]8;;https://e.test\u001b\\link\u001b]8;;\u001b\\ ",

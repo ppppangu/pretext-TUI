@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import {
   appendTerminalCellFlow,
+  appendTerminalRanges,
   createTerminalLayoutBundle,
   createTerminalLineIndex,
   createTerminalPageCache,
+  createTerminalRangeIndex,
   createTerminalSearchSession,
   createTerminalSourceOffsetIndex,
   getTerminalCellFlowGeneration,
@@ -15,6 +17,8 @@ import {
   getTerminalLineIndexStats,
   getTerminalLinePage,
   getTerminalPageCacheStats,
+  getTerminalRangesAtSourceOffset,
+  getTerminalRangesForSourceRange,
   getTerminalSearchMatchAfterSourceOffset,
   getTerminalSearchMatchBeforeSourceOffset,
   getTerminalSearchMatchesForSourceRange,
@@ -31,6 +35,7 @@ import {
   TERMINAL_START_CURSOR,
   type TerminalLayoutOptions,
   type TerminalPrepareOptions,
+  type TerminalRange,
   type TerminalSearchMode,
 } from '../src/public/index.js'
 import {
@@ -101,6 +106,13 @@ export type BenchmarkWorkload = {
   }
   virtual?: boolean
   layoutBundle?: boolean
+  rangeIndex?: {
+    appendBatches?: number
+    count: number
+    queryStride?: number
+    span: number
+    stride: number
+  }
   appendText?: string
   appendSequence?: {
     count: number
@@ -325,6 +337,11 @@ function runWorkload(
       continue
     }
 
+    if (workload.rangeIndex !== undefined) {
+      runRangeIndexWorkload(workload.rangeIndex)
+      continue
+    }
+
     if (workload.virtual) {
       const virtualCounters = workload.layoutBundle
         ? runLayoutBundleWorkload(workload, input)
@@ -462,6 +479,35 @@ function runSearchWorkload(
     searchReturnedMatches: matches.length,
     searchProjectedMatches: matches.filter(match => match.projection !== undefined).length,
     searchNavigationLookups: 2,
+  }
+}
+
+function runRangeIndexWorkload(
+  rangeIndex: NonNullable<BenchmarkWorkload['rangeIndex']>,
+): void {
+  const fixture: TerminalRange[] = []
+  for (let index = 0; index < rangeIndex.count; index++) {
+    fixture.push({
+      id: `range-${index}`,
+      kind: index % 2 === 0 ? 'block' : 'inline',
+      sourceStart: index * rangeIndex.stride,
+      sourceEnd: index * rangeIndex.stride + rangeIndex.span,
+    })
+  }
+  const batches = rangeIndex.appendBatches ?? 1
+  const batchSize = Math.ceil(fixture.length / Math.max(1, batches))
+  // Build the first batch with the one-shot constructor, then grow the index by
+  // chaining appendTerminalRanges over contiguous slices. Contiguous slices keep
+  // the global order assignment identical to one-shot construction.
+  let index = createTerminalRangeIndex(fixture.slice(0, batchSize))
+  for (let start = batchSize; start < fixture.length; start += batchSize) {
+    index = appendTerminalRanges(index, fixture.slice(start, start + batchSize))
+  }
+  const span = rangeIndex.count * rangeIndex.stride
+  const queryStride = rangeIndex.queryStride ?? Math.max(1, Math.floor(span / 16))
+  for (let offset = 0; offset <= span; offset += queryStride) {
+    getTerminalRangesAtSourceOffset(index, offset)
+    getTerminalRangesForSourceRange(index, { sourceStart: offset, sourceEnd: Math.min(span, offset + queryStride) })
   }
 }
 
@@ -981,6 +1027,7 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
     'maxChars',
     'maxMilliseconds',
     'prepare',
+    'rangeIndex',
     'rawText',
     'repeatText',
     'rich',
@@ -1016,12 +1063,13 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
     assert(workload['virtual'] === true, `${label}.layoutBundle requires virtual`)
   }
   const modeCount = [
+    workload['rangeIndex'] !== undefined,
     workload['rich'] === true,
     workload['search'] !== undefined,
     workload['selection'] !== undefined,
     workload['virtual'] === true,
   ].filter(Boolean).length
-  assert(modeCount <= 1, `${label} rich, search, selection, and virtual modes are mutually exclusive`)
+  assert(modeCount <= 1, `${label} rangeIndex, rich, search, selection, and virtual modes are mutually exclusive`)
   if (workload['firstLineOnly'] === true) {
     assert(workload['search'] === undefined, `${label}.firstLineOnly cannot be combined with search`)
     assert(workload['selection'] === undefined, `${label}.firstLineOnly cannot be combined with selection`)
@@ -1033,6 +1081,7 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
   if (workload['maxMilliseconds'] !== undefined) expectPositiveNumber(workload['maxMilliseconds'], `${label}.maxMilliseconds`)
   if (workload['search'] !== undefined) parseSearch(workload['search'], `${label}.search`)
   if (workload['selection'] !== undefined) parseSelection(workload['selection'], `${label}.selection`)
+  if (workload['rangeIndex'] !== undefined) parseRangeIndex(workload['rangeIndex'], `${label}.rangeIndex`)
   if (workload['counterAssertions'] !== undefined) parseCounterAssertions(workload['counterAssertions'], `${label}.counterAssertions`)
   return workload as BenchmarkWorkload
 }
@@ -1172,6 +1221,16 @@ function parseSelectionPoint(value: unknown, label: string): void {
   assertAllowedKeys(point, label, ['column', 'row'])
   expectNonNegativeInteger(point['row'], `${label}.row`)
   expectNonNegativeInteger(point['column'], `${label}.column`)
+}
+
+function parseRangeIndex(value: unknown, label: string): void {
+  const rangeIndex = expectRecord(value, label)
+  assertAllowedKeys(rangeIndex, label, ['appendBatches', 'count', 'queryStride', 'span', 'stride'])
+  expectPositiveInteger(rangeIndex['count'], `${label}.count`)
+  expectPositiveInteger(rangeIndex['span'], `${label}.span`)
+  expectPositiveInteger(rangeIndex['stride'], `${label}.stride`)
+  if (rangeIndex['appendBatches'] !== undefined) expectPositiveInteger(rangeIndex['appendBatches'], `${label}.appendBatches`)
+  if (rangeIndex['queryStride'] !== undefined) expectPositiveInteger(rangeIndex['queryStride'], `${label}.queryStride`)
 }
 
 function parseCounterAssertions(value: unknown, label: string): void {

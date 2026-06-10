@@ -403,6 +403,29 @@
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryWidthPrefixFallbacks": { "exact": 0 }
       }
+    },
+    {
+      "id": "generic-range-index-batched-append",
+      "text": "range fixture",
+      "rangeIndex": {
+        "appendBatches": 8,
+        "count": 512,
+        "span": 2,
+        "stride": 4,
+        "queryStride": 128
+      },
+      "prepare": { "whiteSpace": "normal" },
+      "layout": { "columns": 20 },
+      "iterations": 1,
+      "maxMilliseconds": 4000,
+      "counterAssertions": {
+        "terminalRangeIndexBuilds": { "exact": 1 },
+        "terminalRangeIndexRanges": { "exact": 64 },
+        "terminalRangeIndexAppends": { "exact": 7 },
+        "terminalRangeIndexAppendedRanges": { "exact": 448 },
+        "terminalRangeIndexRevalidatedRanges": { "exact": 0 },
+        "terminalRangeIndexLookups": { "exact": 34 }
+      }
     }
   ]
 }

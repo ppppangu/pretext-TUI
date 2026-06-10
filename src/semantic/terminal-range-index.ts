@@ -42,6 +42,7 @@ type IndexedTerminalRange = {
 type InternalTerminalRangeIndex = {
   readonly byStart: readonly IndexedTerminalRange[]
   readonly prefixMaxEnd: readonly number[]
+  readonly ids: ReadonlySet<string>
 }
 
 type ProxyDetector = (value: object) => boolean
@@ -56,28 +57,115 @@ export function createTerminalRangeIndex(
     throw new Error('Terminal ranges must be an array')
   }
   const seenIds = new Set<string>()
-  const normalized = [...cloneTerminalRangeArray(
+  // Validate, clone, freeze, and order the full input. order starts at 0 because
+  // these are the first ranges in the global sequence.
+  const normalized = [...normalizeTerminalRangeBatch(ranges, seenIds, 0)]
+  normalized.sort(compareIndexedTerminalRanges)
+  recordTerminalPerformanceCounter('terminalRangeIndexBuilds')
+  recordTerminalPerformanceCounter('terminalRangeIndexRanges', normalized.length)
+  return commitRangeIndexState(buildRangeIndexState(normalized, seenIds))
+}
+
+export function appendTerminalRanges(
+  index: TerminalRangeIndex,
+  newRanges: readonly TerminalRange[],
+): TerminalRangeIndex {
+  // Capability-check the incoming handle the same way lookups do; forged handles
+  // throw 'Invalid terminal range index handle' before any allocation.
+  const base = internalRangeIndex(index)
+  if (!Array.isArray(newRanges)) {
+    throw new Error('Terminal ranges must be an array')
+  }
+  // Validate everything before allocating new state so a rejected append leaves
+  // the base index fully intact. Cross-batch and intra-batch duplicate ids reuse
+  // the one-shot 'Terminal range id must be unique' path: seed seenIds with the
+  // base ids so the check stays O(append).
+  const seenIds = new Set<string>(base.ids)
+  // Only the appended ranges are validated and cloned here; the base's already
+  // frozen IndexedTerminalRange elements are reused by reference below. Appended
+  // range i continues the global order sequence at base.byStart.length + i, which
+  // is exactly what the one-shot constructor would assign for the concatenation.
+  const appended = normalizeTerminalRangeBatch(newRanges, seenIds, base.byStart.length)
+  // Record where base revalidation would occur. The append path never revalidates
+  // base ranges, so this stays 0 and proves the absence of quadratic rework.
+  recordTerminalPerformanceCounter('terminalRangeIndexRevalidatedRanges', 0)
+  recordTerminalPerformanceCounter('terminalRangeIndexAppends')
+  recordTerminalPerformanceCounter('terminalRangeIndexAppendedRanges', appended.length)
+  const sortedAppended = [...appended]
+  sortedAppended.sort(compareIndexedTerminalRanges)
+  // Stable-merge the two sorted runs. Id uniqueness makes every distinct pair
+  // strictly ordered before the order tiebreak, so the merge is parity-safe with
+  // the one-shot constructor over [...base, ...append].
+  const merged = mergeSortedIndexedRanges(base.byStart, sortedAppended)
+  return commitRangeIndexState(buildRangeIndexState(merged, seenIds))
+}
+
+function normalizeTerminalRangeBatch(
+  ranges: readonly TerminalRange[],
+  seenIds: Set<string>,
+  orderBase: number,
+): readonly IndexedTerminalRange[] {
+  // Single validation/clone path shared by construction and append: each range is
+  // assigned a global order continuing from orderBase so an appended batch lands
+  // exactly where the one-shot constructor would have placed it.
+  return cloneTerminalRangeArray(
     ranges,
     'Terminal ranges',
-    (range, order) => normalizeTerminalRange(range as TerminalRange, order, seenIds),
-  )]
-  normalized.sort(compareIndexedTerminalRanges)
+    (range, index) => normalizeTerminalRange(range as TerminalRange, orderBase + index, seenIds),
+  )
+}
+
+function buildRangeIndexState(
+  sortedByStart: readonly IndexedTerminalRange[],
+  ids: ReadonlySet<string>,
+): InternalTerminalRangeIndex {
+  // Single left-to-right scan rebuilds the prefix-max-end spine over the already
+  // sorted byStart array.
   const prefixMaxEnd: number[] = []
   let maxEnd = 0
-  for (const item of normalized) {
+  for (const item of sortedByStart) {
     maxEnd = Math.max(maxEnd, item.range.sourceEnd)
     prefixMaxEnd.push(maxEnd)
   }
-  recordTerminalPerformanceCounter('terminalRangeIndexBuilds')
-  recordTerminalPerformanceCounter('terminalRangeIndexRanges', normalized.length)
+  return {
+    byStart: Object.freeze(sortedByStart),
+    prefixMaxEnd: Object.freeze(prefixMaxEnd),
+    ids,
+  }
+}
+
+function commitRangeIndexState(state: InternalTerminalRangeIndex): TerminalRangeIndex {
+  // Every returned handle is a fresh frozen opaque object with its own WeakMap
+  // entry; older handles stay valid because their state is never mutated.
   const handle = Object.freeze({
     kind: 'terminal-range-index@1',
   }) as TerminalRangeIndex
-  rangeIndexStates.set(handle, {
-    byStart: Object.freeze(normalized),
-    prefixMaxEnd: Object.freeze(prefixMaxEnd),
-  })
+  rangeIndexStates.set(handle, state)
   return handle
+}
+
+function mergeSortedIndexedRanges(
+  base: readonly IndexedTerminalRange[],
+  appended: readonly IndexedTerminalRange[],
+): readonly IndexedTerminalRange[] {
+  // Stable merge of two runs already sorted by the shared comparator. On a tie the
+  // base element is emitted first, but id uniqueness guarantees no cross-run tie
+  // can reach the order tiebreak, so the result matches a one-shot full sort.
+  const merged: IndexedTerminalRange[] = []
+  let i = 0
+  let j = 0
+  while (i < base.length && j < appended.length) {
+    if (compareIndexedTerminalRanges(base[i]!, appended[j]!) <= 0) {
+      merged.push(base[i]!)
+      i++
+    } else {
+      merged.push(appended[j]!)
+      j++
+    }
+  }
+  while (i < base.length) merged.push(base[i++]!)
+  while (j < appended.length) merged.push(appended[j++]!)
+  return merged
 }
 
 export function getTerminalRangesAtSourceOffset(

@@ -19,6 +19,7 @@ describe('tui memory budget gate', () => {
       'source-search-session-memory',
       'selection-extraction-memory',
       'generic-range-index-memory',
+      'generic-range-index-append-memory',
       'rich-inline-memory',
       'chunked-append-1000-small-memory',
       'chunked-append-long-unbroken-memory',

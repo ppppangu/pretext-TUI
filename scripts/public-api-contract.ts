@@ -75,6 +75,7 @@ const terminalStableRuntimeExportNames = [
 
 const terminalIncubatingRuntimeExportNames = [
   'appendTerminalCellFlow',
+  'appendTerminalRanges',
   'createTerminalLineIndex',
   'createTerminalLayoutBundle',
   'createTerminalPageCache',
@@ -350,6 +351,7 @@ export const forbiddenPublicDeclarationTokens = Object.freeze([
   'rangeIndexStates',
   'byStart',
   'prefixMaxEnd',
+  'ids',
   'internalRangeIndex',
   'InternalTerminalSearchMatch',
   'TerminalSearchSessionState',

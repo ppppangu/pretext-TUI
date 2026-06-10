@@ -58,9 +58,16 @@ describe('tui benchmark config validation', () => {
       'rich-sparse-first-line-indexes',
       'chunked-append-1000-small-virtual',
       'chunked-append-1000-small-layout-bundle',
+      'generic-range-index-batched-append',
     ]) {
       expect(ids).toContain(required)
     }
+
+    const rangeAppend = parsed.workloads.find(item => item.id === 'generic-range-index-batched-append')
+    expect(rangeAppend?.rangeIndex?.appendBatches).toBeGreaterThan(1)
+    expect(rangeAppend?.counterAssertions?.terminalRangeIndexRevalidatedRanges?.exact).toBe(0)
+    expect(rangeAppend?.counterAssertions?.terminalRangeIndexAppends?.exact).toBeGreaterThan(0)
+    expect(rangeAppend?.counterAssertions?.terminalRangeIndexAppendedRanges?.exact).toBeGreaterThan(0)
 
     for (const workload of parsed.workloads.filter(item => item.appendSequence !== undefined)) {
       expect(workload.counterAssertions?.appendFullReprepareFallbacks?.exact).toBe(0)

@@ -324,11 +324,18 @@ The agreed public shape is:
 
 ```ts
 createTerminalRangeIndex(ranges)
+appendTerminalRanges(index, newRanges)
 getTerminalRangesAtSourceOffset(index, sourceOffset)
 getTerminalRangesForSourceRange(index, { sourceStart, sourceEnd })
 ```
 
 `TerminalRange` contains `id`, `kind`, `sourceStart`, `sourceEnd`, optional `tags`, and optional inert JSON-like `data`. The package validates, clones, freezes, indexes, and returns those ranges. It must not branch on, interpret, mutate, execute, or retain active behavior from `id`, `kind`, `tags`, or `data`.
+
+`appendTerminalRanges()` grows an existing index without disturbing it. It returns a new opaque frozen handle, and the index passed in stays valid and queryable. Range ids must stay unique across the whole accumulated set, so an appended id that already exists — in the base or within the appended batch — is rejected with the same error as one-shot construction, and a rejected append leaves the base index untouched. On the append path only newly appended ranges are validated and cloned; the base ranges are reused by reference.
+
+The append path is observationally identical to one-shot construction: for any split of a range set into `[base, appended]`, `appendTerminalRanges(createTerminalRangeIndex(base), appended)` returns the same query results, in the same order, for every point and source-range query as `createTerminalRangeIndex([...base, ...appended])`. Ranges may target any offsets, including offsets earlier than already-indexed ranges; the index is a sidecar over stable host-owned source offsets, so appended ranges are placed by source position rather than by append order.
+
+Cost note: the appended index reuses the base range element objects, but the sorted index arrays (the ordered range spine and its prefix-max-end companion) are rebuilt on each append; there is no claim of structural sharing for those arrays, and the appended index reports its full footprint.
 
 Range semantics are:
 

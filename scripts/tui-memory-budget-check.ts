@@ -14,9 +14,11 @@ import {
 } from '../src/virtual/terminal-cell-flow.js'
 import { prepareTerminal, type TerminalLayoutOptions, type TerminalPrepareOptions } from '../src/core/terminal.js'
 import {
+  appendTerminalRanges,
   createTerminalRangeIndex,
   getTerminalRangeIndexMemoryEstimate,
   type TerminalRange,
+  type TerminalRangeIndex,
 } from '../src/semantic/terminal-range-index.js'
 import {
   createTerminalSearchSession,
@@ -60,6 +62,7 @@ export type MemoryBudgetWorkload = Readonly<{
   maxChars?: number
   prepare?: TerminalPrepareOptions
   rangeIndex?: Readonly<{
+    batches?: number
     count: number
     data?: true
     span: number
@@ -228,7 +231,7 @@ function runMemoryBudgetWorkload(
     ])
   }
   if (workload.rangeIndex !== undefined) {
-    const index = createTerminalRangeIndex(createRangeFixture(workload.rangeIndex))
+    const index = buildRangeIndexForWorkload(workload.rangeIndex)
     return Object.freeze([
       getTerminalRangeIndexMemoryEstimate(index, `${workload.id} range index`),
     ])
@@ -308,6 +311,24 @@ async function loadInput(workload: MemoryBudgetWorkload, root: string): Promise<
   assert(workload.corpusFile !== undefined, `workload ${workload.id} missing input`)
   const text = await readFile(path.join(root, 'corpora', workload.corpusFile), 'utf8')
   return workload.maxChars === undefined ? text : text.slice(0, workload.maxChars)
+}
+
+function buildRangeIndexForWorkload(
+  input: NonNullable<MemoryBudgetWorkload['rangeIndex']>,
+): TerminalRangeIndex {
+  const fixture = createRangeFixture(input)
+  const batches = input.batches ?? 1
+  if (batches <= 1) return createTerminalRangeIndex(fixture)
+  // Split the same final fixture into K contiguous batches and chain them through
+  // appendTerminalRanges. Contiguous slices preserve caller order, so the appended
+  // index carries exactly the order assignment a single createTerminalRangeIndex
+  // over the full fixture would produce, which keeps the footprint identical.
+  const batchSize = Math.ceil(fixture.length / batches)
+  let index = createTerminalRangeIndex(fixture.slice(0, batchSize))
+  for (let start = batchSize; start < fixture.length; start += batchSize) {
+    index = appendTerminalRanges(index, fixture.slice(start, start + batchSize))
+  }
+  return index
 }
 
 function createRangeFixture(input: NonNullable<MemoryBudgetWorkload['rangeIndex']>): readonly TerminalRange[] {
@@ -406,10 +427,11 @@ function parseAppendSequence(value: unknown, label: string): void {
 
 function parseRangeIndex(value: unknown, label: string): void {
   const rangeIndex = expectRecord(value, label)
-  assertAllowedKeys(rangeIndex, label, ['count', 'data', 'span', 'stride', 'tags'])
+  assertAllowedKeys(rangeIndex, label, ['batches', 'count', 'data', 'span', 'stride', 'tags'])
   expectPositiveInteger(rangeIndex['count'], `${label}.count`)
   expectPositiveInteger(rangeIndex['span'], `${label}.span`)
   expectPositiveInteger(rangeIndex['stride'], `${label}.stride`)
+  if (rangeIndex['batches'] !== undefined) expectPositiveInteger(rangeIndex['batches'], `${label}.batches`)
   if (rangeIndex['data'] !== undefined) expectTrueFlag(rangeIndex['data'], `${label}.data`)
   if (rangeIndex['tags'] !== undefined) {
     const tags = expectArray(rangeIndex['tags'], `${label}.tags`)

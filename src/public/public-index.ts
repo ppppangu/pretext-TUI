@@ -43,6 +43,7 @@ import {
   getTerminalSourceOffsetForCursor as internalGetTerminalSourceOffsetForCursor,
 } from '../virtual/terminal-source-offset-index.js'
 import {
+  appendTerminalRanges as internalAppendTerminalRanges,
   createTerminalRangeIndex as internalCreateTerminalRangeIndex,
   getTerminalRangesAtSourceOffset as internalGetTerminalRangesAtSourceOffset,
   getTerminalRangesForSourceRange as internalGetTerminalRangesForSourceRange,
@@ -481,6 +482,16 @@ export function createTerminalRangeIndex(
   ranges: readonly TerminalRange[],
 ): TerminalRangeIndex {
   return internalCreateTerminalRangeIndex(ranges as never) as unknown as TerminalRangeIndex
+}
+
+export function appendTerminalRanges(
+  index: TerminalRangeIndex,
+  newRanges: readonly TerminalRange[],
+): TerminalRangeIndex {
+  return internalAppendTerminalRanges(
+    index as never,
+    newRanges as never,
+  ) as unknown as TerminalRangeIndex
 }
 
 export function getTerminalRangesAtSourceOffset(

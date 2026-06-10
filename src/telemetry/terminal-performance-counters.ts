@@ -17,11 +17,14 @@ export type TerminalPerformanceCounterName =
   | 'richSpanIndexLookups'
   | 'richSpanIndexMatches'
   | 'richSpanIndexSteps'
+  | 'terminalRangeIndexAppendedRanges'
+  | 'terminalRangeIndexAppends'
   | 'terminalRangeIndexBuilds'
   | 'terminalRangeIndexLookups'
   | 'terminalRangeIndexMatches'
   | 'terminalRangeIndexPrefixPrunes'
   | 'terminalRangeIndexRanges'
+  | 'terminalRangeIndexRevalidatedRanges'
   | 'terminalRangeIndexSteps'
   | 'terminalSearchMatches'
   | 'terminalSearchProjectionRequests'
@@ -60,11 +63,14 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'richSpanIndexLookups',
   'richSpanIndexMatches',
   'richSpanIndexSteps',
+  'terminalRangeIndexAppendedRanges',
+  'terminalRangeIndexAppends',
   'terminalRangeIndexBuilds',
   'terminalRangeIndexLookups',
   'terminalRangeIndexMatches',
   'terminalRangeIndexPrefixPrunes',
   'terminalRangeIndexRanges',
+  'terminalRangeIndexRevalidatedRanges',
   'terminalRangeIndexSteps',
   'terminalSearchMatches',
   'terminalSearchProjectionRequests',
