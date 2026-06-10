@@ -35,8 +35,10 @@ import {
   getTerminalCellFlowGeneration,
   getTerminalCellFlowPrepared,
   getTerminalLayoutBundlePage,
+  getTerminalLayoutBundleTailPage,
   getTerminalRangesForSourceRange,
   invalidateTerminalLayoutBundle,
+  measureTerminalLayoutBundleRows,
   prepareTerminalCellFlow,
   type PreparedTerminalCellFlow,
   type TerminalLayoutBundle,
@@ -191,6 +193,26 @@ function appendTranscriptVisibleText(
 ```
 
 Append invalidation is about terminal text caches only. Record lifecycle, retention, retries, and grouping remain host-owned.
+
+## Follow The Tail And Batch Small Appends
+
+A follow-mode viewport renders the newest rows after every append. Fetch them directly instead of re-deriving totals and paging backward by hand:
+
+```ts
+function renderTranscriptTail(
+  view: TranscriptFlowView,
+  rowCount: number,
+): { totalRows: number; tail: ReturnType<typeof getTerminalLayoutBundleTailPage> } {
+  const prepared = getTerminalCellFlowPrepared(view.flow)
+  const totalRows = measureTerminalLayoutBundleRows(prepared, view.bundle)
+  const tail = getTerminalLayoutBundleTailPage(prepared, view.bundle, { rowCount })
+  return { totalRows, tail }
+}
+```
+
+Tail queries are read-only lookups of the current generation. Follow-mode policy — when to stick to the bottom, when to detach on scroll-up, and when to re-stick — stays host-owned.
+
+Batching guidance is counter-backed rather than asserted: when a stream produces many tiny fragments inside one render frame, concatenate them into one `appendTerminalCellFlow` call per frame where your latency budget allows. The release benchmark gate runs 1,000-small-append workloads that assert no full-reprepare fallback (`appendFullReprepareFallbacks` stays at zero) and a tail-follow workload that asserts post-append total-row measurement replays from the last surviving anchor instead of row zero (`terminalMeasureReplayRows` stays under a pinned ceiling), so per-append cost characteristics are regression-gated, not promised in prose. Fewer, larger appends still reduce per-call invalidation work in the host's own bookkeeping.
 
 ## Notes
 
