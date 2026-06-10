@@ -65,10 +65,19 @@ describe('tui benchmark config validation', () => {
       'rich-sparse-first-line-indexes',
       'chunked-append-1000-small-virtual',
       'chunked-append-1000-small-layout-bundle',
+      'chunked-append-1000-small-tail-follow',
       'generic-range-index-batched-append',
     ]) {
       expect(ids).toContain(required)
     }
+
+    const tailFollow = parsed.workloads.find(item => item.id === 'chunked-append-1000-small-tail-follow')
+    expect(tailFollow?.tailFollow).toBe(true)
+    expect(tailFollow?.layoutBundle).toBe(true)
+    expect(tailFollow?.counterAssertions?.terminalTailQueries?.min).toBe(1000)
+    expect(tailFollow?.counterAssertions?.appendCalls?.exact).toBe(1000)
+    expect(tailFollow?.counterAssertions?.appendFullReprepareFallbacks?.exact).toBe(0)
+    expect(tailFollow?.counterAssertions?.terminalTailMeasureRows?.max).toBeGreaterThan(0)
 
     const boundedSearch = parsed.workloads.find(item => item.id === 'bounded-search-session')
     expect(boundedSearch?.search?.matchLimit).toBeGreaterThan(0)

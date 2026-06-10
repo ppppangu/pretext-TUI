@@ -14,8 +14,10 @@ import {
   getTerminalCellFlowPrepared,
   getTerminalCursorForSourceOffset,
   getTerminalLayoutBundlePage,
+  getTerminalLayoutBundleTailPage,
   getTerminalLineIndexStats,
   getTerminalLinePage,
+  measureTerminalLayoutBundleRows,
   getTerminalPageCacheStats,
   getTerminalRangesAtSourceOffset,
   getTerminalRangesForSourceRange,
@@ -107,6 +109,7 @@ export type BenchmarkWorkload = {
   }
   virtual?: boolean
   layoutBundle?: boolean
+  tailFollow?: boolean
   rangeIndex?: {
     appendBatches?: number
     count: number
@@ -882,6 +885,13 @@ function runLayoutBundleWorkload(
       appendInvalidatedCodeUnits += appended.invalidation.invalidatedSourceCodeUnits
       appendReprepareCodeUnits += appended.invalidation.reprepareSourceCodeUnits
       invalidateTerminalLayoutBundle(flowPrepared, flowBundle, appended.invalidation)
+      if (workload.tailFollow) {
+        // Follow mode: after each append+invalidate, read the last rows at the current generation.
+        // The tail-anchored measure replays from the last surviving anchor, so terminalTailMeasureRows
+        // stays a function of appended rows plus one anchor interval rather than the full row total.
+        measureTerminalLayoutBundleRows(flowPrepared, flowBundle)
+        getTerminalLayoutBundleTailPage(flowPrepared, flowBundle, { rowCount: 8 })
+      }
       if (checkpoints.has(appendIndex + 1)) {
         const page = getTerminalLayoutBundlePage(flowPrepared, flowBundle, { startRow: 8, rowCount: 8 })
         const materialized = materializeTerminalLinePage(flowPrepared, page)
@@ -1035,6 +1045,7 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
     'rich',
     'search',
     'selection',
+    'tailFollow',
     'text',
     'virtual',
   ])
@@ -1063,6 +1074,11 @@ function parseBenchmarkWorkload(value: unknown, index: number): BenchmarkWorkloa
   }
   if (workload['layoutBundle'] === true) {
     assert(workload['virtual'] === true, `${label}.layoutBundle requires virtual`)
+  }
+  if (workload['tailFollow'] !== undefined) {
+    expectTrueFlag(workload['tailFollow'], `${label}.tailFollow`)
+    assert(workload['layoutBundle'] === true, `${label}.tailFollow requires layoutBundle`)
+    assert(workload['appendSequence'] !== undefined, `${label}.tailFollow requires appendSequence`)
   }
   const modeCount = [
     workload['rangeIndex'] !== undefined,

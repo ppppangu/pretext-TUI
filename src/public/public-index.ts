@@ -18,6 +18,7 @@ import {
   createTerminalLineIndex as internalCreateTerminalLineIndex,
   getTerminalLineIndexMetadata as internalGetTerminalLineIndexMetadata,
   getTerminalLineIndexStats as internalGetTerminalLineIndexStats,
+  getTerminalLineIndexTailRanges as internalGetTerminalLineIndexTailRanges,
   getTerminalLineRangeAtRow as internalGetTerminalLineRangeAtRow,
   invalidateTerminalLineIndex as internalInvalidateTerminalLineIndex,
   measureTerminalLineIndexRows as internalMeasureTerminalLineIndexRows,
@@ -35,7 +36,9 @@ import {
 import {
   createTerminalLayoutBundle as internalCreateTerminalLayoutBundle,
   getTerminalLayoutBundlePage as internalGetTerminalLayoutBundlePage,
+  getTerminalLayoutBundleTailPage as internalGetTerminalLayoutBundleTailPage,
   invalidateTerminalLayoutBundle as internalInvalidateTerminalLayoutBundle,
+  measureTerminalLayoutBundleRows as internalMeasureTerminalLayoutBundleRows,
 } from '../virtual/terminal-layout-bundle.js'
 import {
   createTerminalSourceOffsetIndex as internalCreateTerminalSourceOffsetIndex,
@@ -269,6 +272,8 @@ export type TerminalLineIndexInvalidation = Readonly<{
   firstInvalidSourceOffset?: number
 }>
 
+export type TerminalLineIndexTailRequest = Readonly<{ rowCount: number }>
+
 export type TerminalLineIndexInvalidationResult = Readonly<{
   kind: 'terminal-line-index-invalidation@1'
   generation: number
@@ -302,6 +307,18 @@ export function measureTerminalLineIndexRows(
   index: TerminalLineIndex,
 ): number {
   return internalMeasureTerminalLineIndexRows(prepared as never, index as never)
+}
+
+export function getTerminalLineIndexTailRanges(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  request: TerminalLineIndexTailRequest,
+): readonly TerminalLineRange[] {
+  return internalGetTerminalLineIndexTailRanges(
+    prepared as never,
+    index as never,
+    request,
+  ) as readonly TerminalLineRange[]
 }
 
 export function getTerminalLineIndexStats(index: TerminalLineIndex): TerminalLineIndexStats {
@@ -437,6 +454,25 @@ export function getTerminalLayoutBundlePage(
     bundle as never,
     request,
   ) as TerminalLinePage
+}
+
+export function getTerminalLayoutBundleTailPage(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  request: TerminalLineIndexTailRequest,
+): TerminalLinePage {
+  return internalGetTerminalLayoutBundleTailPage(
+    prepared as never,
+    bundle as never,
+    request,
+  ) as TerminalLinePage
+}
+
+export function measureTerminalLayoutBundleRows(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+): number {
+  return internalMeasureTerminalLayoutBundleRows(prepared as never, bundle as never)
 }
 
 export function invalidateTerminalLayoutBundle(

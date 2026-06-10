@@ -16,6 +16,7 @@ import {
   createTerminalMemoryBudgetEstimate,
   type TerminalMemoryBudgetEstimate,
 } from '../telemetry/terminal-memory-budget.js'
+import { recordTerminalPerformanceCounter } from '../telemetry/terminal-performance-counters.js'
 
 export type TerminalFixedLayoutOptions = TerminalLayoutOptions & {
   anchorInterval?: number
@@ -43,6 +44,8 @@ export type TerminalLineIndexMetadata = Readonly<{
   rows: number | null
   startColumn: number
 }>
+
+export type TerminalLineIndexTailRequest = Readonly<{ rowCount: number }>
 
 export type TerminalLineIndexInvalidation = Readonly<{
   generation: number
@@ -331,12 +334,65 @@ export function measureTerminalLineIndexRows(
   const internal = internalLineIndex(index)
   assertPreparedMatchesLineIndex(prepared, internal)
   if (internal.rows !== null) return internal.rows
-  let row = 0
-  while (getTerminalLineRangeAtRow(prepared, index, row) !== null) {
-    row++
+  // Resume the row total from the last surviving anchor instead of replaying from row zero.
+  // The row-0 anchor always survives invalidation, so this array is never empty, and append
+  // invalidation keeps anchors strictly before the boundary, so the forward walk only covers
+  // the appended tail plus at most one anchor interval. Mirrors the seek-helper walk loop:
+  // each non-null line advances the cursor and may store a sparse anchor; the terminating null
+  // line fixes the same total the row-0 loop produced.
+  const anchor = internal.anchors[internal.anchors.length - 1]!
+  let cursor = anchor.cursor
+  let startColumn = anchor.startColumn
+  let currentRow = anchor.row
+  let walkedRows = 0
+  // Replay distance is measured per sparse-anchor segment, the same bound a future seek to this
+  // region would pay: storing an anchor resets the segment so maxReplayRows tracks the longest
+  // gap between stored anchors, not the whole forward walk.
+  let segmentReplayRows = 0
+
+  while (true) {
+    const line = layoutNextTerminalLineRange(prepared, cursor, {
+      columns: internal.columns,
+      startColumn,
+    })
+    incrementRangeWalks(internal)
+    if (line === null) break
+    cursor = line.end
+    startColumn = 0
+    currentRow++
+    walkedRows++
+    segmentReplayRows++
+    if (shouldStoreAnchor(internal, currentRow)) {
+      maybeStoreAnchor(internal, createAnchor(
+        currentRow,
+        cursor,
+        startColumn,
+        getTerminalSourceOffsetForCursor(prepared, cursor),
+      ))
+      recordReplayRows(internal, segmentReplayRows)
+      segmentReplayRows = 0
+    }
   }
-  internal.rows = row
-  return row
+
+  recordReplayRows(internal, segmentReplayRows)
+  recordTerminalPerformanceCounter('terminalTailMeasureRows', walkedRows)
+  internal.rows = currentRow
+  return currentRow
+}
+
+export function getTerminalLineIndexTailRanges(
+  prepared: PreparedTerminalText,
+  index: TerminalLineIndex,
+  request: TerminalLineIndexTailRequest,
+): readonly TerminalLineRange[] {
+  const internal = internalLineIndex(index)
+  assertPreparedMatchesLineIndex(prepared, internal)
+  const rowCount = normalizePositiveInteger(request.rowCount, 'Terminal tail rowCount')
+  recordTerminalPerformanceCounter('terminalTailQueries')
+  const total = measureTerminalLineIndexRows(prepared, index)
+  if (total === 0) return []
+  const startRow = Math.max(0, total - rowCount)
+  return getTerminalLineRangesAtRows(prepared, index, startRow, total - startRow)
 }
 
 export function getTerminalLineIndexStats(index: TerminalLineIndex): TerminalLineIndexStats {

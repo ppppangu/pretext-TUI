@@ -56,8 +56,10 @@ Incubating root and terminal exports:
 - `getTerminalCellFlowPrepared`
 - `getTerminalCursorForSourceOffset`
 - `getTerminalLayoutBundlePage`
+- `getTerminalLayoutBundleTailPage`
 - `getTerminalLineIndexMetadata`
 - `getTerminalLineIndexStats`
+- `getTerminalLineIndexTailRanges`
 - `getTerminalLinePage`
 - `getTerminalLineRangeAtRow`
 - `getTerminalPageCacheStats`
@@ -74,6 +76,7 @@ Incubating root and terminal exports:
 - `invalidateTerminalPageCache`
 - `materializeTerminalLinePage`
 - `materializeTerminalLineRanges`
+- `measureTerminalLayoutBundleRows`
 - `measureTerminalLineIndexRows`
 - `prepareTerminalCellFlow`
 - `projectTerminalCoordinate`

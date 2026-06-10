@@ -8,11 +8,13 @@ import {
   getTerminalLineIndexMetadata,
   getTerminalLineIndexStats,
   invalidateTerminalLineIndex,
+  measureTerminalLineIndexRows,
   type TerminalFixedLayoutOptions,
   type TerminalLineIndex,
   type TerminalLineIndexInvalidation,
   type TerminalLineIndexInvalidationResult,
   type TerminalLineIndexStats,
+  type TerminalLineIndexTailRequest,
 } from './terminal-line-index.js'
 import {
   createTerminalPageCache,
@@ -36,6 +38,7 @@ import {
   combineTerminalMemoryBudgetEstimates,
   type TerminalMemoryBudgetEstimate,
 } from '../telemetry/terminal-memory-budget.js'
+import { recordTerminalPerformanceCounter } from '../telemetry/terminal-performance-counters.js'
 
 export type TerminalLayoutBundleOptions = TerminalFixedLayoutOptions & TerminalPageCacheOptions
 
@@ -145,6 +148,38 @@ export function getTerminalLayoutBundlePage(
     internal.pageCache,
     internal.lineIndex,
     request,
+  )
+}
+
+export function measureTerminalLayoutBundleRows(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+): number {
+  const internal = internalLayoutBundle(bundle)
+  assertPreparedMatchesBundle(prepared, internal)
+  return measureTerminalLineIndexRows(prepared, internal.lineIndex)
+}
+
+export function getTerminalLayoutBundleTailPage(
+  prepared: PreparedTerminalText,
+  bundle: TerminalLayoutBundle,
+  request: TerminalLineIndexTailRequest,
+): TerminalLinePage {
+  const internal = internalLayoutBundle(bundle)
+  assertPreparedMatchesBundle(prepared, internal)
+  const rowCount = normalizePositiveInteger(request.rowCount, 'Terminal tail rowCount')
+  recordTerminalPerformanceCounter('terminalTailQueries')
+  const total = measureTerminalLineIndexRows(prepared, internal.lineIndex)
+  const startRow = Math.max(0, total - rowCount)
+  // Route through the shared page path so the tail page goes through the page cache and inherits
+  // its frozen page type, generation stamping, and rowCount <= pageSize constraint. An empty
+  // transcript keeps the original positive rowCount and yields a frozen zero-row page.
+  const effectiveRowCount = total === 0 ? rowCount : Math.min(rowCount, total)
+  return getTerminalLinePage(
+    prepared,
+    internal.pageCache,
+    internal.lineIndex,
+    { startRow, rowCount: effectiveRowCount },
   )
 }
 

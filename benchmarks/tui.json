@@ -437,6 +437,57 @@
       }
     },
     {
+      "id": "chunked-append-1000-small-tail-follow",
+      "text": "",
+      "virtual": true,
+      "layoutBundle": true,
+      "tailFollow": true,
+      "appendSequence": {
+        "count": 1000,
+        "invalidationWindowCodeUnits": 96,
+        "parityCheckpoints": [1, 500, 1000],
+        "parts": [
+          "row ",
+          "alpha ",
+          "界",
+          "\t",
+          "e",
+          "́",
+          " ",
+          "👩",
+          "‍",
+          "💻",
+          " ",
+          "🇺",
+          "🇸",
+          " soft­",
+          "zero​",
+          "tail\n"
+        ]
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 32 },
+      "iterations": 1,
+      "maxMilliseconds": 12000,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 1008 },
+        "appendCalls": { "exact": 1000 },
+        "appendFullReprepareFallbacks": { "exact": 0 },
+        "appendFullReprepareCodeUnits": { "exact": 0 },
+        "appendMaxAnalyzedCodeUnitsPerCall": { "max": 640 },
+        "appendChunkCount": { "min": 6 },
+        "appendOpenTailCodeUnits": { "max": 640 },
+        "appendFinalSourceCodeUnits": { "min": 1000 },
+        "appendAnalyzedCodeUnits": { "max": 400000 },
+        "appendInvalidatedCodeUnits": { "min": 1000 },
+        "invalidatedPages": { "min": 1 },
+        "terminalTailQueries": { "min": 1000 },
+        "terminalTailMeasureRows": { "max": 41000 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 }
+      }
+    },
+    {
       "id": "generic-range-index-batched-append",
       "text": "range fixture",
       "rangeIndex": {

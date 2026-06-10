@@ -44,6 +44,8 @@ export type TerminalPerformanceCounterName =
   | 'terminalSelectionRangeIndexLookups'
   | 'terminalSelectionSourceCodeUnits'
   | 'terminalSelectionVisibleCodeUnits'
+  | 'terminalTailMeasureRows'
+  | 'terminalTailQueries'
 
 export type TerminalPerformanceCounterSnapshot = Readonly<Record<TerminalPerformanceCounterName, number>>
 
@@ -92,6 +94,8 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'terminalSelectionRangeIndexLookups',
   'terminalSelectionSourceCodeUnits',
   'terminalSelectionVisibleCodeUnits',
+  'terminalTailMeasureRows',
+  'terminalTailQueries',
 ]
 
 let activeCounters: Record<TerminalPerformanceCounterName, number> | null = null

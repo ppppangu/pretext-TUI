@@ -431,6 +431,8 @@ The agreed public shape is:
 ```ts
 createTerminalLayoutBundle(prepared, { columns, startColumn?, generation?, anchorInterval?, pageSize?, maxPages? })
 getTerminalLayoutBundlePage(prepared, bundle, { startRow, rowCount })
+getTerminalLayoutBundleTailPage(prepared, bundle, { rowCount })
+measureTerminalLayoutBundleRows(prepared, bundle)
 invalidateTerminalLayoutBundle(prepared, bundle, invalidation)
 projectTerminalSourceOffset(prepared, bundle, sourceOffset, options?)
 projectTerminalCursor(prepared, bundle, cursor, options?)
@@ -439,7 +441,11 @@ projectTerminalCoordinate(prepared, bundle, { row, column, bias? })
 projectTerminalSourceRange(prepared, bundle, { sourceStart, sourceEnd })
 ```
 
+The companion line-index primitive `getTerminalLineIndexTailRanges(prepared, index, { rowCount })` returns the same final rows as raw range data without page-cache or page-size involvement.
+
 `invalidateTerminalLayoutBundle()` applies line-index invalidation, page-cache invalidation, and source-offset index refresh for the supplied prepared text. Bundle invalidation must reject forged bundle handles, stale prepared handles for page/projection calls, layout identity mismatches, replayed generations, and `previousGeneration` values that do not match the bundle's current generation.
+
+Tail queries are read-only lookups of the current generation. At the bundle level they are page-shaped and resolve through the page cache, so they reuse the same frozen page type, generation stamping, and `rowCount <= pageSize` constraint as `getTerminalLayoutBundlePage()`. They do not advance the generation. Resolving the tail derives the total row count first; after an append, that total-row measurement replays from the last surviving anchor instead of row zero, with the replay distance counter-gated in the release benchmark. The follow/stick policy — whether a viewport pins to the tail — is host-owned; the package only returns the requested final rows.
 
 Layout bundles do not render, scroll, select, persist, open links, own clipboard state, or implement host behavior. Append invalidation may come from the append-only chunked flow, but bundle invalidation remains source-first and must continue to reject forged handles, stale generations, and mismatched prepared text.
 

@@ -10,6 +10,7 @@ import {
   getTerminalCursorForSourceOffset,
   getTerminalLineIndexMetadata,
   getTerminalLineIndexStats,
+  getTerminalLineIndexTailRanges,
   getTerminalLinePage,
   getTerminalLineRangeAtRow,
   getTerminalPageCacheStats,
@@ -25,6 +26,7 @@ import {
   TERMINAL_START_CURSOR,
   type PreparedTerminalText,
   type TerminalLayoutOptions,
+  type TerminalLineIndex,
 } from '../../src/public/index.js'
 import {
   collectTerminalLines,
@@ -628,6 +630,116 @@ describe('tui virtual text primitives', () => {
     expect(Object.isFrozen(page)).toBe(true)
     expect(Object.isFrozen(page.lines)).toBe(true)
     expect(Object.isFrozen(page.lines[0])).toBe(true)
+  })
+})
+
+function rangeKey(range: { sourceStart: number, sourceEnd: number, width: number, startColumn: number }): string {
+  return `${range.sourceStart}:${range.sourceEnd}:${range.width}:${range.startColumn}`
+}
+
+describe('tui line index tail ranges', () => {
+  test('T1 tail equals getTerminalLineRangeAtRow for the final rows', () => {
+    const prepared = prepareTerminal(makeLongTranscript(), { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const index = createTerminalLineIndex(prepared, { columns: 24, anchorInterval: 4 })
+    const total = measureTerminalLineIndexRows(prepared, index)
+    const tail = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 8 })
+
+    expect(tail.length).toBe(8)
+    const manual = []
+    for (let row = total - 8; row < total; row++) {
+      manual.push(getTerminalLineRangeAtRow(prepared, index, row)!)
+    }
+    expect(tail.map(rangeKey)).toEqual(manual.map(rangeKey))
+    expect(tail).toEqual(manual)
+  })
+
+  test('T4 rowCount greater than total returns every row starting at row 0', () => {
+    const prepared = prepareTerminal('a\nb\nc\nd', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalLineIndex(prepared, { columns: 20, anchorInterval: 2 })
+    const total = measureTerminalLineIndexRows(prepared, index)
+    const tail = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 9999 })
+
+    expect(tail.length).toBe(total)
+    const eager = baselineLines(prepared, { columns: 20 })
+    expect(tail.map(rangeKey)).toEqual(eager.map(line => rangeKey(line.range)))
+  })
+
+  test('T5 empty source tail matches collectTerminalLines ground truth without throwing', () => {
+    const prepared = prepareTerminal('', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalLineIndex(prepared, { columns: 12, anchorInterval: 4 })
+
+    expect(baselineLines(prepared, { columns: 12 }).length).toBe(0)
+    expect(getTerminalLineIndexTailRanges(prepared, index, { rowCount: 4 })).toEqual([])
+  })
+
+  test('T6 line-index tail rejects non-positive and non-integer rowCount', () => {
+    const prepared = prepareTerminal('row\nrow', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalLineIndex(prepared, { columns: 12 })
+
+    expect(() => getTerminalLineIndexTailRanges(prepared, index, { rowCount: 0 })).toThrow('positive integer')
+    expect(() => getTerminalLineIndexTailRanges(prepared, index, { rowCount: -3 })).toThrow('positive integer')
+    expect(() => getTerminalLineIndexTailRanges(prepared, index, { rowCount: 1.5 })).toThrow('positive integer')
+  })
+
+  test('T7 line-index tail has no pageSize cap', () => {
+    const prepared = prepareTerminal(makeLongTranscript(), { whiteSpace: 'pre-wrap', tabSize: 4 })
+    const index = createTerminalLineIndex(prepared, { columns: 24, anchorInterval: 4 })
+    const total = measureTerminalLineIndexRows(prepared, index)
+
+    // A line-index tail far wider than any page size still resolves the full requested window.
+    const tail = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 40 })
+    expect(tail.length).toBe(Math.min(40, total))
+  })
+
+  test('T10 resize tails match each column eager collectTerminalLines tail', () => {
+    const prepared = prepareTerminal(makeLongTranscript(), { whiteSpace: 'pre-wrap', tabSize: 4 })
+    for (const columns of [18, 34]) {
+      const index = createTerminalLineIndex(prepared, { columns, anchorInterval: 5 })
+      const eager = baselineLines(prepared, { columns })
+      const tail = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 6 })
+      expect(tail.map(rangeKey)).toEqual(
+        eager.slice(eager.length - 6).map(line => rangeKey(line.range)),
+      )
+    }
+  })
+
+  test('T11 line-index tail rejects forged and cloned handles and stale prepared text', () => {
+    const prepared = prepareTerminal('tail boundary\nsecond row', { whiteSpace: 'pre-wrap' })
+    const index = createTerminalLineIndex(prepared, { columns: 12 })
+    const forged = Object.freeze({ kind: 'terminal-line-index@1' }) as TerminalLineIndex
+    const cloned = Object.freeze({ ...index }) as TerminalLineIndex
+    const otherPrepared = prepareTerminal('tail boundary\nsecond row', { whiteSpace: 'pre-wrap' })
+
+    for (const invalid of [forged, cloned]) {
+      expect(() => getTerminalLineIndexTailRanges(prepared, invalid, { rowCount: 2 })).toThrow(
+        'Invalid terminal line index handle',
+      )
+    }
+    expect(() => getTerminalLineIndexTailRanges(otherPrepared, index, { rowCount: 2 })).toThrow(
+      'bound to a different prepared text',
+    )
+  })
+
+  test('T12 final-LF tail returns the correct last row and the memo serves the second query', () => {
+    for (const text of ['a\n', `${makeLongTranscript(12)}\n`]) {
+      const prepared = prepareTerminal(text, { whiteSpace: 'pre-wrap', tabSize: 4 })
+      const index = createTerminalLineIndex(prepared, { columns: 20, anchorInterval: 4 })
+      const eager = baselineLines(prepared, { columns: 20 })
+      const total = measureTerminalLineIndexRows(prepared, index)
+      expect(total).toBe(eager.length)
+
+      const tail = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 1 })
+      expect(tail.length).toBe(1)
+      expect(rangeKey(tail[0]!)).toBe(rangeKey(eager[eager.length - 1]!.range))
+
+      const walksBefore = getTerminalLineIndexStats(index).rangeWalks
+      const tailAgain = getTerminalLineIndexTailRanges(prepared, index, { rowCount: 1 })
+      const walksAfter = getTerminalLineIndexStats(index).rangeWalks
+      expect(rangeKey(tailAgain[0]!)).toBe(rangeKey(tail[0]!))
+      // The row total is already memoized, so the second query never re-measures to EOF: its only
+      // walks are the bounded seek+read for the single tail row (rowCount plus at most one anchor gap).
+      expect(walksAfter - walksBefore).toBeLessThanOrEqual(1 + 4)
+    }
   })
 })
 
