@@ -54,6 +54,7 @@ import {
   getTerminalSearchMatchBeforeSourceOffset as internalGetTerminalSearchMatchBeforeSourceOffset,
   getTerminalSearchMatchesForSourceRange as internalGetTerminalSearchMatchesForSourceRange,
   getTerminalSearchSessionMatchCount as internalGetTerminalSearchSessionMatchCount,
+  getTerminalSearchSessionStats as internalGetTerminalSearchSessionStats,
 } from '../semantic/terminal-search-session.js'
 import {
   createTerminalSelectionFromCoordinates as internalCreateTerminalSelectionFromCoordinates,
@@ -542,6 +543,7 @@ export type TerminalSearchScope =
 export type TerminalSearchOptions = Readonly<{
   caseSensitive?: boolean
   indexes?: TerminalProjectionIndexInput
+  matchLimit?: number
   mode?: TerminalSearchMode
   scope?: TerminalSearchScope
   wholeWord?: boolean
@@ -555,6 +557,13 @@ export type TerminalSearchMatch = Readonly<{
   scopeId?: string
   sourceEnd: number
   sourceStart: number
+}>
+
+export type TerminalSearchSessionStats = Readonly<{
+  kind: 'terminal-search-session-stats@1'
+  matchLimit: number | null
+  storedMatchCount: number
+  truncated: boolean
 }>
 
 declare const terminalSearchSessionBrand: unique symbol
@@ -579,6 +588,12 @@ export function getTerminalSearchSessionMatchCount(
   session: TerminalSearchSession,
 ): number {
   return internalGetTerminalSearchSessionMatchCount(session as never)
+}
+
+export function getTerminalSearchSessionStats(
+  session: TerminalSearchSession,
+): TerminalSearchSessionStats {
+  return internalGetTerminalSearchSessionStats(session as never) as TerminalSearchSessionStats
 }
 
 export function getTerminalSearchMatchesForSourceRange(

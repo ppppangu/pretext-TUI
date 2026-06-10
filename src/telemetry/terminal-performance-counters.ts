@@ -33,9 +33,11 @@ export type TerminalPerformanceCounterName =
   | 'terminalSearchScopeChecks'
   | 'terminalSearchScopes'
   | 'terminalSearchSessions'
+  | 'terminalSearchSessionsTruncated'
   | 'terminalSearchSourceMaterializations'
   | 'terminalSearchStoredMatches'
   | 'terminalSearchStoredMatchCodeUnits'
+  | 'terminalSearchTruncatedMatches'
   | 'terminalSelectionCoordinateRequests'
   | 'terminalSelectionExtractionRequests'
   | 'terminalSelectionProjectionFragments'
@@ -79,9 +81,11 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'terminalSearchScopeChecks',
   'terminalSearchScopes',
   'terminalSearchSessions',
+  'terminalSearchSessionsTruncated',
   'terminalSearchSourceMaterializations',
   'terminalSearchStoredMatches',
   'terminalSearchStoredMatchCodeUnits',
+  'terminalSearchTruncatedMatches',
   'terminalSelectionCoordinateRequests',
   'terminalSelectionExtractionRequests',
   'terminalSelectionProjectionFragments',

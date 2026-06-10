@@ -67,6 +67,7 @@ Incubating root and terminal exports:
 - `getTerminalSearchMatchBeforeSourceOffset`
 - `getTerminalSearchMatchesForSourceRange`
 - `getTerminalSearchSessionMatchCount`
+- `getTerminalSearchSessionStats`
 - `getTerminalSourceOffsetForCursor`
 - `invalidateTerminalLineIndex`
 - `invalidateTerminalLayoutBundle`

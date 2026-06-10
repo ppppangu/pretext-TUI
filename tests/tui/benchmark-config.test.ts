@@ -27,6 +27,12 @@ const requiredWorkloadCounterAssertions: Record<string, readonly string[]> = {
     'terminalSearchStoredMatches',
     'terminalSearchStoredMatchCodeUnits',
   ],
+  'bounded-search-session': [
+    'terminalSearchSessionsTruncated',
+    'terminalSearchTruncatedMatches',
+    'terminalSearchStoredMatches',
+    'terminalSearchMatches',
+  ],
   'selection-extraction': [
     'terminalSelectionCoordinateRequests',
     'terminalSelectionExtractionRequests',
@@ -54,6 +60,7 @@ describe('tui benchmark config validation', () => {
     expect(new Set(ids).size).toBe(ids.length)
     for (const required of [
       'source-search-session',
+      'bounded-search-session',
       'selection-extraction',
       'rich-sparse-first-line-indexes',
       'chunked-append-1000-small-virtual',
@@ -62,6 +69,11 @@ describe('tui benchmark config validation', () => {
     ]) {
       expect(ids).toContain(required)
     }
+
+    const boundedSearch = parsed.workloads.find(item => item.id === 'bounded-search-session')
+    expect(boundedSearch?.search?.matchLimit).toBeGreaterThan(0)
+    expect(boundedSearch?.counterAssertions?.terminalSearchSessionsTruncated?.exact).toBeGreaterThan(0)
+    expect(boundedSearch?.counterAssertions?.terminalSearchTruncatedMatches?.exact).toBeGreaterThan(0)
 
     const rangeAppend = parsed.workloads.find(item => item.id === 'generic-range-index-batched-append')
     expect(rangeAppend?.rangeIndex?.appendBatches).toBeGreaterThan(1)

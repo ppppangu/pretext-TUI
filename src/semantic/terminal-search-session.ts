@@ -53,6 +53,7 @@ export type TerminalSearchScope =
 export type TerminalSearchOptions = Readonly<{
   caseSensitive?: boolean
   indexes?: TerminalProjectionIndexInput
+  matchLimit?: number
   mode?: TerminalSearchMode
   scope?: TerminalSearchScope
   wholeWord?: boolean
@@ -66,6 +67,13 @@ export type TerminalSearchMatch = Readonly<{
   scopeId?: string
   sourceEnd: number
   sourceStart: number
+}>
+
+export type TerminalSearchSessionStats = Readonly<{
+  kind: 'terminal-search-session-stats@1'
+  matchLimit: number | null
+  storedMatchCount: number
+  truncated: boolean
 }>
 
 declare const terminalSearchSessionBrand: unique symbol
@@ -84,10 +92,12 @@ type InternalTerminalSearchMatch = Readonly<{
 
 type TerminalSearchSessionState = {
   readonly indexes?: TerminalProjectionIndexInput
+  readonly matchLimit: number | null
   readonly matches: readonly InternalTerminalSearchMatch[]
   readonly maxMatchCodeUnits: number
   readonly prepared: PreparedTerminalText
   readonly sourceLength: number
+  readonly truncated: boolean
 }
 
 type NormalizedSearchQuery = {
@@ -113,6 +123,7 @@ export function createTerminalSearchSession(
   const sourceText = materializePreparedTerminalSourceTextRange(reader, 0, reader.sourceLength)
   recordTerminalPerformanceCounter('terminalSearchSourceMaterializations')
   const normalizedQuery = normalizeSearchQuery(query, options)
+  const matchLimit = normalizeSearchMatchLimit(options.matchLimit)
   const scopes = normalizeSearchScopes(options.scope, reader.sourceLength)
   const rawMatches = normalizedQuery.mode === 'regex'
     ? collectRegexMatches(sourceText, normalizedQuery, options.wholeWord === true)
@@ -122,7 +133,12 @@ export function createTerminalSearchSession(
       options.caseSensitive !== false,
       options.wholeWord === true,
     )
-  const matches = assignMatchesToScopes(rawMatches, scopes)
+  const scopedMatches = assignMatchesToScopes(rawMatches, scopes)
+  // The cap keeps the first matchLimit entries of the canonical sorted,
+  // scope-assigned order. Truncated matches are dropped from the session
+  // entirely: there is no stored payload beyond the cap and no later rescan.
+  const truncated = matchLimit !== null && scopedMatches.length > matchLimit
+  const matches = truncated ? scopedMatches.slice(0, matchLimit) : scopedMatches
   const indexes = options.indexes === undefined
     ? undefined
     : snapshotTerminalSearchProjectionIndexes(options.indexes)
@@ -133,19 +149,25 @@ export function createTerminalSearchSession(
 
   recordTerminalPerformanceCounter('terminalSearchSessions')
   recordTerminalPerformanceCounter('terminalSearchScannedCodeUnits', sourceText.length)
-  recordTerminalPerformanceCounter('terminalSearchMatches', matches.length)
+  recordTerminalPerformanceCounter('terminalSearchMatches', scopedMatches.length)
   recordTerminalPerformanceCounter('terminalSearchScopes', scopes.length)
   recordTerminalPerformanceCounter('terminalSearchStoredMatches', matches.length)
   recordTerminalPerformanceCounter('terminalSearchStoredMatchCodeUnits', sumSearchMatchCodeUnits(matches))
+  if (truncated) {
+    recordTerminalPerformanceCounter('terminalSearchSessionsTruncated')
+    recordTerminalPerformanceCounter('terminalSearchTruncatedMatches', scopedMatches.length - matchLimit!)
+  }
 
   const handle = Object.freeze({
     kind: 'terminal-search-session@1',
   }) as TerminalSearchSession
   const state: TerminalSearchSessionState = {
+    matchLimit,
     matches: Object.freeze(matches),
     maxMatchCodeUnits: maxSearchMatchCodeUnits(matches),
     prepared,
     sourceLength: reader.sourceLength,
+    truncated,
     ...(indexes === undefined ? {} : { indexes }),
   }
   searchSessionStates.set(handle, state)
@@ -156,6 +178,18 @@ export function getTerminalSearchSessionMatchCount(
   session: TerminalSearchSession,
 ): number {
   return internalSearchSession(session).matches.length
+}
+
+export function getTerminalSearchSessionStats(
+  session: TerminalSearchSession,
+): TerminalSearchSessionStats {
+  const state = internalSearchSession(session)
+  return Object.freeze({
+    kind: 'terminal-search-session-stats@1',
+    matchLimit: state.matchLimit,
+    storedMatchCount: state.matches.length,
+    truncated: state.truncated,
+  })
 }
 
 export function getTerminalSearchMatchesForSourceRange(
@@ -481,6 +515,14 @@ function normalizeOptionalLimit(value: number | undefined, label: string): numbe
   if (value === undefined) return undefined
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${label} must be a non-negative integer, got ${value}`)
+  }
+  return value
+}
+
+function normalizeSearchMatchLimit(value: number | undefined): number | null {
+  if (value === undefined) return null
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`Terminal search matchLimit must be a positive integer, got ${value}`)
   }
   return value
 }

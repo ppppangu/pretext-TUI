@@ -92,6 +92,7 @@ export type BenchmarkWorkload = {
   search?: {
     caseSensitive?: boolean
     limit?: number
+    matchLimit?: number
     mode?: TerminalSearchMode
     project?: boolean
     query: string
@@ -459,6 +460,7 @@ function runSearchWorkload(
     ...(search.mode === undefined ? {} : { mode: search.mode }),
     ...(search.caseSensitive === undefined ? {} : { caseSensitive: search.caseSensitive }),
     ...(search.wholeWord === undefined ? {} : { wholeWord: search.wholeWord }),
+    ...(search.matchLimit === undefined ? {} : { matchLimit: search.matchLimit }),
     ...(indexes === undefined ? {} : { indexes }),
   })
   const matchCount = getTerminalSearchSessionMatchCount(session)
@@ -1194,7 +1196,7 @@ function parseWidthProfile(value: unknown, label: string): void {
 
 function parseSearch(value: unknown, label: string): void {
   const search = expectRecord(value, label)
-  assertAllowedKeys(search, label, ['caseSensitive', 'limit', 'mode', 'project', 'query', 'wholeWord'])
+  assertAllowedKeys(search, label, ['caseSensitive', 'limit', 'matchLimit', 'mode', 'project', 'query', 'wholeWord'])
   expectString(search['query'], `${label}.query`)
   if (search['mode'] !== undefined) {
     assert(search['mode'] === 'literal' || search['mode'] === 'regex', `${label}.mode must be literal or regex`)
@@ -1203,6 +1205,7 @@ function parseSearch(value: unknown, label: string): void {
   if (search['wholeWord'] !== undefined) expectBoolean(search['wholeWord'], `${label}.wholeWord`)
   if (search['project'] !== undefined) expectBoolean(search['project'], `${label}.project`)
   if (search['limit'] !== undefined) expectNonNegativeInteger(search['limit'], `${label}.limit`)
+  if (search['matchLimit'] !== undefined) expectPositiveInteger(search['matchLimit'], `${label}.matchLimit`)
 }
 
 function parseSelection(value: unknown, label: string): void {

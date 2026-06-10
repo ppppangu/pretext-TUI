@@ -17,6 +17,7 @@ describe('tui memory budget gate', () => {
     expect(parsed.workloads.map(workload => workload.id)).toEqual([
       'layout-bundle-memory',
       'source-search-session-memory',
+      'bounded-search-session-memory',
       'selection-extraction-memory',
       'generic-range-index-memory',
       'generic-range-index-append-memory',

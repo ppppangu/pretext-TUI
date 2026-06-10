@@ -357,6 +357,7 @@ The agreed public shape is:
 ```ts
 createTerminalSearchSession(prepared, query, options?)
 getTerminalSearchSessionMatchCount(session)
+getTerminalSearchSessionStats(session)
 getTerminalSearchMatchesForSourceRange(session, { sourceStart?, sourceEnd?, limit? }?)
 getTerminalSearchMatchAfterSourceOffset(session, sourceOffset)
 getTerminalSearchMatchBeforeSourceOffset(session, sourceOffset)
@@ -377,6 +378,19 @@ Search scopes are generic source ranges. A scope may be an explicit source range
 - `matchText`
 - optional `scopeId`
 - optional `projection` when `indexes` were supplied at session creation
+
+`matchLimit` is an optional positive integer that caps how many matches a session stores. Omitting it keeps the unbounded default, in which every scope-assigned match is stored. It must be a positive integer; `0`, negatives, and non-integers are rejected. The cap is applied after scope assignment and after the canonical sort (`sourceStart` ascending, then `sourceEnd` ascending, then `scopeId`): a session keeps the first `matchLimit` entries of that ordered, scope-assigned sequence. Because the cap runs after scope fan-out, a single raw match that fans into multiple scoped matches can be split by the boundary, keeping some scoped copies and dropping later ones.
+
+Truncation is explicit and detectable, not silent. Matches beyond the cap do not exist in the session and there is no later rescan: `getTerminalSearchSessionMatchCount()` returns the stored count, source-range queries beyond the boundary return empty results, and before/after navigation past the boundary returns `null`. The per-query `limit` on `getTerminalSearchMatchesForSourceRange()` stays orthogonal and only slices the already-stored matches, so it can never resurrect a match dropped by `matchLimit`. With explicit match-count limits, modelled search-session memory stays a function of the configured `matchLimit` rather than transcript length, which the memory-budget gate proves.
+
+`getTerminalSearchSessionStats(session)` returns frozen data describing the cap outcome:
+
+- `kind: "terminal-search-session-stats@1"`
+- `matchLimit` — the configured cap, or `null` when unbounded
+- `storedMatchCount` — the number of matches retained
+- `truncated` — `true` when the scope-assigned total exceeded the cap
+
+Forged session handles are rejected with the same `Invalid terminal search session handle` error used by the other session accessors. To continue past a truncated session, a host can create a new session scoped to start at the last stored match's `sourceEnd`; that next session surfaces the following matches as a continuation window.
 
 Search sessions do not implement search UI, active-match navigation state, highlighting, selections, result panes, keyboard shortcuts, clipboard behavior, or host-specific semantics. Hosts layer those workflows above returned source ranges and optional projections.
 

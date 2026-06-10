@@ -204,6 +204,38 @@
       }
     },
     {
+      "id": "bounded-search-session",
+      "repeatText": {
+        "text": "terminal alpha beta gamma\n",
+        "count": 40
+      },
+      "search": {
+        "query": "terminal",
+        "caseSensitive": false,
+        "matchLimit": 6
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 44 },
+      "iterations": 8,
+      "maxMilliseconds": 1800,
+      "counterAssertions": {
+        "prepareCalls": { "exact": 8 },
+        "searchSessions": { "exact": 8 },
+        "searchReturnedMatches": { "exact": 48 },
+        "searchNavigationLookups": { "exact": 16 },
+        "terminalSearchSessions": { "exact": 8 },
+        "terminalSearchSessionsTruncated": { "exact": 8 },
+        "terminalSearchTruncatedMatches": { "exact": 272 },
+        "terminalSearchMatches": { "exact": 320 },
+        "terminalSearchStoredMatches": { "exact": 48 },
+        "terminalSearchStoredMatchCodeUnits": { "exact": 384 },
+        "terminalSearchReturnedMatches": { "exact": 64 },
+        "lineTextGraphemeSegmentations": { "exact": 0 },
+        "preparedGeometryWidthPrefixFallbacks": { "exact": 0 },
+        "richFragmentWidthMeasurements": { "exact": 0 }
+      }
+    },
+    {
       "id": "selection-extraction",
       "rawText": "\u001b[31mred\u001b[0m and \u001b]8;;https://e.test\u001b\\linked terminal text\u001b]8;;\u001b\\\nnext line for selection",
       "selection": {

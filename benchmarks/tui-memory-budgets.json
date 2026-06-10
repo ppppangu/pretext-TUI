@@ -43,6 +43,27 @@
       ]
     },
     {
+      "id": "bounded-search-session-memory",
+      "repeatText": {
+        "text": "terminal\n",
+        "count": 2000
+      },
+      "search": {
+        "query": "terminal",
+        "matchLimit": 64
+      },
+      "prepare": { "whiteSpace": "pre-wrap", "tabSize": 4 },
+      "layout": { "columns": 44 },
+      "budgets": [
+        {
+          "category": "search-session",
+          "maxEstimatedBytes": 12000,
+          "maxRangeRecords": 64,
+          "maxStringCodeUnits": 512
+        }
+      ]
+    },
+    {
       "id": "selection-extraction-memory",
       "rawText": "first row for selection\nsecond row with linked terminal text\nthird row tail",
       "selection": {
