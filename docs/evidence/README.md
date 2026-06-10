@@ -30,7 +30,7 @@ Dirty local reports are useful for development, but they are not claimable publi
 
 Current clean report id available in this directory:
 
-- `competitive-tui-20260427-b7106de-clean-a9dfeebf`
+- `competitive-tui-20260610-5922fb2-clean-13df5d07`
 
 Use that id for citations only. Do not copy dynamic values from the JSON into Markdown prose.
 
