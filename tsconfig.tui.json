@@ -8,6 +8,11 @@
     "noEmit": true
   },
   "files": [
+    "src/analysis-analyze.ts",
+    "src/analysis-keep-all.ts",
+    "src/analysis-merge-rules.ts",
+    "src/analysis-segmentation.ts",
+    "src/analysis-text-predicates.ts",
     "src/analysis.ts",
     "src/bidi.ts",
     "src/generated/bidi-data.ts",

@@ -31,7 +31,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing notes.
 - `scripts/build-package.ts` — publish build orchestrator that emits internals under `dist/internal/` and public wrappers at root `dist/`.
 - `scripts/package-smoke-test.ts` — tarball-level JS/TS consumer verification.
 - `fixtures/` — deterministic package-level terminal demo fixtures.
-- `src/analysis.ts` — normalization, segmentation, glue rules, and text-analysis phase.
+- `src/analysis.ts` — text-analysis facade re-exporting the split `analysis-*` modules (text predicates, segmentation, merge rules, keep-all grouping, analyze entry).
 - `src/measurement.ts` — terminal-width measurement adapter used by the prepared/layout pipeline.
 - `src/line-break.ts` — internal line-walking core.
 - `src/line-text.ts` — lazy line materialization helpers.

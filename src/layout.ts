@@ -8,10 +8,10 @@ import { computeSegmentLevels } from './bidi.js'
 import {
   analyzeNormalizedText,
   analyzeText,
-  canContinueKeepAllTextRun,
   clearAnalysisCaches,
   DEFAULT_TERMINAL_ANALYSIS_PROFILE,
   endsWithClosingQuote,
+  groupKeepAllRuns,
   isCJK,
   isNumericRunSegment,
   kinsokuEnd,
@@ -276,8 +276,6 @@ function mergeKeepAllTextUnits(
   if (units.length <= 1) return units
 
   const merged: MeasuredTextUnit[] = []
-  let groupStart = -1
-  let groupContainsCJK = false
 
   function pushMergedUnit(start: number, end: number): void {
     const sourceStart = units[start]!.start
@@ -289,36 +287,15 @@ function mergeKeepAllTextUnits(
     })
   }
 
-  function flushGroup(end: number): void {
-    if (groupStart < 0) return
+  groupKeepAllRuns(
+    units.length,
+    (index) => units[index]!.text,
+    (index) => isCJK(units[index]!.text),
+    breakAfterPunctuation,
+    (index) => merged.push(units[index]!),
+    pushMergedUnit,
+  )
 
-    if (groupContainsCJK) {
-      if (groupStart + 1 === end) {
-        merged.push(units[groupStart]!)
-      } else {
-        pushMergedUnit(groupStart, end)
-      }
-    } else {
-      for (let i = groupStart; i < end; i++) merged.push(units[i]!)
-    }
-
-    groupStart = -1
-    groupContainsCJK = false
-  }
-
-  for (let i = 0; i < units.length; i++) {
-    const unit = units[i]!
-    if (
-      groupStart >= 0 &&
-      !canContinueKeepAllTextRun(units[i - 1]!.text, breakAfterPunctuation)
-    ) {
-      flushGroup(i)
-    }
-    if (groupStart < 0) groupStart = i
-    groupContainsCJK = groupContainsCJK || isCJK(unit.text)
-  }
-
-  flushGroup(units.length)
   return merged
 }
 
@@ -361,6 +338,60 @@ function finalizeSegmentBreaksAfter(
 
 function addInternalLetterSpacing(width: number, graphemeCount: number, letterSpacing: number): number {
   return graphemeCount > 1 ? width + (graphemeCount - 1) * letterSpacing : width
+}
+
+type SegmentMeasureContext = {
+  pushMeasuredTextSegment: (
+    text: string,
+    kind: SegmentBreakKind,
+    start: number,
+    wordLike: boolean,
+    allowOverflowBreaks: boolean,
+    segmentBreakAfter: boolean,
+  ) => void
+  wordBreak: WordBreakMode
+  analysisProfile: AnalysisProfile
+}
+
+function measureCjkTextSegment(
+  ctx: SegmentMeasureContext,
+  segText: string,
+  segStart: number,
+  segWordLike: boolean,
+): void {
+  const baseUnits = buildBaseCjkUnits(segText, ctx.analysisProfile)
+  const measuredUnits = ctx.wordBreak === 'keep-all'
+    ? mergeKeepAllTextUnits(segText, baseUnits, ctx.analysisProfile.breakKeepAllAfterPunctuation)
+    : baseUnits
+
+  for (let i = 0; i < measuredUnits.length; i++) {
+    const unit = measuredUnits[i]!
+    ctx.pushMeasuredTextSegment(
+      unit.text,
+      'text',
+      segStart + unit.start,
+      segWordLike,
+      ctx.wordBreak === 'keep-all' || !isCJK(unit.text),
+      isLanguageLikeTextSegment(unit.text, segWordLike),
+    )
+  }
+}
+
+function measurePlainSegment(
+  ctx: SegmentMeasureContext,
+  segText: string,
+  segKind: SegmentBreakKind,
+  segStart: number,
+  segWordLike: boolean,
+): void {
+  ctx.pushMeasuredTextSegment(
+    segText,
+    segKind,
+    segStart,
+    segWordLike,
+    true,
+    segKind === 'text' && isLanguageLikeTextSegment(segText, segWordLike),
+  )
 }
 
 function measureAnalysis(
@@ -489,6 +520,8 @@ function measureAnalysis(
     )
   }
 
+  const ctx: SegmentMeasureContext = { pushMeasuredTextSegment, wordBreak, analysisProfile }
+
   for (let mi = 0; mi < analysis.len; mi++) {
     preparedStartByAnalysisIndex[mi] = widths.length
     const segText = analysis.texts[mi]!
@@ -534,33 +567,11 @@ function measureAnalysis(
     const segMetrics = getSegmentMetrics(segText, cache)
 
     if (segKind === 'text' && segMetrics.containsCJK) {
-      const baseUnits = buildBaseCjkUnits(segText, analysisProfile)
-      const measuredUnits = wordBreak === 'keep-all'
-        ? mergeKeepAllTextUnits(segText, baseUnits, analysisProfile.breakKeepAllAfterPunctuation)
-        : baseUnits
-
-      for (let i = 0; i < measuredUnits.length; i++) {
-        const unit = measuredUnits[i]!
-        pushMeasuredTextSegment(
-          unit.text,
-          'text',
-          segStart + unit.start,
-          segWordLike,
-          wordBreak === 'keep-all' || !isCJK(unit.text),
-          isLanguageLikeTextSegment(unit.text, segWordLike),
-        )
-      }
+      measureCjkTextSegment(ctx, segText, segStart, segWordLike)
       continue
     }
 
-    pushMeasuredTextSegment(
-      segText,
-      segKind,
-      segStart,
-      segWordLike,
-      true,
-      segKind === 'text' && isLanguageLikeTextSegment(segText, segWordLike),
-    )
+    measurePlainSegment(ctx, segText, segKind, segStart, segWordLike)
   }
 
   finalizeSegmentBreaksAfter(kinds, segmentBreaksAfter)
