@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "note": "补建说明：终端一致性套件清单；列出域文件与每个域所钉住的 terminal-contract 条款；当前进度：随 width/wrap/offset 种子用例同步生成。",
+    "schema": "pretext-tui-terminal-conformance-kit@1",
+    "profile": "terminal-unicode-narrow@1",
+    "unicodeVersion": "17.0.0",
+    "generatedBy": "scripts/tui-conformance-kit-generate.ts"
+  },
+  "domains": [
+    {
+      "file": "width-cases.json",
+      "caseCount": 13,
+      "clauses": [
+        "width-profile/ascii-printable-narrow",
+        "width-profile/cjk-wide",
+        "width-profile/ambiguous-narrow-default",
+        "width-profile/ambiguous-wide-via-override",
+        "width-profile/fullwidth-form",
+        "width-profile/combining-mark-cluster",
+        "width-profile/variation-selector",
+        "width-profile/zwj-emoji-sequence",
+        "width-profile/regional-indicator-pair",
+        "width-profile/keycap-sequence",
+        "width-profile/nbsp-narrow",
+        "width-profile/zero-width-space",
+        "width-profile/word-joiner-zero-width"
+      ]
+    },
+    {
+      "file": "wrap-cases.json",
+      "caseCount": 14,
+      "clauses": [
+        "whitespace/normal-collapse-wrap",
+        "whitespace/pre-wrap-preserves-spaces",
+        "tabs/tab-at-column-zero",
+        "tabs/tab-with-start-column",
+        "whitespace/lf-empty-rows",
+        "whitespace/final-lf-no-extra-row",
+        "break/soft-hyphen-selected-break",
+        "break/zero-width-space-opportunity",
+        "break/word-joiner-no-break-glue",
+        "break/cjk-kinsoku-wrap",
+        "break/keep-all-word-break",
+        "break/emoji-cluster-atomicity",
+        "break/single-grapheme-overflow",
+        "break/multi-row-source-ranges-paragraph"
+      ]
+    },
+    {
+      "file": "offset-cases.json",
+      "caseCount": 8,
+      "clauses": [
+        "source-mapping/exact-visible-boundary",
+        "source-mapping/inside-cluster-bias-after",
+        "source-mapping/consumed-wrap-delimiter-next-row",
+        "source-mapping/eof-ordinary",
+        "source-mapping/eof-after-final-lf",
+        "source-mapping/out-of-range-clamp",
+        "source-mapping/start-column-offset",
+        "source-mapping/cjk-exact-boundary"
+      ]
+    }
+  ]
+}

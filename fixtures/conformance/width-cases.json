@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "note": "补建说明：终端一致性套件 width 域；每个 case 的 expectedWidth 为 terminal-unicode-narrow@1 在 Unicode 17.0.0 下的整数 cell 宽度；当前进度：由生成器从引擎计算。",
+    "schema": "pretext-tui-terminal-conformance-kit@1",
+    "profile": "terminal-unicode-narrow@1",
+    "unicodeVersion": "17.0.0",
+    "generatedBy": "scripts/tui-conformance-kit-generate.ts"
+  },
+  "cases": [
+    {
+      "id": "width-profile/ascii-printable-narrow",
+      "text": "AB",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/cjk-wide",
+      "text": "你好",
+      "expectedWidth": 4
+    },
+    {
+      "id": "width-profile/ambiguous-narrow-default",
+      "text": "§±",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/ambiguous-wide-via-override",
+      "text": "§±",
+      "widthProfile": {
+        "ambiguousWidth": "wide"
+      },
+      "expectedWidth": 4
+    },
+    {
+      "id": "width-profile/fullwidth-form",
+      "text": "ＡＢ",
+      "expectedWidth": 4
+    },
+    {
+      "id": "width-profile/combining-mark-cluster",
+      "text": "éf",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/variation-selector",
+      "text": "❤️",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/zwj-emoji-sequence",
+      "text": "👨‍👩‍👧",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/regional-indicator-pair",
+      "text": "🇯🇵",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/keycap-sequence",
+      "text": "1️⃣",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/nbsp-narrow",
+      "text": "a b",
+      "expectedWidth": 3
+    },
+    {
+      "id": "width-profile/zero-width-space",
+      "text": "a​b",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/word-joiner-zero-width",
+      "text": "a⁠b",
+      "expectedWidth": 2
+    }
+  ]
+}

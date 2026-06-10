@@ -1,9 +1,11 @@
 <!-- 补建说明：该文件为后续补建，用于集中索引 pretext-TUI incubating public API 的阶段审批状态、证据入口与稳定化阻塞项；当前进度：Phase 10 launch-readiness 已记录 approve with documented residual risk，未提升任何 incubating API 到 stable 0.1。 -->
 # Incubating API Approval Index
 
-This index keeps the advanced public API story reviewable while `pretext-TUI` moves toward launch-readiness. It is not a stable `0.1` promotion record.
+This index keeps the advanced public API story reviewable while `pretext-TUI` moves toward launch-readiness. It is not a stable `0.1` promotion record. The core seven are promoted separately in [the stable 0.1 promotion approval](2026-06-10-stable-0-1-promotion-approval.md).
 
 The stable candidate core remains `prepare -> layout/range -> materialize`. Every API below is still public but incubating unless a future approval record explicitly promotes it.
+
+- Core terminal-cell layout (the seven) — Promoted to stable 0.1 by [the stable 0.1 promotion approval](2026-06-10-stable-0-1-promotion-approval.md). The seven runtime names and their travelling option/result shapes are stable within `0.1.x`; everything in the matrix below stays incubating.
 
 ## Approval Matrix
 

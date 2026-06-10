@@ -5,7 +5,10 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 ## Active Next
 
 - Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks; tracks R1 and R2 are complete and track R3 streaming maturity is next.
-- Add a source-level check for the stable/incubating partition inside `scripts/public-api-contract.ts` when the stable `0.1` promotion review happens; today only the union of the two lists is fully cross-checked.
+- R4 adoption surface: external proof-of-concept host repositories live in separate repositories as adoption evidence and link back here; they never move into this package.
+- R4 adoption surface: the terminal conformance kit under fixtures/conformance/ is repo-only data verified by `bun run conformance-kit-check`; promote it into release-gate:tui only after the kit stabilizes.
+- R4 adoption surface: docs/production/unicode-upgrade-policy.md governs adopting new Unicode versions as new width-profile versions; no terminal-unicode-narrow@2 is adopted yet.
+- Stable 0.1 promotion for the core seven has landed; the stable/incubating partition is asserted exactly (not just the union) in tests/tui/public-api-boundary.test.ts against the source facade, with the name lists owned by scripts/public-api-contract.ts.
 - Maintain the Phase 10 adoption evidence pack as claims, recipes, and public API boundaries evolve.
 - Use [docs/decisions/incubating-api-approval-index.md](docs/decisions/incubating-api-approval-index.md) to prevent accidental stable `0.1` promotion of incubating APIs.
 - Keep append claims narrow: append-only chunked storage is internal and incubating; arbitrary editing, destructive prefix eviction, and host retention policy are not implemented.

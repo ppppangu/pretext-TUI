@@ -24,5 +24,6 @@ Records should describe:
 - [Phase 9 performance, memory budgets, and evidence approval](phase-9-performance-memory-evidence-approval.md)
 - [Incubating API approval index](incubating-api-approval-index.md)
 - [Phase 10 adoption evidence and launch-readiness approval](phase-10-adoption-evidence-launch-readiness-approval.md)
+- [Stable 0.1 promotion approval](2026-06-10-stable-0-1-promotion-approval.md)
 
 Phase 10 is approved with documented residual risk. Its record links evidence matrices, public-only recipes, production notes, benchmark report-id citation rules, and residual risks that still block stable `0.1` promotion or stronger performance/security claims.

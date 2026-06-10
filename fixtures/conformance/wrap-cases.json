@@ -1,0 +1,643 @@
+{
+  "metadata": {
+    "note": "补建说明：终端一致性套件 wrap 域；每个 case 的 expected 为引擎在给定 columns/startColumn 下的整行 layout 快照；当前进度：由生成器从引擎计算。",
+    "schema": "pretext-tui-terminal-conformance-kit@1",
+    "profile": "terminal-unicode-narrow@1",
+    "unicodeVersion": "17.0.0",
+    "generatedBy": "scripts/tui-conformance-kit-generate.ts"
+  },
+  "cases": [
+    {
+      "id": "whitespace/normal-collapse-wrap",
+      "text": "alpha beta gamma delta",
+      "layout": {
+        "columns": 12
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 11,
+        "texts": [
+          "alpha beta",
+          "gamma delta"
+        ],
+        "sourceTexts": [
+          "alpha beta",
+          "gamma delta"
+        ],
+        "widths": [
+          10,
+          11
+        ],
+        "breakKinds": [
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            10
+          ],
+          [
+            11,
+            22
+          ]
+        ],
+        "overflow": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "whitespace/pre-wrap-preserves-spaces",
+      "text": "a   b   c",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 6
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 6,
+        "texts": [
+          "a   b ",
+          "  c"
+        ],
+        "sourceTexts": [
+          "a   b ",
+          "  c"
+        ],
+        "widths": [
+          6,
+          3
+        ],
+        "breakKinds": [
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            6
+          ],
+          [
+            6,
+            9
+          ]
+        ],
+        "overflow": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "tabs/tab-at-column-zero",
+      "text": "\tword",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 12
+      },
+      "expected": {
+        "rows": 1,
+        "maxLineWidth": 12,
+        "texts": [
+          "        word"
+        ],
+        "sourceTexts": [
+          "\tword"
+        ],
+        "widths": [
+          12
+        ],
+        "breakKinds": [
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            5
+          ]
+        ],
+        "overflow": [
+          null
+        ]
+      }
+    },
+    {
+      "id": "tabs/tab-with-start-column",
+      "text": "\tword",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 12,
+        "startColumn": 3
+      },
+      "expected": {
+        "rows": 1,
+        "maxLineWidth": 9,
+        "texts": [
+          "     word"
+        ],
+        "sourceTexts": [
+          "\tword"
+        ],
+        "widths": [
+          9
+        ],
+        "breakKinds": [
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            5
+          ]
+        ],
+        "overflow": [
+          null
+        ]
+      }
+    },
+    {
+      "id": "whitespace/lf-empty-rows",
+      "text": "a\n\nb",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 8
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 1,
+        "texts": [
+          "a",
+          "",
+          "b"
+        ],
+        "sourceTexts": [
+          "a",
+          "",
+          "b"
+        ],
+        "widths": [
+          1,
+          0,
+          1
+        ],
+        "breakKinds": [
+          "hard",
+          "hard",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "whitespace/final-lf-no-extra-row",
+      "text": "abc\n",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "layout": {
+        "columns": 8
+      },
+      "expected": {
+        "rows": 1,
+        "maxLineWidth": 3,
+        "texts": [
+          "abc"
+        ],
+        "sourceTexts": [
+          "abc"
+        ],
+        "widths": [
+          3
+        ],
+        "breakKinds": [
+          "hard"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            3
+          ]
+        ],
+        "overflow": [
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/soft-hyphen-selected-break",
+      "text": "super­califragilistic",
+      "layout": {
+        "columns": 8
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 8,
+        "texts": [
+          "super-",
+          "califrag",
+          "ilistic"
+        ],
+        "sourceTexts": [
+          "super­",
+          "califrag",
+          "ilistic"
+        ],
+        "widths": [
+          6,
+          8,
+          7
+        ],
+        "breakKinds": [
+          "soft-hyphen",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            6
+          ],
+          [
+            6,
+            14
+          ],
+          [
+            14,
+            21
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/zero-width-space-opportunity",
+      "text": "alpha​beta​gamma",
+      "layout": {
+        "columns": 7
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 5,
+        "texts": [
+          "alpha",
+          "beta",
+          "gamma"
+        ],
+        "sourceTexts": [
+          "alpha",
+          "beta",
+          "gamma"
+        ],
+        "widths": [
+          5,
+          4,
+          5
+        ],
+        "breakKinds": [
+          "wrap",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            5
+          ],
+          [
+            6,
+            10
+          ],
+          [
+            11,
+            16
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/word-joiner-no-break-glue",
+      "text": "alpha⁠beta",
+      "layout": {
+        "columns": 6
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 6,
+        "texts": [
+          "alphab",
+          "eta"
+        ],
+        "sourceTexts": [
+          "alpha⁠b",
+          "eta"
+        ],
+        "widths": [
+          6,
+          3
+        ],
+        "breakKinds": [
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            7
+          ],
+          [
+            7,
+            10
+          ]
+        ],
+        "overflow": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/cjk-kinsoku-wrap",
+      "text": "你好世界你好世界",
+      "layout": {
+        "columns": 6
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 6,
+        "texts": [
+          "你好世",
+          "界你好",
+          "世界"
+        ],
+        "sourceTexts": [
+          "你好世",
+          "界你好",
+          "世界"
+        ],
+        "widths": [
+          6,
+          6,
+          4
+        ],
+        "breakKinds": [
+          "wrap",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/keep-all-word-break",
+      "text": "가나다 라마바",
+      "prepare": {
+        "wordBreak": "keep-all"
+      },
+      "layout": {
+        "columns": 5
+      },
+      "expected": {
+        "rows": 4,
+        "maxLineWidth": 4,
+        "texts": [
+          "가나",
+          "다",
+          "라마",
+          "바"
+        ],
+        "sourceTexts": [
+          "가나",
+          "다",
+          "라마",
+          "바"
+        ],
+        "widths": [
+          4,
+          2,
+          4,
+          2
+        ],
+        "breakKinds": [
+          "wrap",
+          "wrap",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/emoji-cluster-atomicity",
+      "text": "x👨‍👩‍👧y",
+      "layout": {
+        "columns": 3
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 3,
+        "texts": [
+          "x👨‍👩‍👧",
+          "y"
+        ],
+        "sourceTexts": [
+          "x👨‍👩‍👧",
+          "y"
+        ],
+        "widths": [
+          3,
+          1
+        ],
+        "breakKinds": [
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            9
+          ],
+          [
+            9,
+            10
+          ]
+        ],
+        "overflow": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/single-grapheme-overflow",
+      "text": "你",
+      "layout": {
+        "columns": 1
+      },
+      "expected": {
+        "rows": 1,
+        "maxLineWidth": 2,
+        "texts": [
+          "你"
+        ],
+        "sourceTexts": [
+          "你"
+        ],
+        "widths": [
+          2
+        ],
+        "breakKinds": [
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            1
+          ]
+        ],
+        "overflow": [
+          {
+            "width": 2,
+            "columns": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "break/multi-row-source-ranges-paragraph",
+      "text": "one two three four five six",
+      "layout": {
+        "columns": 9
+      },
+      "expected": {
+        "rows": 4,
+        "maxLineWidth": 8,
+        "texts": [
+          "one two",
+          "three",
+          "four",
+          "five six"
+        ],
+        "sourceTexts": [
+          "one two",
+          "three",
+          "four",
+          "five six"
+        ],
+        "widths": [
+          7,
+          5,
+          4,
+          8
+        ],
+        "breakKinds": [
+          "wrap",
+          "wrap",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            7
+          ],
+          [
+            8,
+            13
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            19,
+            27
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  ]
+}

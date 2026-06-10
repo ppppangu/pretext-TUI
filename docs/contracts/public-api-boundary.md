@@ -49,9 +49,9 @@ Internal implementation modules, validation helpers, benchmarks, fixtures, and g
 
 Phase 10 launch-readiness review does not change the stability classes below. It only gathers evidence for a cautious adoption story while keeping advanced public APIs incubating until a future stable `0.1` approval explicitly promotes them.
 
-### Stable Candidates
+### Stable (as of 0.1.0)
 
-These surfaces are candidates for the first stable `0.1` contract once declaration snapshots and package smoke tests cover them:
+These surfaces are stable as of `0.1.0` under [the stable 0.1 promotion approval](../decisions/2026-06-10-stable-0-1-promotion-approval.md); within the `0.1.x` line they will not be removed or break, and any breaking change to them before `1.0` requires a minor version bump and an updating approval record:
 
 - `prepareTerminal`
 - `layoutTerminal`
@@ -59,11 +59,12 @@ These surfaces are candidates for the first stable `0.1` contract once declarati
 - `walkTerminalLineRanges`
 - `layoutNextTerminalLineRange`
 - `materializeTerminalLineRange`
+- `TERMINAL_START_CURSOR`
 - terminal prepare/layout option shapes
 - terminal row, cursor, range, and materialized-line data shapes
-- plain source-offset mapping over sanitized visible text
+- `PreparedTerminalText` as an opaque handle only
 
-Stable candidates should remain pure terminal-cell text-layout APIs. They should accept terminal text and options, then return data.
+These stable surfaces remain pure terminal-cell text-layout APIs. They accept terminal text and options, then return data.
 
 ### Incubating Surfaces
 

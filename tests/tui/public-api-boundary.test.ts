@@ -27,21 +27,29 @@ const repoRoot = path.resolve(import.meta.dir, '../..')
 
 describe('public API boundary', () => {
   test('root re-exports the canonical public facade and rich runtime exports stay intentionally host-neutral', () => {
-    expect(terminalPublicRuntimeExports).toContain('projectTerminalSourceOffset')
-    expect(terminalPublicRuntimeExports).toContain('projectTerminalCursor')
-    expect(terminalPublicRuntimeExports).toContain('projectTerminalRow')
-    expect(terminalIncubatingRuntimeExports).toContain('projectTerminalCoordinate')
-    expect(terminalIncubatingRuntimeExports).toContain('projectTerminalSourceRange')
-    expect(terminalIncubatingRuntimeExports).toContain('createTerminalLayoutBundle')
-    expect(terminalIncubatingRuntimeExports).toContain('getTerminalLayoutBundlePage')
-    expect(terminalIncubatingRuntimeExports).toContain('invalidateTerminalLayoutBundle')
-    expect(terminalIncubatingRuntimeExports).toContain('createTerminalRangeIndex')
-    expect(terminalIncubatingRuntimeExports).toContain('getTerminalRangesAtSourceOffset')
-    expect(terminalIncubatingRuntimeExports).toContain('getTerminalRangesForSourceRange')
-    expect(terminalStableRuntimeExports).toContain('prepareTerminal')
-    expect(terminalStableRuntimeExports).not.toContain('projectTerminalCoordinate')
-    expect(terminalStableRuntimeExports).not.toContain('createTerminalLayoutBundle')
-    expect(terminalStableRuntimeExports).not.toContain('appendTerminalCellFlow')
+    // Stable 0.1 promotion: assert the stable/incubating partition exactly (not just the union)
+    // against the source facade, replacing the earlier spot-check per the R1 deferred TODO.
+    const promotedStableSeven = [
+      'TERMINAL_START_CURSOR',
+      'layoutNextTerminalLineRange',
+      'layoutTerminal',
+      'materializeTerminalLineRange',
+      'measureTerminalLineStats',
+      'prepareTerminal',
+      'walkTerminalLineRanges',
+    ].sort()
+    expect([...terminalStableRuntimeExports]).toEqual(promotedStableSeven)
+
+    const partitionUnion = [...terminalStableRuntimeExports, ...terminalIncubatingRuntimeExports].sort()
+    expect(partitionUnion).toEqual([...terminalPublicRuntimeExports])
+    const stableSet = new Set(terminalStableRuntimeExports)
+    expect(terminalIncubatingRuntimeExports.filter(name => stableSet.has(name))).toEqual([])
+
+    for (const name of ['layoutNextTerminalLineRange', 'layoutTerminal', 'materializeTerminalLineRange', 'measureTerminalLineStats', 'prepareTerminal', 'walkTerminalLineRanges']) {
+      expect(typeof (publicFacade as RuntimeModule)[name]).toBe('function')
+    }
+    expect((publicFacade as RuntimeModule)['TERMINAL_START_CURSOR']).toBeDefined()
+
     expect(Object.keys(publicFacade).sort()).toEqual([...terminalPublicRuntimeExports])
     expect(Object.keys(root).sort()).toEqual([...terminalPublicRuntimeExports])
     expect(Object.keys(rich).sort()).toEqual([...richPublicRuntimeExports])

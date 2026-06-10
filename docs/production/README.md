@@ -19,6 +19,7 @@ Current production posture:
 Production evidence entry points:
 
 - [Security, Support, And Provenance Matrix](security-support-provenance-matrix.md)
+- [Unicode Upgrade Policy](unicode-upgrade-policy.md)
 - `docs/contracts/terminal-security-profile.md`
 - `docs/contracts/public-api-boundary.md`
 - `docs/contracts/host-app-boundary.md`

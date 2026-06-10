@@ -171,6 +171,8 @@ The profile identity must include:
 
 Overrides are allowed only through explicit prepare-time options. Any override changes prepared-data identity and cache keys.
 
+Adopting a new Unicode version is governed by the Unicode upgrade policy (docs/production/unicode-upgrade-policy.md): new Unicode versions land as new width profile versions and never mutate the published semantics of an existing profile version.
+
 Defaults:
 
 - ASCII printable characters are width `1`.
