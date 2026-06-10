@@ -103,7 +103,7 @@ against the source facade, with the name lists owned by
 `scripts/public-api-contract.ts`.
 
 Benchmark evidence is the currently accepted clean report
-`competitive-tui-20260610-360289b-clean-634d0394` under
+`competitive-tui-20260610-306debd-clean-fd7b8b9f` under
 `docs/evidence/benchmark-reports/`. Report ids change per commit; treat the
 current accepted clean report under `docs/evidence/benchmark-reports/` as the
 citation target rather than pinning this string forever.

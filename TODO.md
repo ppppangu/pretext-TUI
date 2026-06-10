@@ -20,7 +20,7 @@ Current priorities for maintaining the `0.1.0` `pretext-TUI` host-neutral termin
 - Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
 - Maintain launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
 - Refresh claimable benchmark evidence after release-source changes before citing a new report id in public copy.
-- Cite report ids such as `competitive-tui-20260610-360289b-clean-634d0394` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
+- Cite report ids such as `competitive-tui-20260610-306debd-clean-fd7b8b9f` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
 
 ## Completed
 
