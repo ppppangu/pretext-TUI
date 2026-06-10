@@ -151,6 +151,11 @@ export function getTerminalPageCacheStats(cache: TerminalPageCache): TerminalPag
   return { ...internalPageCache(cache).stats }
 }
 
+// Internal accessor for sibling virtual modules; not part of the public surface.
+export function getInternalTerminalPageCachePageSize(cache: TerminalPageCache): number {
+  return internalPageCache(cache).pageSize
+}
+
 export function getTerminalPageCacheMemoryEstimate(
   cache: TerminalPageCache,
   label = 'terminal page cache',

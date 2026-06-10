@@ -77,7 +77,7 @@ describe('tui benchmark config validation', () => {
     expect(tailFollow?.counterAssertions?.terminalTailQueries?.min).toBe(1000)
     expect(tailFollow?.counterAssertions?.appendCalls?.exact).toBe(1000)
     expect(tailFollow?.counterAssertions?.appendFullReprepareFallbacks?.exact).toBe(0)
-    expect(tailFollow?.counterAssertions?.terminalTailMeasureRows?.max).toBeGreaterThan(0)
+    expect(tailFollow?.counterAssertions?.terminalMeasureReplayRows?.max).toBeGreaterThan(0)
 
     const boundedSearch = parsed.workloads.find(item => item.id === 'bounded-search-session')
     expect(boundedSearch?.search?.matchLimit).toBeGreaterThan(0)

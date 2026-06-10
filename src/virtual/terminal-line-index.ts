@@ -375,7 +375,7 @@ export function measureTerminalLineIndexRows(
   }
 
   recordReplayRows(internal, segmentReplayRows)
-  recordTerminalPerformanceCounter('terminalTailMeasureRows', walkedRows)
+  recordTerminalPerformanceCounter('terminalMeasureReplayRows', walkedRows)
   internal.rows = currentRow
   return currentRow
 }

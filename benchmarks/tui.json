@@ -482,7 +482,7 @@
         "appendInvalidatedCodeUnits": { "min": 1000 },
         "invalidatedPages": { "min": 1 },
         "terminalTailQueries": { "min": 1000 },
-        "terminalTailMeasureRows": { "max": 41000 },
+        "terminalMeasureReplayRows": { "max": 41000 },
         "lineTextGraphemeSegmentations": { "exact": 0 },
         "preparedGeometryWidthPrefixFallbacks": { "exact": 0 }
       }

@@ -22,7 +22,7 @@ Row totals are preserved bit-for-bit for every input, including the empty-source
 
 ## Counter-Gated Bound
 
-Two release counters back the tail path: `terminalTailQueries` increments once per tail lookup, and `terminalTailMeasureRows` accumulates the rows replayed by the tail-anchored measure fast path. A new benchmark workload `chunked-append-1000-small-tail-follow` reads the bundle tail page after each of 1000 appends and asserts `terminalTailQueries` fires on every append, `appendFullReprepareFallbacks` stays at zero, and `terminalTailMeasureRows` stays under a conservative ceiling derived empirically. The ceiling is set roughly twice the observed fast-path value and comfortably below the replay total a row-zero-per-append regression would record, so reintroducing that regression fails the gate loudly.
+Two release counters back the tail path: `terminalTailQueries` increments once per tail lookup, and `terminalMeasureReplayRows` accumulates the rows replayed by the tail-anchored measure fast path. A new benchmark workload `chunked-append-1000-small-tail-follow` reads the bundle tail page after each of 1000 appends and asserts `terminalTailQueries` fires on every append, `appendFullReprepareFallbacks` stays at zero, and `terminalMeasureReplayRows` stays under a conservative ceiling derived empirically. The ceiling is set roughly twice the observed fast-path value and comfortably below the replay total a row-zero-per-append regression would record, so reintroducing that regression fails the gate loudly.
 
 ## Claim Restrictions
 

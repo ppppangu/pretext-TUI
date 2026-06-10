@@ -519,6 +519,9 @@ function normalizeOptionalLimit(value: number | undefined, label: string): numbe
   return value
 }
 
+// Distinct from normalizeOptionalLimit by design: the per-query limit accepts 0 ("return
+// none") and uses undefined as its unbounded sentinel, while the session-creation storage
+// cap rejects 0 as a configuration error and surfaces null in public stats.
 function normalizeSearchMatchLimit(value: number | undefined): number | null {
   if (value === undefined) return null
   if (!Number.isInteger(value) || value <= 0) {

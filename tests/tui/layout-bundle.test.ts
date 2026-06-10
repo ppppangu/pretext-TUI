@@ -370,6 +370,16 @@ describe('terminal layout bundle tail follow', () => {
     // The line-index primitive carries no page-size constraint, so the same rowCount resolves fine.
     const manualIndex = createTerminalLineIndex(prepared, { columns: 28, anchorInterval: 4 })
     expect(getTerminalLineRangeAtRow(prepared, manualIndex, 8)).not.toBeNull()
+
+    // The cap rejection must be data-independent: a transcript shorter than rowCount and an
+    // empty transcript reject an over-pageSize request exactly like a long transcript, so a
+    // follow-mode call cannot silently work and then start throwing as the transcript grows.
+    const short = prepareTerminal('one row', { whiteSpace: 'pre-wrap' })
+    const shortBundle = createTerminalLayoutBundle(short, { columns: 28, pageSize: 8, maxPages: 4 })
+    expect(() => getTerminalLayoutBundleTailPage(short, shortBundle, { rowCount: 9 })).toThrow('pageSize')
+    const empty = prepareTerminal('', { whiteSpace: 'pre-wrap' })
+    const emptyBundle = createTerminalLayoutBundle(empty, { columns: 28, pageSize: 8, maxPages: 4 })
+    expect(() => getTerminalLayoutBundleTailPage(empty, emptyBundle, { rowCount: 9 })).toThrow('pageSize')
   })
 
   test('T8 startColumn tails match manual paging at both levels', () => {
@@ -425,8 +435,8 @@ describe('terminal layout bundle tail follow', () => {
       // invalidated row), so its replay spans only the invalidated-plus-appended tail rows plus at
       // most one anchor gap, never the whole transcript.
       const reflowedTailRows = measuredRows - firstInvalidRow
-      expect(counters.terminalTailMeasureRows).toBeLessThanOrEqual(reflowedTailRows + anchorInterval)
-      expect(counters.terminalTailMeasureRows).toBeLessThan(measuredRows)
+      expect(counters.terminalMeasureReplayRows).toBeLessThanOrEqual(reflowedTailRows + anchorInterval)
+      expect(counters.terminalMeasureReplayRows).toBeLessThan(measuredRows)
       expect(counters.terminalTailQueries).toBeGreaterThanOrEqual(1)
     } finally {
       disableTerminalPerformanceCounters()

@@ -17,6 +17,7 @@ export type TerminalPerformanceCounterName =
   | 'richSpanIndexLookups'
   | 'richSpanIndexMatches'
   | 'richSpanIndexSteps'
+  | 'terminalMeasureReplayRows'
   | 'terminalRangeIndexAppendedRanges'
   | 'terminalRangeIndexAppends'
   | 'terminalRangeIndexBuilds'
@@ -44,7 +45,6 @@ export type TerminalPerformanceCounterName =
   | 'terminalSelectionRangeIndexLookups'
   | 'terminalSelectionSourceCodeUnits'
   | 'terminalSelectionVisibleCodeUnits'
-  | 'terminalTailMeasureRows'
   | 'terminalTailQueries'
 
 export type TerminalPerformanceCounterSnapshot = Readonly<Record<TerminalPerformanceCounterName, number>>
@@ -67,6 +67,7 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'richSpanIndexLookups',
   'richSpanIndexMatches',
   'richSpanIndexSteps',
+  'terminalMeasureReplayRows',
   'terminalRangeIndexAppendedRanges',
   'terminalRangeIndexAppends',
   'terminalRangeIndexBuilds',
@@ -94,7 +95,6 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'terminalSelectionRangeIndexLookups',
   'terminalSelectionSourceCodeUnits',
   'terminalSelectionVisibleCodeUnits',
-  'terminalTailMeasureRows',
   'terminalTailQueries',
 ]
 

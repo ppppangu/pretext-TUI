@@ -17,7 +17,6 @@ import {
   getTerminalLayoutBundleTailPage,
   getTerminalLineIndexStats,
   getTerminalLinePage,
-  measureTerminalLayoutBundleRows,
   getTerminalPageCacheStats,
   getTerminalRangesAtSourceOffset,
   getTerminalRangesForSourceRange,
@@ -30,6 +29,7 @@ import {
   invalidateTerminalPageCache,
   layoutNextTerminalLineRange,
   materializeTerminalLinePage,
+  measureTerminalLayoutBundleRows,
   materializeTerminalLineRange,
   prepareTerminal,
   prepareTerminalCellFlow,
@@ -887,7 +887,7 @@ function runLayoutBundleWorkload(
       invalidateTerminalLayoutBundle(flowPrepared, flowBundle, appended.invalidation)
       if (workload.tailFollow) {
         // Follow mode: after each append+invalidate, read the last rows at the current generation.
-        // The tail-anchored measure replays from the last surviving anchor, so terminalTailMeasureRows
+        // The tail-anchored measure replays from the last surviving anchor, so terminalMeasureReplayRows
         // stays a function of appended rows plus one anchor interval rather than the full row total.
         measureTerminalLayoutBundleRows(flowPrepared, flowBundle)
         getTerminalLayoutBundleTailPage(flowPrepared, flowBundle, { rowCount: 8 })

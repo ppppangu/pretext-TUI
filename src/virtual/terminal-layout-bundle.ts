@@ -18,6 +18,7 @@ import {
 } from './terminal-line-index.js'
 import {
   createTerminalPageCache,
+  getInternalTerminalPageCachePageSize,
   getTerminalLinePage,
   getTerminalPageCacheMemoryEstimate,
   getTerminalPageCacheStats,
@@ -168,12 +169,19 @@ export function getTerminalLayoutBundleTailPage(
   const internal = internalLayoutBundle(bundle)
   assertPreparedMatchesBundle(prepared, internal)
   const rowCount = normalizePositiveInteger(request.rowCount, 'Terminal tail rowCount')
+  // Enforce the page-size cap up front so the rejection is data-independent: without this,
+  // the same call would succeed while the transcript is shorter than rowCount and start
+  // throwing only once it grows past it.
+  const pageSize = getInternalTerminalPageCachePageSize(internal.pageCache)
+  if (rowCount > pageSize) {
+    throw new Error(`Terminal page rowCount must be <= pageSize (${pageSize}), got ${rowCount}`)
+  }
   recordTerminalPerformanceCounter('terminalTailQueries')
   const total = measureTerminalLineIndexRows(prepared, internal.lineIndex)
   const startRow = Math.max(0, total - rowCount)
   // Route through the shared page path so the tail page goes through the page cache and inherits
-  // its frozen page type, generation stamping, and rowCount <= pageSize constraint. An empty
-  // transcript keeps the original positive rowCount and yields a frozen zero-row page.
+  // its frozen page type and generation stamping. An empty transcript keeps the original
+  // positive rowCount and yields a frozen zero-row page.
   const effectiveRowCount = total === 0 ? rowCount : Math.min(rowCount, total)
   return getTerminalLinePage(
     prepared,

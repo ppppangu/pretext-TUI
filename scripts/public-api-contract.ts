@@ -357,7 +357,7 @@ export const forbiddenPublicDeclarationTokens = Object.freeze([
   'rangeIndexStates',
   'byStart',
   'prefixMaxEnd',
-  'ids',
+  'ids:',
   'internalRangeIndex',
   'InternalTerminalSearchMatch',
   'TerminalSearchSessionState',
