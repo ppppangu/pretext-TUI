@@ -4,7 +4,7 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 
 ## Active Next
 
-- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks; track R1 is complete and track R2 directory layering is next.
+- Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record for kernel refinement, directory layering, streaming maturity, and adoption tracks; tracks R1 and R2 are complete and track R3 streaming maturity is next.
 - Add a source-level check for the stable/incubating partition inside `scripts/public-api-contract.ts` when the stable `0.1` promotion review happens; today only the union of the two lists is fully cross-checked.
 - Maintain the Phase 10 adoption evidence pack as claims, recipes, and public API boundaries evolve.
 - Use [docs/decisions/incubating-api-approval-index.md](docs/decisions/incubating-api-approval-index.md) to prevent accidental stable `0.1` promotion of incubating APIs.
@@ -16,10 +16,11 @@ Current priorities for maintaining the `0.1.0-alpha.0` release-candidate `pretex
 - Use the explicit benchmark instrumentation now in the release gate to reduce remaining line materialization, width-prefix, and rich fragment work only when counters justify it.
 - Maintain launch assets and copy from `docs/marketing/` while keeping performance claims tied to clean benchmark reports.
 - Refresh claimable benchmark evidence after release-source changes before citing a new report id in public copy.
-- Cite report ids such as `competitive-tui-20260610-5922fb2-clean-13df5d07` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
+- Cite report ids such as `competitive-tui-20260610-125da72-clean-1aa6227c` only with workload ids and semantic caveats; do not copy dynamic timing numbers into prose.
 
 ## Completed
 
+- Track R2 directory layering has landed behavior-frozen: src is split into ten ranked layer directories with per-directory READMEs, all cross-directory imports point strictly downward, and the static gate now enforces the layering DAG and rejects upward or escaping relative imports.
 - Track R1 kernel refinement has landed behavior-frozen: one shared grapheme-segmenter module, one tab-advance owner, a layered `analysis-*` module split behind the `analysis` facade, a shared keep-all grouping rule, decomposed measurement helpers, golden regeneration tooling with a byte-drift `--check` mode, and a source-level runtime export check for the rich public facade.
 - Initial package contracts are frozen.
 - Browser product surface has been removed from active package exports, scripts, workflow, and status docs.
