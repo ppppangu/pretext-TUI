@@ -287,10 +287,7 @@ const numericJoinerChars = new Set([
 ])
 
 export function segmentContainsDecimalDigit(text: string): boolean {
-  for (const ch of text) {
-    if (decimalDigitRe.test(ch)) return true
-  }
-  return false
+  return decimalDigitRe.test(text)
 }
 
 export function isNumericRunSegment(text: string): boolean {

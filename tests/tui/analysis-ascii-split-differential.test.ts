@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   classifySegmentBreakCode,
   getWhiteSpaceProfile,
+  isSegmentBreakCode,
   splitSegmentByBreakKind,
   type SegmentBreakKind,
   type WhiteSpaceProfile,
@@ -116,6 +117,22 @@ const profiles: Array<['normal' | 'pre-wrap', WhiteSpaceProfile]> = [
 ]
 
 describe('splitSegmentByBreakKind differential', () => {
+  test('isSegmentBreakCode is exactly the union of non-text classifications over all profiles', () => {
+    const normal = getWhiteSpaceProfile('normal')
+    const preWrap = getWhiteSpaceProfile('pre-wrap')
+    for (let code = 0; code <= 0xffff; code++) {
+      const classifiesNonText =
+        classifySegmentBreakCode(code, normal) !== 'text' ||
+        classifySegmentBreakCode(code, preWrap) !== 'text'
+      if (isSegmentBreakCode(code) !== classifiesNonText) {
+        throw new Error(
+          `isSegmentBreakCode desync at U+${code.toString(16).toUpperCase()}: ` +
+          `set=${isSegmentBreakCode(code)} classifier=${classifiesNonText}`,
+        )
+      }
+    }
+  })
+
   test('matches the grapheme reference on edge cases', () => {
     for (const [, profile] of profiles) {
       for (const isWordLike of [true, false]) {

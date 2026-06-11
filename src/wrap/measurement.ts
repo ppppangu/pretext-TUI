@@ -48,14 +48,6 @@ export function getCorrectedSegmentWidth(
   return metrics.width
 }
 
-export function getSegmentGraphemeWidths(
-  seg: string,
-  _cache: Map<string, SegmentMetrics>,
-  _emojiCorrection: number,
-): number[] | null {
-  return terminalBreakableFitAdvances(seg)
-}
-
 export function getSegmentBreakableFitAdvances(
   seg: string,
   metrics: SegmentMetrics,

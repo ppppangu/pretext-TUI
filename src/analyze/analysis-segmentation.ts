@@ -180,8 +180,9 @@ export function classifySegmentBreakCode(code: number, whiteSpaceProfile: WhiteS
 }
 
 // Mirrors the full set of code units classifySegmentBreakCode maps to a
-// non-'text' kind; must stay in sync with that classifier.
-function isSegmentBreakCode(code: number): boolean {
+// non-'text' kind under any white-space profile; the exhaustive sync probe
+// in tests/tui/analysis-ascii-split-differential.test.ts pins this contract.
+export function isSegmentBreakCode(code: number): boolean {
   return (
     code === 0x20 ||
     code === 0x09 ||
@@ -210,9 +211,9 @@ export function splitSegmentByBreakKind(
   start: number,
   whiteSpaceProfile: WhiteSpaceProfile,
 ): SegmentationPiece[] {
-  // One prepass replaces the former break-char regex test and additionally
-  // detects ASCII-safe segments. \r is excluded from the fast path because
-  // '\r\n' is a single grapheme while charCode iteration would see two units.
+  // One prepass computes both routing flags. \r is excluded from the fast
+  // path because '\r\n' is a single grapheme while charCode iteration would
+  // see two units.
   let hasBreakChar = false
   let asciiSafe = true
   for (let i = 0; i < segment.length; i++) {
@@ -321,7 +322,6 @@ type MergedPieceAccumulator = {
   hasArabicNoSpacePunctuation: boolean[]
 }
 
-// Hoisted out of the per-piece loop so no closure is allocated per piece.
 // Field semantics that must not drift: wordLike/containsCJK/
 // containsArabicScript OR-accumulate, the ends-with flags overwrite, and
 // hasArabicNoSpacePunctuation must read the post-OR Arabic flag together
@@ -426,7 +426,10 @@ export function buildMergedSegmentation(
       const prevIndex = mergedLen - 1
 
       // First-pass keeps: no-space script-specific joins and punctuation glue
-      // that depend on the immediately preceding text run.
+      // that depend on the immediately preceding text run. The branches only
+      // pick an action; the single append call site sits after the chain.
+      let appendToPrevious = false
+      let forceWordLikeAfterAppend = false
       if (
         profile.carryCJKAfterClosingQuote &&
         isText &&
@@ -436,17 +439,7 @@ export function buildMergedSegmentation(
         mergedContainsCJK[prevIndex] &&
         mergedEndsWithClosingQuote[prevIndex]!
       ) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
+        appendToPrevious = true
       } else if (
         isText &&
         mergedLen > 0 &&
@@ -454,34 +447,14 @@ export function buildMergedSegmentation(
         isCJKLineStartProhibitedSegment(pieceText) &&
         mergedContainsCJK[prevIndex]
       ) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
+        appendToPrevious = true
       } else if (
         isText &&
         mergedLen > 0 &&
         mergedKinds[prevIndex] === 'text' &&
         mergedEndsWithMyanmarMedialGlue[prevIndex]
       ) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
+        appendToPrevious = true
       } else if (
         isText &&
         mergedLen > 0 &&
@@ -490,18 +463,8 @@ export function buildMergedSegmentation(
         pieceContainsArabicScript &&
         mergedHasArabicNoSpacePunctuation[prevIndex]
       ) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
-        mergedWordLike[prevIndex] = true
+        appendToPrevious = true
+        forceWordLikeAfterAppend = true
       } else if (
         repeatableSingleCharRunChar !== null &&
         mergedLen > 0 &&
@@ -520,17 +483,7 @@ export function buildMergedSegmentation(
           (pieceText === '-' && mergedWordLike[prevIndex]!)
         )
       ) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
+        appendToPrevious = true
       } else {
         mergedTexts[mergedLen] = pieceText
         mergedTextParts[mergedLen] = null
@@ -548,6 +501,23 @@ export function buildMergedSegmentation(
           pieceLastCodePoint,
         )
         mergedLen++
+      }
+
+      if (appendToPrevious) {
+        appendPieceToMergedPrevious(
+          merged,
+          prevIndex,
+          pieceText,
+          piece.isWordLike,
+          pieceContainsCJK,
+          pieceContainsArabicScript,
+          pieceEndsWithClosingQuote,
+          pieceEndsWithMyanmarMedialGlue,
+          pieceLastCodePoint,
+        )
+        if (forceWordLikeAfterAppend) {
+          mergedWordLike[prevIndex] = true
+        }
       }
     }
   }

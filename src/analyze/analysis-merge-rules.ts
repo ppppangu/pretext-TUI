@@ -165,7 +165,6 @@ export function mergeUrlQueryRuns(segmentation: MergedSegmentation): MergedSegme
 
 const asciiPunctuationChainSegmentRe = /^[A-Za-z0-9_]+[.,:;]*$/
 const asciiPunctuationChainTrailingJoinersRe = /[.,:;]+$/
-const containsDecimalDigitRe = /\p{Nd}/u
 
 export function mergeNumericRuns(segmentation: MergedSegmentation): MergedSegmentation {
   // Fires (including the standalone isWordLike=true rewrite, which needs no
@@ -173,7 +172,7 @@ export function mergeNumericRuns(segmentation: MergedSegmentation): MergedSegmen
   // \p{Nd} digit; any digit-bearing text segment is a conservative superset.
   let hasDigitTextSegment = false
   for (let i = 0; i < segmentation.len; i++) {
-    if (segmentation.kinds[i] === 'text' && containsDecimalDigitRe.test(segmentation.texts[i]!)) {
+    if (segmentation.kinds[i] === 'text' && segmentContainsDecimalDigit(segmentation.texts[i]!)) {
       hasDigitTextSegment = true
       break
     }
@@ -299,7 +298,7 @@ export function splitHyphenatedNumericRuns(segmentation: MergedSegmentation): Me
   for (let i = 0; i < segmentation.len; i++) {
     if (segmentation.kinds[i] !== 'text') continue
     const text = segmentation.texts[i]!
-    if (text.includes('-') && containsDecimalDigitRe.test(text)) {
+    if (text.includes('-') && segmentContainsDecimalDigit(text)) {
       hasHyphenDigitSegment = true
       break
     }
