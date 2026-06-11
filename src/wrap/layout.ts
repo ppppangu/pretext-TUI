@@ -343,6 +343,10 @@ type SegmentMeasureContext = {
   ) => void
   wordBreak: WordBreakMode
   analysisProfile: AnalysisProfile
+  // Per-measureAnalysis-call memo: units depend only on (segText, wordBreak,
+  // analysisProfile), all fixed for one call, and unit starts are
+  // segment-relative, so identical segment texts share one unit array.
+  cjkUnitMemo: Map<string, MeasuredTextUnit[]>
 }
 
 function measureCjkTextSegment(
@@ -351,10 +355,14 @@ function measureCjkTextSegment(
   segStart: number,
   segWordLike: boolean,
 ): void {
-  const baseUnits = buildBaseCjkUnits(segText, ctx.analysisProfile)
-  const measuredUnits = ctx.wordBreak === 'keep-all'
-    ? mergeKeepAllTextUnits(segText, baseUnits, ctx.analysisProfile.breakKeepAllAfterPunctuation)
-    : baseUnits
+  let measuredUnits = ctx.cjkUnitMemo.get(segText)
+  if (measuredUnits === undefined) {
+    const baseUnits = buildBaseCjkUnits(segText, ctx.analysisProfile)
+    measuredUnits = ctx.wordBreak === 'keep-all'
+      ? mergeKeepAllTextUnits(segText, baseUnits, ctx.analysisProfile.breakKeepAllAfterPunctuation)
+      : baseUnits
+    ctx.cjkUnitMemo.set(segText, measuredUnits)
+  }
 
   for (let i = 0; i < measuredUnits.length; i++) {
     const unit = measuredUnits[i]!
@@ -516,7 +524,12 @@ function measureAnalysis(
     )
   }
 
-  const ctx: SegmentMeasureContext = { pushMeasuredTextSegment, wordBreak, analysisProfile }
+  const ctx: SegmentMeasureContext = {
+    pushMeasuredTextSegment,
+    wordBreak,
+    analysisProfile,
+    cjkUnitMemo: new Map(),
+  }
 
   for (let mi = 0; mi < analysis.len; mi++) {
     preparedStartByAnalysisIndex[mi] = widths.length
