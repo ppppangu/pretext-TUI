@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Speeds up `prepareTerminal()` text analysis with no API or behavior change: width-profile resolution is idempotent and threaded through the width caches, pure-ASCII segments take a charCode fast path around the grapheme iterator, the merge pipeline drops its per-piece allocations, duplicate segment-metrics lookups are gone, and merge passes skip themselves when they provably cannot fire. Local 3.9MB mixed CJK/ASCII transcript prepare improves roughly 40% (about 50% for pure-ASCII logs); output is verified byte-identical across a 280-case corpus/options snapshot net plus a new permanent ASCII-split differential test.
+
 ## 0.1.0 - 2026-06-10
 
 First stable `0.1` release of the core terminal-cell layout surface.

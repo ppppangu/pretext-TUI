@@ -4,3 +4,5 @@
 Width-independent text analysis (rank 2): normalization, segmentation, glue/merge rules, and keep-all run grouping, fronted by `analysis.ts`.
 
 It may import from lower layers (unicode, telemetry); the wrap layer and above consume its segmentation output.
+
+Ownership contract: the merge passes in `analysis-merge-rules.ts` may return their input `MergedSegmentation` by reference when an applicability prescan proves the pass cannot fire. Callers must treat pass inputs as consumed — never retain a pass input and mutate it (or the pass output) in place, except where the caller exclusively owns every array involved (as `buildMergedSegmentation` does for its trailing Arabic-marks fixup).

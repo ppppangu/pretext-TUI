@@ -4,6 +4,15 @@ Current priorities for maintaining the `0.1.0` `pretext-TUI` host-neutral termin
 
 ## Active Next
 
+### Prepare-pipeline performance follow-ups (post behavior-frozen perf series 3a59aa6..206d1ec)
+
+- ASCII word-scanner fast path: a hand-rolled UAX-29 ASCII word segmenter must be probe-parameterized against the live `Intl.Segmenter` (engine word-break behavior verifiably differs between bun/JSC and node/V8, e.g. `a:b` and numeric/underscore word-likeness) — verify per (engine, locale) at first use, permanently disable on any mismatch, and add a permanent in-process differential gate before enabling. Biggest remaining prepare lever (~20% of post-series profile is word segmentation).
+- kinds string-enum -> int/columnar storage: deferred; `SegmentBreakKind` strings reach the prepared reader, reader-store chunks, debug snapshots, and gate validation helpers, so conversion has cross-layer blast radius and needs its own behavior-frozen series with the A/B-net approach.
+- Width-profile hardening: brand resolved profiles (e.g. module-private WeakSet populated by both `createProfile` and `createInjectedTerminalWidthProfile`) so the idempotent `resolveTerminalWidthProfile` early-return cannot trust a mutated structural copy's stale `cacheKey`; fold in deleting the now-unused `getTerminalWidthProfileCacheKey`. Blocked on the in-flight host-injected width-profile work that touches the same files.
+- A/B snapshot-net axis gaps (for the next behavior-frozen series): vary `emojiWidth`, `regionalIndicator`, `controlChars`, `defaultTabSize`, and add an append/cell-flow case; today's net covers corpora x whiteSpace x wordBreak x ambiguousWidth/tabSize.
+- `letterSpacing` exists on internal `PrepareOptions` and threads live branches through measurement/line-break, but `prepareTerminal` never forwards it and no public surface or test references it — decide promote-or-prune.
+- `mergeUrlLikeRuns` contains a provable no-op write (`kinds[j] = 'text'` where the loop guard already requires `'text'`); removing it would make the pass's prescan argument self-evident.
+
 - Use [docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md](docs/plans/2026-06-10-kernel-refinement-and-agent-tui-roadmap.md) as the post-Phase-10 direction record; tracks R1 (kernel refinement), R2 (directory layering), and R3 (streaming maturity) are complete, and track R4 (adoption surface) has landed its in-repo items with external proof-of-concept hosts remaining external.
 - The prefix-eviction design RFC under docs/plans/ is a design record only; implementing eviction requires its own approval record per the RFC's evidence prerequisites.
 - R4 adoption surface: external proof-of-concept host repositories live in separate repositories as adoption evidence and link back here; they never move into this package.
