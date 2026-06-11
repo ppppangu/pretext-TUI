@@ -230,10 +230,15 @@ export function buildWordScanProbeCases(): string[] {
   return cases
 }
 
+// '\n' is an unconditional UAX-29 word boundary on both sides (WB3a/WB3b), so
+// one composite string segments every case in a single live pass. The runtime
+// probe and the differential gate both consume buildWordScanProbeCorpus, and
+// the probe's offset bookkeeping shares this separator, so the join protocol
+// has exactly one source.
+const wordScanProbeCaseSeparator = '\n'
+
 export function buildWordScanProbeCorpus(): string {
-  // '\n' is an unconditional UAX-29 word boundary on both sides (WB3a/WB3b),
-  // so one composite string segments every case in a single live pass.
-  return buildWordScanProbeCases().join('\n')
+  return buildWordScanProbeCases().join(wordScanProbeCaseSeparator)
 }
 
 // Reference driver shared by probe verification and the differential gate:
@@ -310,7 +315,7 @@ export function __setWordScanVerdictForTesting(
 
 function probeWordScanVerdict(wordSegmenter: Intl.Segmenter): WordScanVerdict {
   const cases = buildWordScanProbeCases()
-  const corpus = cases.join('\n')
+  const corpus = buildWordScanProbeCorpus()
 
   // One live pass over the composite corpus, recorded as a flat stream.
   const liveStarts: number[] = []
@@ -328,7 +333,7 @@ function probeWordScanVerdict(wordSegmenter: Intl.Segmenter): WordScanVerdict {
   let offset = 0
   for (const probeCase of cases) {
     caseStartByText.set(probeCase, offset)
-    offset += probeCase.length + 1
+    offset += probeCase.length + wordScanProbeCaseSeparator.length
   }
   const segmentEndAt = (start: number): number => {
     const slot = liveSlotByStart.get(start)
