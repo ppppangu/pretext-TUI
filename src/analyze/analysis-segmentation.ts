@@ -164,23 +164,36 @@ function splitLeadingSpaceAndMarks(segment: string): { space: string, marks: str
   return null
 }
 
-function classifySegmentBreakChar(ch: string, whiteSpaceProfile: WhiteSpaceProfile): SegmentBreakKind {
+export function classifySegmentBreakCode(code: number, whiteSpaceProfile: WhiteSpaceProfile): SegmentBreakKind {
   if (whiteSpaceProfile.preserveOrdinarySpaces || whiteSpaceProfile.preserveHardBreaks) {
-    if (ch === ' ') return 'preserved-space'
-    if (ch === '\t') return 'tab'
-    if (whiteSpaceProfile.preserveHardBreaks && ch === '\n') return 'hard-break'
+    if (code === 0x20) return 'preserved-space'
+    if (code === 0x09) return 'tab'
+    if (whiteSpaceProfile.preserveHardBreaks && code === 0x0a) return 'hard-break'
   }
-  if (ch === ' ') return 'space'
-  if (ch === '\u00A0' || ch === '\u202F' || ch === '\u2060' || ch === '\uFEFF') {
+  if (code === 0x20) return 'space'
+  if (code === 0x00a0 || code === 0x202f || code === 0x2060 || code === 0xfeff) {
     return 'glue'
   }
-  if (ch === '\u200B') return 'zero-width-break'
-  if (ch === '\u00AD') return 'soft-hyphen'
+  if (code === 0x200b) return 'zero-width-break'
+  if (code === 0x00ad) return 'soft-hyphen'
   return 'text'
 }
 
-// All characters that classifySegmentBreakChar maps to a non-'text' kind.
-const breakCharRe = /[\x20\t\n\xA0\xAD\u200B\u202F\u2060\uFEFF]/
+// Mirrors the full set of code units classifySegmentBreakCode maps to a
+// non-'text' kind; must stay in sync with that classifier.
+function isSegmentBreakCode(code: number): boolean {
+  return (
+    code === 0x20 ||
+    code === 0x09 ||
+    code === 0x0a ||
+    code === 0x00a0 ||
+    code === 0x00ad ||
+    code === 0x200b ||
+    code === 0x202f ||
+    code === 0x2060 ||
+    code === 0xfeff
+  )
+}
 
 function joinReversedPrefixParts(prefixParts: string[], tail: string): string {
   const parts: string[] = []
@@ -191,17 +204,64 @@ function joinReversedPrefixParts(prefixParts: string[], tail: string): string {
   return joinTextParts(parts)
 }
 
-function splitSegmentByBreakKind(
+export function splitSegmentByBreakKind(
   segment: string,
   isWordLike: boolean,
   start: number,
   whiteSpaceProfile: WhiteSpaceProfile,
 ): SegmentationPiece[] {
-  if (!breakCharRe.test(segment)) {
+  // One prepass replaces the former break-char regex test and additionally
+  // detects ASCII-safe segments. \r is excluded from the fast path because
+  // '\r\n' is a single grapheme while charCode iteration would see two units.
+  let hasBreakChar = false
+  let asciiSafe = true
+  for (let i = 0; i < segment.length; i++) {
+    const code = segment.charCodeAt(i)
+    if (code >= 0x80 || code === 0x0d) {
+      asciiSafe = false
+      if (hasBreakChar) break
+    }
+    if (isSegmentBreakCode(code)) {
+      hasBreakChar = true
+      if (!asciiSafe) break
+    }
+  }
+
+  if (!hasBreakChar) {
     return [{ text: segment, isWordLike, kind: 'text', start }]
   }
 
   const pieces: SegmentationPiece[] = []
+
+  if (asciiSafe) {
+    // Every ASCII code unit except \r forms its own grapheme, so run
+    // grouping over charCodes matches the grapheme path exactly.
+    let runStart = 0
+    let runKind = classifySegmentBreakCode(segment.charCodeAt(0), whiteSpaceProfile)
+    let runWordLike = runKind === 'text' && isWordLike
+    for (let i = 1; i < segment.length; i++) {
+      const kind = classifySegmentBreakCode(segment.charCodeAt(i), whiteSpaceProfile)
+      const wordLike = kind === 'text' && isWordLike
+      if (kind === runKind && wordLike === runWordLike) continue
+      pieces.push({
+        text: segment.slice(runStart, i),
+        isWordLike: runWordLike,
+        kind: runKind,
+        start: start + runStart,
+      })
+      runStart = i
+      runKind = kind
+      runWordLike = wordLike
+    }
+    pieces.push({
+      text: segment.slice(runStart),
+      isWordLike: runWordLike,
+      kind: runKind,
+      start: start + runStart,
+    })
+    return pieces
+  }
+
   let currentKind: SegmentBreakKind | null = null
   let currentTextParts: string[] = []
   let currentStart = start
@@ -210,7 +270,7 @@ function splitSegmentByBreakKind(
 
   for (const { segment: grapheme } of getLocaleGraphemeSegmenter().segment(segment)) {
     const kind = grapheme.length === 1
-      ? classifySegmentBreakChar(grapheme, whiteSpaceProfile)
+      ? classifySegmentBreakCode(grapheme.charCodeAt(0), whiteSpaceProfile)
       : 'text'
     const wordLike = kind === 'text' && isWordLike
 
