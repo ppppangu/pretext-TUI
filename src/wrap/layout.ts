@@ -32,6 +32,7 @@ import {
   getSegmentBreakableFitAdvances,
   getSegmentMetrics,
   getTerminalMeasurementState,
+  type SegmentMetrics,
 } from './measurement.js'
 import {
   normalizeTerminalTabSize,
@@ -196,75 +197,65 @@ function buildBaseCjkUnits(
   analysisProfile: AnalysisProfile,
 ): MeasuredTextUnit[] {
   const units: MeasuredTextUnit[] = []
-  let unitParts: string[] = []
+  // Graphemes are contiguous slices of segText, so the pending unit is tracked
+  // as a [unitStart, unitEnd) range plus its first grapheme (single-grapheme
+  // units reuse that string) instead of a per-unit parts array.
+  let unitFirstGrapheme = ''
+  let unitGraphemeCount = 0
   let unitStart = 0
+  let unitEnd = 0
   let unitContainsCJK = false
   let unitEndsWithClosingQuote = false
   let unitIsSingleKinsokuEnd = false
-
-  function pushUnit(): void {
-    if (unitParts.length === 0) return
-    units.push({
-      text: unitParts.length === 1 ? unitParts[0]! : unitParts.join(''),
-      start: unitStart,
-    })
-    unitParts = []
-    unitContainsCJK = false
-    unitEndsWithClosingQuote = false
-    unitIsSingleKinsokuEnd = false
-  }
-
-  function startUnit(grapheme: string, start: number, graphemeContainsCJK: boolean): void {
-    unitParts = [grapheme]
-    unitStart = start
-    unitContainsCJK = graphemeContainsCJK
-    unitEndsWithClosingQuote = endsWithClosingQuote(grapheme)
-    unitIsSingleKinsokuEnd = kinsokuEnd.has(grapheme)
-  }
-
-  function appendToUnit(grapheme: string, graphemeContainsCJK: boolean): void {
-    unitParts.push(grapheme)
-    unitContainsCJK = unitContainsCJK || graphemeContainsCJK
-    const graphemeEndsWithClosingQuote = endsWithClosingQuote(grapheme)
-    if (grapheme.length === 1 && leftStickyPunctuation.has(grapheme)) {
-      unitEndsWithClosingQuote = unitEndsWithClosingQuote || graphemeEndsWithClosingQuote
-    } else {
-      unitEndsWithClosingQuote = graphemeEndsWithClosingQuote
-    }
-    unitIsSingleKinsokuEnd = false
-  }
 
   for (const gs of getGraphemeSegmenter().segment(segText)) {
     const grapheme = gs.segment
     const graphemeContainsCJK = isCJK(grapheme)
 
-    if (unitParts.length === 0) {
-      startUnit(grapheme, gs.index, graphemeContainsCJK)
-      continue
+    if (unitGraphemeCount !== 0) {
+      if (
+        unitIsSingleKinsokuEnd ||
+        kinsokuStart.has(grapheme) ||
+        leftStickyPunctuation.has(grapheme) ||
+        (analysisProfile.carryCJKAfterClosingQuote &&
+          graphemeContainsCJK &&
+          unitEndsWithClosingQuote) ||
+        (!unitContainsCJK && !graphemeContainsCJK)
+      ) {
+        unitGraphemeCount++
+        unitEnd = gs.index + grapheme.length
+        unitContainsCJK = unitContainsCJK || graphemeContainsCJK
+        const graphemeEndsWithClosingQuote = endsWithClosingQuote(grapheme)
+        if (grapheme.length === 1 && leftStickyPunctuation.has(grapheme)) {
+          unitEndsWithClosingQuote = unitEndsWithClosingQuote || graphemeEndsWithClosingQuote
+        } else {
+          unitEndsWithClosingQuote = graphemeEndsWithClosingQuote
+        }
+        unitIsSingleKinsokuEnd = false
+        continue
+      }
+
+      units.push({
+        text: unitGraphemeCount === 1 ? unitFirstGrapheme : segText.slice(unitStart, unitEnd),
+        start: unitStart,
+      })
     }
 
-    if (
-      unitIsSingleKinsokuEnd ||
-      kinsokuStart.has(grapheme) ||
-      leftStickyPunctuation.has(grapheme) ||
-      (analysisProfile.carryCJKAfterClosingQuote &&
-        graphemeContainsCJK &&
-        unitEndsWithClosingQuote)
-    ) {
-      appendToUnit(grapheme, graphemeContainsCJK)
-      continue
-    }
-
-    if (!unitContainsCJK && !graphemeContainsCJK) {
-      appendToUnit(grapheme, graphemeContainsCJK)
-      continue
-    }
-
-    pushUnit()
-    startUnit(grapheme, gs.index, graphemeContainsCJK)
+    unitFirstGrapheme = grapheme
+    unitGraphemeCount = 1
+    unitStart = gs.index
+    unitEnd = gs.index + grapheme.length
+    unitContainsCJK = graphemeContainsCJK
+    unitEndsWithClosingQuote = endsWithClosingQuote(grapheme)
+    unitIsSingleKinsokuEnd = kinsokuEnd.has(grapheme)
   }
 
-  pushUnit()
+  if (unitGraphemeCount !== 0) {
+    units.push({
+      text: unitGraphemeCount === 1 ? unitFirstGrapheme : segText.slice(unitStart, unitEnd),
+      start: unitStart,
+    })
+  }
   return units
 }
 
@@ -348,6 +339,7 @@ type SegmentMeasureContext = {
     wordLike: boolean,
     allowOverflowBreaks: boolean,
     segmentBreakAfter: boolean,
+    metrics: SegmentMetrics | null,
   ) => void
   wordBreak: WordBreakMode
   analysisProfile: AnalysisProfile
@@ -373,6 +365,7 @@ function measureCjkTextSegment(
       segWordLike,
       ctx.wordBreak === 'keep-all' || !isCJK(unit.text),
       isLanguageLikeTextSegment(unit.text, segWordLike),
+      null,
     )
   }
 }
@@ -383,6 +376,7 @@ function measurePlainSegment(
   segKind: SegmentBreakKind,
   segStart: number,
   segWordLike: boolean,
+  segMetrics: SegmentMetrics,
 ): void {
   ctx.pushMeasuredTextSegment(
     segText,
@@ -391,6 +385,7 @@ function measurePlainSegment(
     segWordLike,
     true,
     segKind === 'text' && isLanguageLikeTextSegment(segText, segWordLike),
+    segMetrics,
   )
 }
 
@@ -456,8 +451,9 @@ function measureAnalysis(
     wordLike: boolean,
     allowOverflowBreaks: boolean,
     segmentBreakAfter: boolean,
+    metrics: SegmentMetrics | null,
   ): void {
-    const textMetrics = getSegmentMetrics(text, cache)
+    const textMetrics = metrics ?? getSegmentMetrics(text, cache)
     const spacingGraphemeCount = hasLetterSpacing
       ? countRenderedSpacingGraphemes(text, kind)
       : 0
@@ -571,7 +567,7 @@ function measureAnalysis(
       continue
     }
 
-    measurePlainSegment(ctx, segText, segKind, segStart, segWordLike)
+    measurePlainSegment(ctx, segText, segKind, segStart, segWordLike, segMetrics)
   }
 
   finalizeSegmentBreaksAfter(kinds, segmentBreaksAfter)
