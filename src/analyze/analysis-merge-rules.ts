@@ -1,10 +1,14 @@
 // 补建说明：该文件为 R1 重构从 analysis.ts 拆出，集中 URL/数字/ASCII 链/glue 合并与 keep-all、grapheme-continuation、CJK 边界 carry 等段流后处理规则；当前进度：行为冻结迁移。
 import {
+  combiningMarkRe,
   containsCJKText,
+  forwardStickyGlue,
+  getLastCodePoint,
   isCJK,
   isNumericRunSegment,
   isTextRunBoundary,
   joinTextParts,
+  kinsokuEnd,
   segmentContainsDecimalDigit,
   splitTrailingForwardStickyCluster,
 } from './analysis-text-predicates.js'
@@ -37,6 +41,20 @@ function isUrlQueryBoundarySegment(text: string): boolean {
 }
 
 export function mergeUrlLikeRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  // Fires only from a URL-like run start: 'www.'-prefixed text, or a scheme
+  // segment ("xx:", hence ending in ':') followed by a '//' text segment.
+  let hasUrlRunStart = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (segmentation.kinds[i] !== 'text') continue
+    const text = segmentation.texts[i]!
+    if (text.charCodeAt(0) !== 0x77 && text.charCodeAt(text.length - 1) !== 0x3A) continue
+    if (isUrlLikeRunStart(segmentation, i)) {
+      hasUrlRunStart = true
+      break
+    }
+  }
+  if (!hasUrlRunStart) return segmentation
+
   const texts = segmentation.texts.slice()
   const isWordLike = segmentation.isWordLike.slice()
   const kinds = segmentation.kinds.slice()
@@ -87,6 +105,16 @@ export function mergeUrlLikeRuns(segmentation: MergedSegmentation): MergedSegmen
 }
 
 export function mergeUrlQueryRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  // Fires only after a URL query boundary segment ('?' plus '://' or 'www.').
+  let hasQueryBoundary = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (isUrlQueryBoundarySegment(segmentation.texts[i]!)) {
+      hasQueryBoundary = true
+      break
+    }
+  }
+  if (!hasQueryBoundary) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -137,8 +165,21 @@ export function mergeUrlQueryRuns(segmentation: MergedSegmentation): MergedSegme
 
 const asciiPunctuationChainSegmentRe = /^[A-Za-z0-9_]+[.,:;]*$/
 const asciiPunctuationChainTrailingJoinersRe = /[.,:;]+$/
+const containsDecimalDigitRe = /\p{Nd}/u
 
 export function mergeNumericRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  // Fires (including the standalone isWordLike=true rewrite, which needs no
+  // mergeable neighbor) only on a text segment that is a numeric run holding a
+  // \p{Nd} digit; any digit-bearing text segment is a conservative superset.
+  let hasDigitTextSegment = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (segmentation.kinds[i] === 'text' && containsDecimalDigitRe.test(segmentation.texts[i]!)) {
+      hasDigitTextSegment = true
+      break
+    }
+  }
+  if (!hasDigitTextSegment) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -184,6 +225,22 @@ export function mergeNumericRuns(segmentation: MergedSegmentation): MergedSegmen
 }
 
 export function mergeAsciiPunctuationChains(segmentation: MergedSegmentation): MergedSegmentation {
+  // A chain merge needs a word-like text segment ending in one of [.,:;]
+  // followed directly by another word-like text segment; without a merge the
+  // matching branch reproduces its input exactly.
+  let hasChainCandidate = false
+  for (let i = 0; i + 1 < segmentation.len; i++) {
+    if (segmentation.kinds[i] !== 'text' || !segmentation.isWordLike[i]) continue
+    const text = segmentation.texts[i]!
+    const last = text.charCodeAt(text.length - 1)
+    if (last !== 0x2E && last !== 0x2C && last !== 0x3A && last !== 0x3B) continue
+    if (segmentation.kinds[i + 1] === 'text' && segmentation.isWordLike[i + 1]) {
+      hasChainCandidate = true
+      break
+    }
+  }
+  if (!hasChainCandidate) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -236,6 +293,19 @@ export function mergeAsciiPunctuationChains(segmentation: MergedSegmentation): M
 }
 
 export function splitHyphenatedNumericRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  // A split needs a text segment with a '-' whose every part holds a \p{Nd}
+  // digit; '-' plus any digit anywhere is a conservative superset.
+  let hasHyphenDigitSegment = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (segmentation.kinds[i] !== 'text') continue
+    const text = segmentation.texts[i]!
+    if (text.includes('-') && containsDecimalDigitRe.test(text)) {
+      hasHyphenDigitSegment = true
+      break
+    }
+  }
+  if (!hasHyphenDigitSegment) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -289,6 +359,17 @@ export function splitHyphenatedNumericRuns(segmentation: MergedSegmentation): Me
 }
 
 export function mergeGlueConnectedTextRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  // Without any glue segment the walk is a pure copy; every rewrite this pass
+  // performs (including forcing lone-glue isWordLike to false) needs one.
+  let hasGlue = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (segmentation.kinds[i] === 'glue') {
+      hasGlue = true
+      break
+    }
+  }
+  if (!hasGlue) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -365,6 +446,22 @@ export function mergeGlueConnectedTextRuns(segmentation: MergedSegmentation): Me
 }
 
 export function carryTrailingForwardStickyAcrossCJKBoundary(segmentation: MergedSegmentation): MergedSegmentation {
+  // A carry needs adjacent text segments whose left side ends in a sticky
+  // cluster code point (kinsoku-end opener, forward-sticky glue, or combining
+  // mark, mirroring splitTrailingForwardStickyCluster's trailing scan); the
+  // dual isCJK requirement is left to the pass itself.
+  let hasCarryCandidate = false
+  for (let i = 0; i + 1 < segmentation.len; i++) {
+    if (segmentation.kinds[i] !== 'text' || segmentation.kinds[i + 1] !== 'text') continue
+    const last = getLastCodePoint(segmentation.texts[i]!)
+    if (last === null) continue
+    if (kinsokuEnd.has(last) || forwardStickyGlue.has(last) || combiningMarkRe.test(last)) {
+      hasCarryCandidate = true
+      break
+    }
+  }
+  if (!hasCarryCandidate) return segmentation
+
   const texts = segmentation.texts.slice()
   const isWordLike = segmentation.isWordLike.slice()
   const kinds = segmentation.kinds.slice()
@@ -433,6 +530,17 @@ export function mergeKeepAllTextSegments(
 ): MergedSegmentation {
   if (segmentation.len <= 1) return segmentation
 
+  // Keep-all grouping only rewrites groups that contain CJK; with no CJK text
+  // segment every group emits its originals unchanged.
+  let hasCJKText = false
+  for (let i = 0; i < segmentation.len; i++) {
+    if (segmentation.kinds[i] === 'text' && containsCJKText(segmentation.texts[i]!)) {
+      hasCJKText = true
+      break
+    }
+  }
+  if (!hasCJKText) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -499,6 +607,24 @@ export function mergeKeepAllTextSegments(
 const leadingGraphemeContinuationRe = /^[\p{M}\uFE00-\uFE0F\u20E3]/u
 
 export function mergeLeadingGraphemeContinuations(segmentation: MergedSegmentation): MergedSegmentation {
+  // A repair needs a text segment opening with a continuation code point
+  // (the pass's own class: \p{M}, variation selectors, keycap) directly after
+  // a text segment. Checking the input kind at i-1 is exact: only text
+  // segments are ever merged away here, so a non-text input predecessor is
+  // always the output predecessor too.
+  let hasContinuation = false
+  for (let i = 1; i < segmentation.len; i++) {
+    if (
+      segmentation.kinds[i] === 'text' &&
+      segmentation.kinds[i - 1] === 'text' &&
+      leadingGraphemeContinuationRe.test(segmentation.texts[i]!)
+    ) {
+      hasContinuation = true
+      break
+    }
+  }
+  if (!hasContinuation) return segmentation
+
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
