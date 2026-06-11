@@ -57,6 +57,14 @@ bun run package-smoke-test
 
 The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work plus rich/search/selection lookup behavior; these counters are release-regression telemetry, not public benchmark evidence. `memory-budget-check:tui` separately models kernel-owned structure sizes for layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows; it is not process heap telemetry.
 
+## Gate Locale
+
+`Intl.Segmenter` follows the host default locale, so the oracle/corpus/differential nets are locale-sensitive. CI pins `LANG`/`LC_ALL` to `en_US.UTF-8`; run gates locally under the same locale, otherwise word segmentation (and therefore goldens and the word-scanner enablement assertion) can legitimately differ.
+
+## Behavior-Freeze A/B Method
+
+Behavior-frozen refactor series (such as the prepare-pipeline perf series) are verified by an A/B snapshot net in addition to the gates: before the first change, capture `Bun.hash(JSON.stringify(getInternalPreparedTerminalTextDebugSnapshot(prepareTerminal(text, options))))` for every `corpora/*.txt` file plus targeted edge strings across the option matrix (whiteSpace x wordBreak x widthProfile/tabSize variants, plus a locale axis via `setAnalysisLocale`), then re-verify byte-identity after every commit without ever recapturing the baseline. The durable subset of this method lives in the permanent differential tests under `tests/tui/`; the known axis gaps to cover in the next series are listed in `TODO.md`.
+
 ## Golden Maintenance
 
 When an intentional engine behavior change requires updating the layout/width/rich goldens, regenerate `accuracy/tui-reference.json` from the current engine instead of hand-editing JSON:

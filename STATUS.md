@@ -45,6 +45,7 @@ Current hardening covers declaration-checked public API boundaries, host-neutral
 | Track R2 directory layering | Complete and behavior-frozen; src runtime lives in ten ranked layer directories with per-directory READMEs, cross-directory imports point strictly downward, and the static gate enforces the layering DAG |
 | Track R3 streaming maturity | Complete as incubating surfaces with approval records; tail-follow row queries, explicit search match limits with stats, append-friendly range indexes, and the prefix-eviction design RFC landed with counter and memory-budget evidence |
 | Track R4 adoption surface | In-repo items complete; stable 0.1 core promoted, repo-only conformance fixture kit and Unicode upgrade policy landed; external proof-of-concept hosts and docs-site continuity remain external or deferred |
+| Prepare-pipeline perf series | Complete and behavior-frozen; width-profile idempotency, ASCII split fast path, de-closured merge pipeline, merge-pass prescans, per-prepare CJK unit memo, and the probe-parameterized ASCII word scanner landed with debug-snapshot A/B nets byte-identical and permanent differential gates in tests/tui; WASM kernel rejected with recorded re-open conditions |
 
 ## Reference Map
 
