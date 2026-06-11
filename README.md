@@ -1,127 +1,44 @@
 # pretext-TUI
 
-Long terminal text should not have to be rewrapped from scratch just to draw one viewport.
+[![npm version](https://img.shields.io/npm/v/pretext-tui.svg)](https://www.npmjs.com/package/pretext-tui)
+[![TUI validation](https://github.com/ppppangu/pretext-TUI/actions/workflows/ci-tui.yml/badge.svg)](https://github.com/ppppangu/pretext-TUI/actions/workflows/ci-tui.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ppppangu/pretext-TUI/blob/main/LICENSE)
 
-Host-neutral terminal-cell text layout primitives for TUIs, CLIs, log viewers, transcript panes, editor panes, terminal dashboards, and other text-heavy terminal hosts.
+[Website](https://pretext-tui.pages.dev/) · [npm](https://www.npmjs.com/package/pretext-tui) · [Docs & evidence](https://github.com/ppppangu/pretext-TUI/tree/main/docs) · [Changelog](https://github.com/ppppangu/pretext-TUI/blob/main/CHANGELOG.md)
 
-`pretext-TUI` takes the best idea from Pretext - separate text analysis from layout and materialization - and moves it from browser pixels into terminal cells. It gives terminal hosts a deterministic `prepare -> layout -> range -> materialize` pipeline for Unicode text, ANSI-style rich metadata, source offsets, and large scrollable buffers.
+**Long terminal text should not rewrap an entire buffer just to draw one viewport.**
+
+`pretext-TUI` is a host-neutral terminal-cell text layout core for long terminal text: prepare once, seek rows by range, and materialize only the viewport the host needs. It is built for TUIs, CLIs, log viewers, transcript panes, editor panes, terminal dashboards, and other text-heavy terminal hosts.
 
 It is not a renderer, not a terminal emulator, and not a full TUI framework. It is the text layout engine you put under one.
 
-## Release Status
-
-Current package version: `0.1.0`.
-
-This is a pre-1.0 release. The core `prepare -> layout/range -> materialize` surface (`prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, and `TERMINAL_START_CURSOR`) is stable as of `0.1.0`; breaking changes to it before `1.0` require a minor version bump. Advanced public surfaces such as fixed-column indexes, page caches, layout bundles, source projection, range sidecars, search sessions, selection/extraction, append-only cell flows, and rich inline metadata remain incubating unless a future approval record explicitly promotes them.
-
-Repository-only evidence docs are not shipped in the npm tarball. Browse the current evidence pack, contracts, recipes, and production notes in the repository: <https://github.com/ppppangu/pretext-TUI/tree/main/docs>.
+```text
+visible terminal text
+  -> prepareTerminal(text, options)        one reusable Unicode/width analysis pass
+  -> layoutTerminal(columns) / row ranges  arithmetic-only layout over terminal cells
+  -> materialize only the visible rows     strings on demand, not per frame
+```
 
 ## Why
 
-Modern terminal apps are becoming text-heavy again:
+Modern terminal apps behave like text-heavy products again:
 
 - command output, tool logs, patches, stack traces, and diffs
 - structured terminal transcripts, command/session logs, review streams, notebooks, and source preview panes
-- terminal multiplexer panes that need resize-aware and scroll-aware layout data
+- multiplexer-like panes that must survive resize and deep scroll jumps
 - editor plugins and terminal buffers that need source-aware wrapping
 - rich ANSI logs with colors and links
-- notes, markdown-ish prose, multilingual text, emoji, tabs, and CJK in the same viewport
+- prose, markdown-ish notes, CJK, emoji, tabs, combining marks, and zero-width breaks in the same viewport
 
-The naive path is to wrap the whole string whenever the terminal resizes or the user scrolls. That works until the transcript gets large, the viewport jumps to row 2,000, or every render has to rebuild strings just to find the visible rows.
+The usual answer is to rewrap the whole string whenever the terminal resizes or the user scrolls. That works until the transcript gets long, the viewport jumps to row 2,000, and every frame rebuilds strings just to find twelve visible rows.
 
-`pretext-TUI` is built around a different contract:
+`pretext-TUI` flips the order: rows and ranges first, strings only when the viewport asks.
 
-```text
-visible terminal text
--> prepareTerminal(text, options)
--> walk rows as ranges
--> materialize only the rows the host needs
-```
-
-## Performance Snapshot
-
-For a quick local feel check, run:
-
-```sh
-bun run demo:compare:tui
-```
-
-It prints frame-budget meters for the same repeated viewport-scroll workload: a conventional full-wrap-and-slice loop versus a `pretext-TUI` prepared text plus sparse page-cache loop. Treat this as a tactile developer demo, not public benchmark evidence.
-
-Optional local comparison command from the repository:
-
-```sh
-bun run benchmark:competitive:tui
-```
-
-This is a text-layout primitive comparison, not a full application renderer or event-loop benchmark and not a release guarantee. The command prints OS/runtime/CPU/dependency/git metadata so you can reproduce a local sample on your own machine.
-
-For report-shaped evidence with raw samples, statistics, source hashes, runtime metadata, dependency versions, and comparator semantic caveats, use:
-
-```sh
-bun run benchmark:evidence:tui
-```
-
-That writes a local `pretext-tui-benchmark-evidence@1` JSON report under `docs/evidence/benchmark-reports/`. Treat report ids, not copied numbers, as the durable citation target.
-
-Current repository evidence includes report `competitive-tui-20260610-306debd-clean-fd7b8b9f`, including workload `large-page-seek` and a comparator semantic matrix. It is local text-layout evidence for a clean commit, not a renderer benchmark, not a release guarantee, and not a broad speed claim.
-
-Evidence reports include a hot viewport-seeking workload over a long fixed-column terminal buffer: prepared text, sparse row index, and page cache are reused, and only requested rows are materialized.
-
-Treat local comparison output as workload-specific evidence: cache state, fixed columns, reused indexes, comparator semantics, runtime, hardware, and corpus all matter. Hard numbers belong in reproducible evidence reports, not copied into the public package story.
-
-The honest read: `pretext-TUI` does more semantic work than a tiny greedy one-shot wrapper, so simple one-shot wrapping can favor smaller semantics-lite baselines. Rich SGR wrapping is about metadata structure, not headline timing. Its design priorities are long-buffer paging, source-aware ranges, viewport seeking, resize reuse, and structured rich metadata.
-
-The release benchmark gate is separate:
-
-```sh
-bun run benchmark-check:tui
-```
-
-That gate checks deterministic counters and conservative wall-clock budgets for the package itself. Its explicit validation instrumentation is default-off in normal runtime code and tracks prepared geometry reuse plus rich index lookup behavior as regression telemetry. The competitive benchmark is an optional local comparison harness, not a release guarantee and not a full application renderer or event-loop benchmark.
-
-Phase 9 also adds an internal memory-budget release check:
-
-```sh
-bun run memory-budget-check:tui
-```
-
-That gate uses a documented model for kernel-owned structures such as layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows. It is release evidence for package-owned data structures, not process heap telemetry and not host UI memory evidence.
-
-## What Makes It Different
-
-- **Prepare once, relayout many times.** Reusable text analysis, terminal-width preparation, and source metadata live in prepared state. Width-dependent line/page caches stay separate.
-- **Terminal cells, not browser pixels.** Width is integer terminal cells. There is no DOM, Canvas, CSS, font string, or browser measurement contract in the active runtime.
-- **Ranges before strings.** You can walk line ranges without materializing text, then materialize only visible rows.
-- **Large text primitives.** Sparse row anchors, fixed-column page caches, source-offset lookup, and append invalidation metadata are designed for long transcripts and logs.
-- **Generic range sidecar.** Hosts can index source ranges with inert ids, kinds, tags, and data without teaching the package any application semantics.
-- **Source-first search sessions.** Hosts can search sanitized visible source text and project hits into rows only when they need layout coordinates.
-- **Rich metadata sidecar.** Plain text stays strict. ANSI `SGR` and `OSC8` links use an opt-in rich path that keeps style/link metadata separate from layout, with package-owned span indexes behind the public snapshot data.
-- **Host-neutral by design.** Works under a renderer, pane system, CLI, editor plugin, terminal dashboard, or terminal UI framework without importing any of them.
-
-## Target Use Cases
-
-`pretext-TUI` is a good fit when the host already owns rendering/input, but needs better terminal text layout data.
-
-| Host scenario | Why it helps |
-| --- | --- |
-| Structured terminal transcripts | Command/session logs, review streams, notebooks, patches, code, tables, and prose can share one source-aware wrapping and visible-window materialization path. |
-| Long log viewers | Sparse anchors and page caches let fixed-column viewport workflows reuse range/page metadata for repeated jumps instead of treating every jump as a fresh whole-buffer materialization problem. |
-| Terminal panes | Resize can relayout prepared text across new column widths without carrying browser or renderer state. |
-| Editor and terminal plugins | Source offsets and grapheme-safe ranges are useful for host-owned search, selection, copy, cursor mapping, diagnostics, and preview panes. |
-| Structured block metadata | Generic source ranges let hosts map visible rows back to their own blocks, diagnostics, records, or annotations without adding a host adapter. |
-| Rich ANSI transcript viewers | The rich sidecar preserves inline style/link spans while keeping unsupported terminal controls out of core layout. |
-| Multilingual terminal UIs | CJK, emoji, combining marks, tabs, zero-width breaks, and soft hyphens are handled through deterministic terminal-width profiles. |
-
-## Install
+## Quickstart
 
 ```sh
 npm install pretext-tui@0.1.0
 ```
-
-The package root exports the terminal API. `./terminal` is an alias for the same API. `./terminal-rich-inline` is the opt-in rich metadata path.
-
-## Core API
 
 ```ts
 import {
@@ -131,27 +48,56 @@ import {
   walkTerminalLineRanges,
 } from 'pretext-tui'
 
+// One reusable analysis pass: segmentation, terminal widths, source offsets.
 const prepared = prepareTerminal('hello 世界 🚀\nstatus\tok', {
   whiteSpace: 'pre-wrap',
   tabSize: 4,
 })
 
+// Arithmetic-only layout: how many rows at 40 columns?
 const stats = layoutTerminal(prepared, { columns: 40 })
 console.log(stats.rows)
 
+// Walk row ranges without building strings, then materialize only what you show.
 walkTerminalLineRanges(prepared, { columns: 40 }, line => {
   const row = materializeTerminalLineRange(prepared, line)
   console.log(row.text)
 })
 ```
 
-`prepareTerminal()` performs the reusable analysis pass. Layout APIs work in terminal columns and return row/range metadata. Materializers turn only requested ranges into renderable text.
+Resize is just another layout pass over the same prepared text — no re-analysis. The package root and `pretext-tui/terminal` export the same terminal API; `pretext-tui/terminal-rich-inline` is the opt-in rich ANSI metadata path.
 
-## Large Text Paging
+### See It Run
 
-For large terminal buffers, use the fixed-column virtual text helpers. `createTerminalLayoutBundle()` is the recommended convenience handle when one viewport needs a source-offset index, sparse row index, and page cache that invalidate together.
+From a repository clone:
 
-These helpers are public but incubating until a future approval record explicitly promotes them. The stable core remains `prepare -> layout/range -> materialize`; sparse line indexes, page caches, source-offset indexes, layout bundles, and append invalidation metadata may still be refined while staying host-neutral.
+```sh
+bun install
+bun run terminal-demo --columns=52 --fixture=mixed-terminal-session
+```
+
+```text
+[1] row-count precomputation
+  52 cols -> 31 rows
+
+[2] resize reflow
+  36 cols -> 41 rows
+  52 cols -> 31 rows
+  68 cols -> 27 rows
+
+[3] visible window start=0 size=12
+001 | $ pretext-tui demo --profile terminal-unicode-  [w=46, break=wrap, source=0:46]
+002 | narrow@1  [w=8, break=hard, source=46:54]
+003 | [09:41:02] INFO  preparing terminal transcript  [w=46, break=hard, source=55:101]
+004 | [09:41:02] WARN  long URL will wrap:   [w=37, break=wrap, source=102:139]
+...
+```
+
+Every materialized row carries its cell width, break kind, and UTF-16 source range — the metadata a host needs for search, selection, copy, cursor mapping, and diagnostics.
+
+## Long Buffers: Pages, Not Re-Wraps
+
+For large terminal buffers, the fixed-column virtual text helpers turn deep scroll jumps into cache lookups instead of whole-buffer work. `createTerminalLayoutBundle()` is the convenience handle when one viewport needs a source-offset index, sparse row index, and page cache that invalidate together.
 
 ```ts
 import {
@@ -169,6 +115,7 @@ const bundle = createTerminalLayoutBundle(prepared, {
   maxPages: 8,
 })
 
+// Jump straight to row 1200 — sparse anchors + page cache, no full rewrap.
 const page = getTerminalLayoutBundlePage(prepared, bundle, {
   startRow: 1200,
   rowCount: 24,
@@ -177,21 +124,66 @@ const page = getTerminalLayoutBundlePage(prepared, bundle, {
 const visibleRows = materializeTerminalLinePage(prepared, page)
 ```
 
-These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text/index that created them, so hosts can use them without depending on anchor or page internals. Lower-level line-index and page-cache primitives remain available for advanced custom choreography; the bundle reduces handle plumbing for the common viewport case.
+These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text that created them, so hosts can use them without depending on anchor or page internals. Lower-level line-index and page-cache primitives remain available for custom choreography. The paging helpers are public but incubating (see [Stability](#stability)); the stable core remains `prepare -> layout/range -> materialize`.
 
-Append support is append-only and still incubating, but it now uses internal chunked storage behind the opaque `PreparedTerminalCellFlow` handle. The release benchmark gate includes 1,000-small-append workloads that assert no full-reprepare fallback and bounded analyzed source units per append. Arbitrary insert/delete/replace editing, destructive prefix eviction, host retention policy, and UI lifecycle still belong outside this package.
+For growing transcripts there is incubating append support: append-only chunked storage behind the opaque `PreparedTerminalCellFlow` handle, plus tail-follow helpers (`getTerminalLayoutBundleTailPage`, `getTerminalLineIndexTailRanges`, `measureTerminalLayoutBundleRows`) so follow-mode viewports can fetch the last rows of a growing buffer without re-deriving totals after every append. The release benchmark gate includes 1,000-small-append workloads that assert no full-reprepare fallback and bounded analyzed source units per append. Arbitrary insert/delete/replace editing, destructive prefix eviction, host retention policy, and UI lifecycle stay outside this package.
 
-## Coordinate And Source Mapping
+## What Makes It Different
 
-Coordinate projection helpers are public but incubating. They map between UTF-16 source offsets, package-owned terminal cursors, terminal rows, terminal cell columns, and source-range fragments over a fixed-column line index.
+- **Prepare once, relayout many times.** Reusable text analysis, terminal-width preparation, and source metadata live in prepared state. Width-dependent line/page caches stay separate.
+- **Terminal cells, not browser pixels.** Width is integer terminal cells. No DOM, Canvas, CSS, font string, or browser measurement contract anywhere in the active runtime.
+- **Ranges before strings.** You can walk line ranges without materializing text, then materialize only visible rows.
+- **Large text primitives.** Sparse row anchors, fixed-column page caches, source-offset lookup, and append invalidation metadata are designed for long transcripts and logs.
+- **Generic range sidecar.** Hosts can index source ranges with inert ids, kinds, tags, and data without teaching the package any application semantics.
+- **Source-first search sessions.** Hosts can search sanitized visible source text and project hits into rows only when they need layout coordinates.
+- **Rich metadata sidecar.** Plain text stays strict. ANSI `SGR` and `OSC8` links use an opt-in rich path that keeps style/link metadata separate from layout.
+- **Host-neutral by design.** Works under a renderer, pane system, CLI, editor plugin, terminal dashboard, or terminal UI framework without importing any of them.
 
-Projection helpers accept either explicit `{ sourceIndex, lineIndex }` handles or a `TerminalLayoutBundle`. Bundle invalidation refreshes the bundle's source-offset index together with line/page invalidation for the supplied prepared text.
+## Where It Fits
 
-Hosts own search UI, selection state, caret behavior, hover behavior, and highlighting. The package only returns source offsets, rows, columns, cursors, and generic range fragments that a host can use to implement those workflows.
+`pretext-TUI` is a good fit when the host already owns rendering and input, but needs better terminal text layout data.
 
-## Selection And Extraction
+| Host scenario | Why it helps |
+| --- | --- |
+| Structured terminal transcripts | Command/session logs, review streams, notebooks, patches, code, tables, and prose share one source-aware wrapping and visible-window materialization path. |
+| Long log viewers | Sparse anchors and page caches let fixed-column viewports reuse range/page metadata for repeated jumps instead of treating every jump as a fresh whole-buffer problem. |
+| Terminal panes | Resize relayouts prepared text across new column widths without carrying browser or renderer state. |
+| Editor and terminal plugins | Source offsets and grapheme-safe ranges power host-owned search, selection, copy, cursor mapping, diagnostics, and preview panes. |
+| Structured block metadata | Generic source ranges map visible rows back to host blocks, diagnostics, records, or annotations without a host adapter. |
+| Rich ANSI transcript viewers | The rich sidecar preserves inline style/link spans while keeping unsupported terminal controls out of core layout. |
+| Multilingual terminal UIs | CJK, emoji, combining marks, tabs, zero-width breaks, and soft hyphens are handled through deterministic terminal-width profiles. |
 
-Selection and extraction helpers are public but incubating. They turn host-provided terminal coordinates or source ranges into immutable source-first data. They do not store active selection state and they do not copy to a clipboard.
+## Performance, Honestly
+
+`pretext-TUI` is architected for the workloads where long-text hosts actually hurt — repeated viewport seeks over a long prepared buffer, resize reuse, and source-aware ranges — not for winning one-shot wrapping micro-races.
+
+For a tactile feel on your own machine, from a repository clone:
+
+```sh
+bun run demo:compare:tui            # frame-budget meters: full-rewrap loop vs prepared + page-cache loop
+bun run benchmark:competitive:tui   # local text-layout comparison with full environment metadata
+bun run benchmark:evidence:tui      # report-shaped evidence JSON with raw samples and statistics
+```
+
+In local optional text-layout evidence report `competitive-tui-20260610-306debd-clean-fd7b8b9f`, workload `large-page-seek` shows hot fixed-column large-page seeking with prepared text, sparse row index, and page cache reused. The JSON report under [`docs/evidence/benchmark-reports/`](https://github.com/ppppangu/pretext-TUI/tree/main/docs/evidence/benchmark-reports) carries raw samples, timing statistics, OS/CPU/runtime/dependency metadata, and comparator semantic caveats. Treat report ids, not copied numbers, as the durable citation target.
+
+The honest read: `pretext-TUI` does more semantic work than a tiny greedy one-shot wrapper, so simple one-shot wrapping can favor smaller semantics-lite baselines, and rich SGR wrapping is about metadata structure, not headline timing. These are local, workload-specific text-layout comparisons — not renderer or event-loop benchmarks, and not a release guarantee.
+
+Separately from the optional comparison harness, every release runs deterministic performance gates: `bun run benchmark-check:tui` checks reuse counters and conservative wall-clock budgets for the package itself, and `bun run memory-budget-check:tui` checks a documented memory model for kernel-owned structures (layout bundles, range indexes, search sessions, selection extraction, rich sidecars, append-only cell flows). Those gates are internal release evidence, not public performance benchmarks.
+
+## Beyond Wrapping: Host Workflow Surfaces
+
+The stable core is `prepare -> layout/range -> materialize`. Around it, the package ships public but incubating surfaces for the workflows real hosts build next. Incubating means shipped, tested, and gated — but still allowed to be refined before promotion (see [Stability](#stability)).
+
+### Coordinate And Source Mapping
+
+Projection helpers map between UTF-16 source offsets, package-owned terminal cursors, terminal rows, terminal cell columns, and source-range fragments over a fixed-column line index. They accept explicit `{ sourceIndex, lineIndex }` handles or a `TerminalLayoutBundle`; bundle invalidation refreshes the source-offset index together with line/page invalidation.
+
+Hosts own search UI, selection state, caret behavior, hover behavior, and highlighting. The package only returns offsets, rows, columns, cursors, and generic range fragments to build those on.
+
+### Selection And Extraction
+
+Selection helpers turn host-provided terminal coordinates or source ranges into immutable source-first data. They do not store active selection state and do not touch the clipboard.
 
 ```ts
 import {
@@ -218,11 +210,11 @@ if (selection) {
 }
 ```
 
-Extraction returns `sourceText`, deterministic `visibleText`, row fragments, optional generic range matches, and source/row bounds. Hosts still own drag behavior, selection state, rendering, copy formatting, clipboard writes, and active-result policy. Rich extraction helpers live under `pretext-tui/terminal-rich-inline` so style/link fragments stay in the rich sidecar.
+Extraction returns `sourceText`, deterministic `visibleText`, row fragments, optional generic range matches, and source/row bounds. Hosts own drag behavior, selection state, rendering, copy formatting, and clipboard writes. Rich extraction helpers live under `pretext-tui/terminal-rich-inline` so style/link fragments stay in the rich sidecar.
 
-## Generic Range Sidecar
+### Generic Range Sidecar
 
-`TerminalRangeIndex` is a public but incubating host-neutral index over UTF-16 source ranges. It is useful when the host has block, annotation, diagnostic, or record metadata keyed to the same visible source string used by `prepareTerminal()`.
+`TerminalRangeIndex` is a host-neutral index over UTF-16 source ranges — useful when the host has block, annotation, diagnostic, or record metadata keyed to the same visible source string used by `prepareTerminal()`. Growing transcripts can extend it incrementally with `appendTerminalRanges()`.
 
 ```ts
 import {
@@ -249,11 +241,11 @@ const overlapping = getTerminalRangesForSourceRange(ranges, {
 })
 ```
 
-Range metadata is inert data. The package validates, clones, freezes, indexes, and returns ranges, but it does not interpret `id`, `kind`, `tags`, or `data`, and it does not implement domain actions.
+Range metadata is inert data. The package validates, clones, freezes, indexes, and returns ranges, but it never interprets `id`, `kind`, `tags`, or `data`, and it does not implement domain actions.
 
-## Source-First Search
+### Source-First Search
 
-Search sessions are public but incubating. They search the same sanitized visible source text used by `prepareTerminal()`, so a hit is first a UTF-16 source range. Row and column data are optional projection metadata when the host supplies a source/line index pair or a `TerminalLayoutBundle`.
+Search sessions search the same sanitized visible source text used by `prepareTerminal()`, so a hit is first a UTF-16 source range. Row and column data are optional projection metadata when the host supplies indexes or a bundle.
 
 ```ts
 import {
@@ -273,13 +265,11 @@ const session = createTerminalSearchSession(prepared, /error \d+/i, {
 const hits = getTerminalSearchMatchesForSourceRange(session, { limit: 20 })
 ```
 
-Supported modes are literal and regex search, with optional case-insensitive matching, ASCII whole-word filtering, explicit source scopes, and generic range-index scopes. Regex searches reject zero-width matches so scans cannot loop forever. The package returns immutable hit data with `sourceStart`, `sourceEnd`, `matchText`, optional `scopeId`, and optional projection fragments. Hosts own search boxes, active-match state, result panes, highlighting, keyboard shortcuts, and persistence.
+Supported modes are literal and regex search, with optional case-insensitive matching, ASCII whole-word filtering, explicit source scopes, generic range-index scopes, and an opt-in stored-match limit with detectable truncation. Regex searches reject zero-width matches so scans cannot loop forever. Hosts own search boxes, active-match state, result panes, highlighting, keyboard shortcuts, and persistence.
 
-## Rich ANSI Metadata
+### Rich ANSI Metadata
 
-Plain core input rejects raw terminal controls. For inline style/link metadata, use the rich sidecar:
-
-The `pretext-tui/terminal-rich-inline` entry point is public but incubating. Treat it as policy-bound metadata extraction, not a terminal emulator or renderer.
+Plain core input rejects raw terminal controls. For inline style/link metadata, use the rich sidecar at `pretext-tui/terminal-rich-inline` — policy-bound metadata extraction, not a terminal emulator.
 
 ```ts
 import {
@@ -312,7 +302,7 @@ if (line) {
 }
 ```
 
-The rich path supports inline `SGR` style spans and `OSC8` links. Unsupported terminal control sequences are rejected or sanitized so cursor movement, erase commands, alt-screen switches, mouse modes, clipboard controls, and similar behaviors never enter layout.
+The rich path supports inline `SGR` style spans and `OSC8` links. Unsupported control sequences are rejected or sanitized, so cursor movement, erase commands, alt-screen switches, mouse modes, and clipboard controls never enter layout.
 
 Security defaults are conservative:
 
@@ -336,18 +326,27 @@ The active contract is terminal-first:
 - source offsets: UTF-16 over sanitized visible text
 - bidi/shaping/rendering policy: host-owned beyond logical-order layout metadata
 
-Repository contributors can find the full terminal contract, host boundary, and public/private API boundary under `docs/contracts/`. The npm package README summarizes those contracts because repository-only docs are not shipped in the package tarball.
+The full terminal contract, host boundary, and public/private API boundary live under [`docs/contracts/`](https://github.com/ppppangu/pretext-TUI/tree/main/docs/contracts) in the repository. This README summarizes them because repository-only docs are not shipped in the npm tarball.
+
+## Stability
+
+Current package version: `0.1.0` (pre-1.0).
+
+The stable core seven — `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, and `TERMINAL_START_CURSOR` — are stable as of `0.1.0`: breaking changes to them before `1.0` require a minor version bump.
+
+Advanced public surfaces — fixed-column indexes, page caches, layout bundles, source projection, range sidecars, search sessions, selection/extraction, append-only cell flows, and rich inline metadata — are incubating: shipped and validated, but refinable until an approval record explicitly promotes them.
+
+Repository-only evidence docs, contracts, recipes, and production notes live at <https://github.com/ppppangu/pretext-TUI/tree/main/docs>.
 
 ## Validation
 
-The publish gate is:
+Skeptical by default — the publish gate is one command:
 
 ```sh
 bun run prepublishOnly
 ```
 
-It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, terminal demo checks, API snapshot checks, and package smoke tests.
-It also runs the internal modelled memory-budget gate for kernel-owned structures.
+It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, deterministic oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, the modelled memory-budget gate, terminal demo checks, API snapshot checks, and package smoke tests.
 
 Useful focused commands:
 
@@ -369,15 +368,9 @@ Host applications own rendering, input, panes, focus, scrolling, persistence, fi
 
 This keeps the package useful for many hosts without bundling application-specific adapter code for any one of them.
 
-Repository contributors can use `docs/roadmap/` for future adoption planning and `docs/marketing/` for launch-copy guardrails. Those files are planning artifacts, not shipped package documentation.
+## Provenance
 
-Phase 10 launch-readiness work is approved with documented residual risk in the repository decision docs. It links the public API boundary, incubating API index, evidence matrices, recipes, production notes, and evidence report ids, but it does not promote incubating APIs to stable `0.1`.
-
-## Provenance And Product Boundary
-
-`pretext-TUI` began as a migration of the MIT-licensed upstream Pretext architecture and code lineage from `@chenglou/pretext`, but the active runtime is now terminal-cell layout instead of browser text measurement.
-
-This package is independently maintained as `pretext-tui`. It is not upstream Pretext, not a browser text-measurement package, and not a drop-in replacement for `@chenglou/pretext`.
+`pretext-TUI` began as a migration of the MIT-licensed upstream Pretext architecture and code lineage from `@chenglou/pretext`, but the active runtime is now terminal-cell layout instead of browser text measurement. It is independently maintained as `pretext-tui` — not upstream Pretext, not a browser text-measurement package, and not a drop-in replacement for `@chenglou/pretext`.
 
 Kept from Pretext:
 
@@ -394,7 +387,7 @@ Added or changed for `pretext-TUI`:
 - rich `SGR`/`OSC8` sidecar
 - sparse row anchors and fixed-column page caches
 - source-offset lookup for terminal rows/cursors
-- append invalidation metadata for growing transcripts
+- append-only cell flows and tail-follow queries for growing transcripts
 - deterministic TUI oracle, corpus, fuzz, benchmark, demo, and package smoke gates
 
 Thanks to the original Pretext project and its text-layout research lineage for the architectural seed. `pretext-TUI` carries that idea into modern terminal applications while keeping a separate package identity and product boundary.
