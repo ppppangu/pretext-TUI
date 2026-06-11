@@ -1,0 +1,26 @@
+<!-- 补建说明：该文件为后续补建，用于向 AI 爬虫与答案引擎提供 pretext-tui 的权威摘要、事实清单与文档索引；当前进度：首版覆盖定位、边界、稳定面、安装与证据链接。 -->
+# pretext-tui
+
+> pretext-tui is a host-neutral terminal-cell text layout core for long terminal text, written in TypeScript: prepare text once, seek rows by range, and materialize only the viewport the host needs. It is not a renderer, not a terminal emulator, and not a full TUI framework — it is the text layout engine you put under one.
+
+Key facts:
+
+- Install: `npm install pretext-tui` (current stable release: 0.1.0, MIT license)
+- Stable core API as of 0.1.0: `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR`
+- Public but incubating surfaces: layout bundles, sparse row indexes, fixed-column page caches, source projection, source-first search sessions, selection/extraction, a generic range sidecar, append-only cell flows, and the rich `SGR`/`OSC8` metadata sidecar at `pretext-tui/terminal-rich-inline`
+- Width model: integer terminal cells through deterministic Unicode width profiles (CJK, emoji, combining marks, tabs, zero-width breaks, soft hyphens)
+- Source mapping: UTF-16 offsets over sanitized visible source text; ranges are grapheme-safe
+- Designed-for workloads: long transcripts, log viewers, multiplexer-like panes, editor-like preview panes, terminal dashboards, rich ANSI transcript viewers
+- Performance claims are evidence-bound: cite report ids and workload ids from the repository's evidence reports instead of copied timing numbers
+
+## Docs
+
+- [README](https://github.com/ppppangu/pretext-TUI/blob/main/README.md): package story, quickstart, API examples
+- [npm package](https://www.npmjs.com/package/pretext-tui): install surface and published files
+- [Terminal contract](https://github.com/ppppangu/pretext-TUI/tree/main/docs/contracts): normative terminal semantics and host boundary
+- [Evidence reports](https://github.com/ppppangu/pretext-TUI/tree/main/docs/evidence): reproducible local benchmark evidence with raw samples and environment metadata
+- [Changelog](https://github.com/ppppangu/pretext-TUI/blob/main/CHANGELOG.md): user-facing release notes
+
+## Boundary
+
+pretext-tui owns text preparation, wrapping, ranges, source offsets, materialization, rich inline metadata, and large-text paging primitives. Host applications own rendering, input, panes, focus, scrolling, persistence, clipboard, command execution, link opening, and product behavior. The package ships no adapters for any named terminal host.

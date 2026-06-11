@@ -16,6 +16,10 @@
     "unicode"
   ],
   "license": "MIT",
+  "homepage": "https://pretext-tui.pages.dev/",
+  "bugs": {
+    "url": "https://github.com/ppppangu/pretext-TUI/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ppppangu/pretext-TUI.git"

@@ -44,7 +44,55 @@
           "terminal wrapping",
           "TypeScript"
         ],
-        "softwareVersion": "0.1.0-alpha.0"
+        "softwareVersion": "0.1.0"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is pretext-tui?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "pretext-tui is a host-neutral terminal-cell text layout core for long terminal text, written in TypeScript. It prepares text once, lays out rows as ranges over integer terminal cells, and materializes only the rows a host viewport needs."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is pretext-tui a TUI framework, renderer, or terminal emulator?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. It is the text layout engine you put under one. Host applications own rendering, input, panes, scrolling, clipboard, and product behavior; the package owns layout data such as rows, ranges, source offsets, and rich inline metadata."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does pretext-tui handle very long terminal buffers?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Prepared text is analyzed once and reused across relayouts. Fixed-column sparse row anchors and page caches let a viewport jump deep into a long transcript and fetch only the requested rows instead of rewrapping the whole buffer. Performance language stays tied to reproducible evidence reports in the repository."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does pretext-tui support ANSI colors, styles, and hyperlinks?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Plain core input rejects raw terminal controls. An opt-in rich sidecar extracts inline SGR style spans and OSC8 links with conservative policy-bound defaults: unsupported control sequences are rejected or sanitized, diagnostics are redacted by default, and ANSI reconstruction is explicit opt-in."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does pretext-tui handle CJK, emoji, and Unicode width?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Width is integer terminal cells computed through deterministic terminal width profiles covering CJK, emoji, combining marks, tabs, zero-width breaks, and soft hyphens. Source offsets are UTF-16 over sanitized visible text, and ranges are grapheme-safe."
+            }
+          }
+        ]
       }
     </script>
   </head>
@@ -92,13 +140,13 @@
             `pretext-tui` is a host-neutral TypeScript kernel for TUI, CLI, log, transcript, editor-pane, and dashboard hosts. Prepare text once, reflow by terminal columns, and materialize only the rows your host needs.
           </p>
           <div class="hero-actions" aria-label="Primary calls to action">
-            <a class="button primary" href="#install">Install alpha</a>
+            <a class="button primary" href="#install">Install 0.1.0</a>
             <a class="button ghost" href="https://github.com/ppppangu/pretext-TUI">View source</a>
           </div>
           <dl class="hero-facts" aria-label="Package facts">
             <div>
               <dt>Current release</dt>
-              <dd>0.1.0-alpha.0</dd>
+              <dd>0.1.0</dd>
             </div>
             <div>
               <dt>Runtime target</dt>
@@ -189,7 +237,7 @@
         <div class="section-inner code-stage">
           <div>
             <p class="eyebrow">Install</p>
-            <h2 id="install-title">Published on npm as an alpha.</h2>
+            <h2 id="install-title">Published on npm. The core seven APIs are stable as of 0.1.0.</h2>
             <p>
               The root package exports the terminal API. `pretext-tui/terminal` is the explicit alias, and `pretext-tui/terminal-rich-inline` is the opt-in rich metadata sidecar.
             </p>
@@ -197,9 +245,9 @@
           <div class="code-window" role="group" aria-label="Install command">
             <div class="window-bar">
               <span></span><span></span><span></span>
-              <button class="copy-button" type="button" data-copy="npm install pretext-tui@next">Copy</button>
+              <button class="copy-button" type="button" data-copy="npm install pretext-tui">Copy</button>
             </div>
-            <pre><code>npm install pretext-tui@next</code></pre>
+            <pre><code>npm install pretext-tui</code></pre>
           </div>
         </div>
       </section>
@@ -348,6 +396,33 @@ walkTerminalLineRanges(prepared, { columns: 40 }, line => {
               <li>Command execution and product behavior</li>
             </ul>
           </div>
+        </div>
+      </section>
+
+      <section class="section" id="faq" aria-labelledby="faq-title">
+        <div class="section-inner">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">Quick answers.</h2>
+          <h3>What is pretext-tui?</h3>
+          <p>
+            pretext-tui is a host-neutral terminal-cell text layout core for long terminal text, written in TypeScript. It prepares text once, lays out rows as ranges over integer terminal cells, and materializes only the rows a host viewport needs.
+          </p>
+          <h3>Is pretext-tui a TUI framework, renderer, or terminal emulator?</h3>
+          <p>
+            No. It is the text layout engine you put under one. Host applications own rendering, input, panes, scrolling, clipboard, and product behavior; the package owns layout data such as rows, ranges, source offsets, and rich inline metadata.
+          </p>
+          <h3>How does pretext-tui handle very long terminal buffers?</h3>
+          <p>
+            Prepared text is analyzed once and reused across relayouts. Fixed-column sparse row anchors and page caches let a viewport jump deep into a long transcript and fetch only the requested rows instead of rewrapping the whole buffer. Performance language stays tied to reproducible evidence reports in the repository.
+          </p>
+          <h3>Does pretext-tui support ANSI colors, styles, and hyperlinks?</h3>
+          <p>
+            Plain core input rejects raw terminal controls. An opt-in rich sidecar extracts inline SGR style spans and OSC8 links with conservative policy-bound defaults: unsupported control sequences are rejected or sanitized, diagnostics are redacted by default, and ANSI reconstruction is explicit opt-in.
+          </p>
+          <h3>How does pretext-tui handle CJK, emoji, and Unicode width?</h3>
+          <p>
+            Width is integer terminal cells computed through deterministic terminal width profiles covering CJK, emoji, combining marks, tabs, zero-width breaks, and soft hyphens. Source offsets are UTF-16 over sanitized visible text, and ranges are grapheme-safe.
+          </p>
         </div>
       </section>
 
