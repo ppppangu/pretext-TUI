@@ -30,6 +30,11 @@ import {
   getLocaleWordSegmenter,
   setSegmenterLocale,
 } from '../unicode/grapheme-segmenter.js'
+import {
+  getWordScanBuffers,
+  getWordScanVerdict,
+  scanAsciiWordSegments,
+} from './analysis-word-scanner.js'
 
 export type WhiteSpaceMode = 'normal' | 'pre-wrap'
 export type WordBreakMode = 'normal' | 'keep-all'
@@ -367,13 +372,151 @@ function appendPieceToMergedPrevious(
   )
 }
 
+type MergedSegmentationBuilder = MergedPieceAccumulator & {
+  len: number
+  kinds: SegmentBreakKind[]
+  starts: number[]
+}
+
+// Per-segment consumption body shared by both word-segment sources (the
+// probe-pinned ASCII scanner span driver and the whole-string Intl loop):
+// break-kind split, then the first-pass merge branches. Behavior-frozen from
+// the previously inlined buildMergedSegmentation loop body.
+function appendWordSegmentPieces(
+  builder: MergedSegmentationBuilder,
+  profile: AnalysisProfile,
+  whiteSpaceProfile: WhiteSpaceProfile,
+  segText: string,
+  segWordLike: boolean,
+  segIndex: number,
+): void {
+  for (const piece of splitSegmentByBreakKind(segText, segWordLike, segIndex, whiteSpaceProfile)) {
+    const isText = piece.kind === 'text'
+    const pieceText = piece.text
+    // All-ASCII pieces skip predicates whose character tables contain no
+    // code point below 0x80 (CJK, Arabic script, Myanmar medial glue).
+    // endsWithClosingQuote walks back through leftStickyPunctuation, which
+    // has ASCII members, so it always runs; getLastCodePoint stays live
+    // because arabicNoSpaceTrailingPunctuation includes ASCII ':' and '.'.
+    let pieceAllAscii = true
+    for (let i = 0; i < pieceText.length; i++) {
+      if (pieceText.charCodeAt(i) >= 0x80) {
+        pieceAllAscii = false
+        break
+      }
+    }
+    const repeatableSingleCharRunChar = getRepeatableSingleCharRunChar(pieceText, piece.isWordLike, piece.kind)
+    const pieceContainsCJK = pieceAllAscii ? false : isCJK(pieceText)
+    const pieceContainsArabicScript = pieceAllAscii ? false : containsArabicScript(pieceText)
+    const pieceLastCodePoint = getLastCodePoint(pieceText)
+    const pieceEndsWithClosingQuote = endsWithClosingQuote(pieceText)
+    const pieceEndsWithMyanmarMedialGlue = pieceAllAscii ? false : endsWithMyanmarMedialGlue(pieceText)
+    const prevIndex = builder.len - 1
+
+    // First-pass keeps: no-space script-specific joins and punctuation glue
+    // that depend on the immediately preceding text run. The branches only
+    // pick an action; the single append call site sits after the chain.
+    let appendToPrevious = false
+    let forceWordLikeAfterAppend = false
+    if (
+      profile.carryCJKAfterClosingQuote &&
+      isText &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      pieceContainsCJK &&
+      builder.containsCJK[prevIndex] &&
+      builder.endsWithClosingQuote[prevIndex]!
+    ) {
+      appendToPrevious = true
+    } else if (
+      isText &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      isCJKLineStartProhibitedSegment(pieceText) &&
+      builder.containsCJK[prevIndex]
+    ) {
+      appendToPrevious = true
+    } else if (
+      isText &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      builder.endsWithMyanmarMedialGlue[prevIndex]
+    ) {
+      appendToPrevious = true
+    } else if (
+      isText &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      piece.isWordLike &&
+      pieceContainsArabicScript &&
+      builder.hasArabicNoSpacePunctuation[prevIndex]
+    ) {
+      appendToPrevious = true
+      forceWordLikeAfterAppend = true
+    } else if (
+      repeatableSingleCharRunChar !== null &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      builder.singleCharRunChars[prevIndex] === repeatableSingleCharRunChar
+    ) {
+      builder.singleCharRunLengths[prevIndex] = (builder.singleCharRunLengths[prevIndex] ?? 1) + 1
+    } else if (
+      isText &&
+      !piece.isWordLike &&
+      builder.len > 0 &&
+      builder.kinds[prevIndex] === 'text' &&
+      !builder.containsCJK[prevIndex] &&
+      (
+        isLeftStickyPunctuationSegment(pieceText) ||
+        (pieceText === '-' && builder.wordLike[prevIndex]!)
+      )
+    ) {
+      appendToPrevious = true
+    } else {
+      const mergedLen = builder.len
+      builder.texts[mergedLen] = pieceText
+      builder.textParts[mergedLen] = null
+      builder.wordLike[mergedLen] = piece.isWordLike
+      builder.kinds[mergedLen] = piece.kind
+      builder.starts[mergedLen] = piece.start
+      builder.singleCharRunChars[mergedLen] = repeatableSingleCharRunChar
+      builder.singleCharRunLengths[mergedLen] = repeatableSingleCharRunChar === null ? 0 : 1
+      builder.containsCJK[mergedLen] = pieceContainsCJK
+      builder.containsArabicScript[mergedLen] = pieceContainsArabicScript
+      builder.endsWithClosingQuote[mergedLen] = pieceEndsWithClosingQuote
+      builder.endsWithMyanmarMedialGlue[mergedLen] = pieceEndsWithMyanmarMedialGlue
+      builder.hasArabicNoSpacePunctuation[mergedLen] = hasArabicNoSpacePunctuation(
+        pieceContainsArabicScript,
+        pieceLastCodePoint,
+      )
+      builder.len = mergedLen + 1
+    }
+
+    if (appendToPrevious) {
+      appendPieceToMergedPrevious(
+        builder,
+        prevIndex,
+        pieceText,
+        piece.isWordLike,
+        pieceContainsCJK,
+        pieceContainsArabicScript,
+        pieceEndsWithClosingQuote,
+        pieceEndsWithMyanmarMedialGlue,
+        pieceLastCodePoint,
+      )
+      if (forceWordLikeAfterAppend) {
+        builder.wordLike[prevIndex] = true
+      }
+    }
+  }
+}
+
 export function buildMergedSegmentation(
   normalized: string,
   profile: AnalysisProfile,
   whiteSpaceProfile: WhiteSpaceProfile,
 ): MergedSegmentation {
   const wordSegmenter = getLocaleWordSegmenter()
-  let mergedLen = 0
   const mergedTexts: string[] = []
   const mergedTextParts: (string[] | null)[] = []
   const mergedWordLike: boolean[] = []
@@ -388,10 +531,13 @@ export function buildMergedSegmentation(
   const mergedEndsWithClosingQuote: boolean[] = []
   const mergedEndsWithMyanmarMedialGlue: boolean[] = []
   const mergedHasArabicNoSpacePunctuation: boolean[] = []
-  const merged: MergedPieceAccumulator = {
+  const builder: MergedSegmentationBuilder = {
+    len: 0,
     texts: mergedTexts,
     textParts: mergedTextParts,
     wordLike: mergedWordLike,
+    kinds: mergedKinds,
+    starts: mergedStarts,
     singleCharRunChars: mergedSingleCharRunChars,
     singleCharRunLengths: mergedSingleCharRunLengths,
     containsCJK: mergedContainsCJK,
@@ -401,126 +547,76 @@ export function buildMergedSegmentation(
     hasArabicNoSpacePunctuation: mergedHasArabicNoSpacePunctuation,
   }
 
-  for (const s of wordSegmenter.segment(normalized)) {
-    for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpaceProfile)) {
-      const isText = piece.kind === 'text'
-      const pieceText = piece.text
-      // All-ASCII pieces skip predicates whose character tables contain no
-      // code point below 0x80 (CJK, Arabic script, Myanmar medial glue).
-      // endsWithClosingQuote walks back through leftStickyPunctuation, which
-      // has ASCII members, so it always runs; getLastCodePoint stays live
-      // because arabicNoSpaceTrailingPunctuation includes ASCII ':' and '.'.
-      let pieceAllAscii = true
-      for (let i = 0; i < pieceText.length; i++) {
-        if (pieceText.charCodeAt(i) >= 0x80) {
-          pieceAllAscii = false
-          break
+  const scanVerdict = getWordScanVerdict(wordSegmenter)
+  if (scanVerdict.enabled) {
+    // Span driver: partition at [\r\n] code units ('\r\n' pair one segment,
+    // '\n' and lone '\r' one segment each, never word-like — emissions pinned
+    // against the live segmenter by the probe battery). Pure-ASCII spans run
+    // the probe-fitted scanner; any other span keeps the live segmenter with
+    // index offsets. One charCode pass per span decides purity.
+    const midBits = scanVerdict.midBits
+    const wordLikeStatuses = scanVerdict.wordLikeStatuses
+    const scanBuffers = getWordScanBuffers()
+    const normalizedLength = normalized.length
+    let cursor = 0
+    while (cursor < normalizedLength) {
+      let spanEnd = cursor
+      let spanAllAscii = true
+      while (spanEnd < normalizedLength) {
+        const code = normalized.charCodeAt(spanEnd)
+        if (code === 0x0a || code === 0x0d) break
+        if (code >= 0x80) spanAllAscii = false
+        spanEnd++
+      }
+      if (spanEnd > cursor) {
+        if (spanAllAscii) {
+          const segmentCount = scanAsciiWordSegments(normalized, cursor, spanEnd, midBits, wordLikeStatuses)
+          const segmentStarts = scanBuffers.starts
+          const segmentEnds = scanBuffers.ends
+          const segmentWordLike = scanBuffers.wordLike
+          for (let j = 0; j < segmentCount; j++) {
+            const segStart = segmentStarts[j]!
+            appendWordSegmentPieces(
+              builder,
+              profile,
+              whiteSpaceProfile,
+              normalized.slice(segStart, segmentEnds[j]!),
+              segmentWordLike[j] === 1,
+              segStart,
+            )
+          }
+        } else {
+          const spanText = cursor === 0 && spanEnd === normalizedLength
+            ? normalized
+            : normalized.slice(cursor, spanEnd)
+          for (const s of wordSegmenter.segment(spanText)) {
+            appendWordSegmentPieces(builder, profile, whiteSpaceProfile, s.segment, s.isWordLike ?? false, cursor + s.index)
+          }
         }
       }
-      const repeatableSingleCharRunChar = getRepeatableSingleCharRunChar(pieceText, piece.isWordLike, piece.kind)
-      const pieceContainsCJK = pieceAllAscii ? false : isCJK(pieceText)
-      const pieceContainsArabicScript = pieceAllAscii ? false : containsArabicScript(pieceText)
-      const pieceLastCodePoint = getLastCodePoint(pieceText)
-      const pieceEndsWithClosingQuote = endsWithClosingQuote(pieceText)
-      const pieceEndsWithMyanmarMedialGlue = pieceAllAscii ? false : endsWithMyanmarMedialGlue(pieceText)
-      const prevIndex = mergedLen - 1
-
-      // First-pass keeps: no-space script-specific joins and punctuation glue
-      // that depend on the immediately preceding text run. The branches only
-      // pick an action; the single append call site sits after the chain.
-      let appendToPrevious = false
-      let forceWordLikeAfterAppend = false
-      if (
-        profile.carryCJKAfterClosingQuote &&
-        isText &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        pieceContainsCJK &&
-        mergedContainsCJK[prevIndex] &&
-        mergedEndsWithClosingQuote[prevIndex]!
-      ) {
-        appendToPrevious = true
-      } else if (
-        isText &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        isCJKLineStartProhibitedSegment(pieceText) &&
-        mergedContainsCJK[prevIndex]
-      ) {
-        appendToPrevious = true
-      } else if (
-        isText &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        mergedEndsWithMyanmarMedialGlue[prevIndex]
-      ) {
-        appendToPrevious = true
-      } else if (
-        isText &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        piece.isWordLike &&
-        pieceContainsArabicScript &&
-        mergedHasArabicNoSpacePunctuation[prevIndex]
-      ) {
-        appendToPrevious = true
-        forceWordLikeAfterAppend = true
-      } else if (
-        repeatableSingleCharRunChar !== null &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        mergedSingleCharRunChars[prevIndex] === repeatableSingleCharRunChar
-      ) {
-        mergedSingleCharRunLengths[prevIndex] = (mergedSingleCharRunLengths[prevIndex] ?? 1) + 1
-      } else if (
-        isText &&
-        !piece.isWordLike &&
-        mergedLen > 0 &&
-        mergedKinds[prevIndex] === 'text' &&
-        !mergedContainsCJK[prevIndex] &&
-        (
-          isLeftStickyPunctuationSegment(pieceText) ||
-          (pieceText === '-' && mergedWordLike[prevIndex]!)
-        )
-      ) {
-        appendToPrevious = true
-      } else {
-        mergedTexts[mergedLen] = pieceText
-        mergedTextParts[mergedLen] = null
-        mergedWordLike[mergedLen] = piece.isWordLike
-        mergedKinds[mergedLen] = piece.kind
-        mergedStarts[mergedLen] = piece.start
-        mergedSingleCharRunChars[mergedLen] = repeatableSingleCharRunChar
-        mergedSingleCharRunLengths[mergedLen] = repeatableSingleCharRunChar === null ? 0 : 1
-        mergedContainsCJK[mergedLen] = pieceContainsCJK
-        mergedContainsArabicScript[mergedLen] = pieceContainsArabicScript
-        mergedEndsWithClosingQuote[mergedLen] = pieceEndsWithClosingQuote
-        mergedEndsWithMyanmarMedialGlue[mergedLen] = pieceEndsWithMyanmarMedialGlue
-        mergedHasArabicNoSpacePunctuation[mergedLen] = hasArabicNoSpacePunctuation(
-          pieceContainsArabicScript,
-          pieceLastCodePoint,
-        )
-        mergedLen++
-      }
-
-      if (appendToPrevious) {
-        appendPieceToMergedPrevious(
-          merged,
-          prevIndex,
-          pieceText,
-          piece.isWordLike,
-          pieceContainsCJK,
-          pieceContainsArabicScript,
-          pieceEndsWithClosingQuote,
-          pieceEndsWithMyanmarMedialGlue,
-          pieceLastCodePoint,
-        )
-        if (forceWordLikeAfterAppend) {
-          mergedWordLike[prevIndex] = true
+      if (spanEnd === normalizedLength) break
+      let next = spanEnd + 1
+      let newlineText = '\n'
+      if (normalized.charCodeAt(spanEnd) === 0x0d) {
+        if (next < normalizedLength && normalized.charCodeAt(next) === 0x0a) {
+          next++
+          newlineText = '\r\n'
+        } else {
+          newlineText = '\r'
         }
       }
+      appendWordSegmentPieces(builder, profile, whiteSpaceProfile, newlineText, false, spanEnd)
+      cursor = next
+    }
+  } else {
+    // Disabled verdict (probe or verification mismatch on this segmenter
+    // instance): the original whole-string Intl loop runs verbatim.
+    for (const s of wordSegmenter.segment(normalized)) {
+      appendWordSegmentPieces(builder, profile, whiteSpaceProfile, s.segment, s.isWordLike ?? false, s.index)
     }
   }
+
+  const mergedLen = builder.len
 
   for (let i = 0; i < mergedLen; i++) {
     if (mergedSingleCharRunChars[i] !== null) {
