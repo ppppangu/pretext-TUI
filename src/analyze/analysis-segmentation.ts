@@ -350,7 +350,6 @@ function appendPieceToMergedPrevious(
       prevIndex,
     )
     merged.singleCharRunChars[prevIndex] = null
-    merged.textParts[prevIndex] = null
   }
   // Parts arrays are created lazily: texts[prevIndex] holds the sole part
   // until a second part actually arrives here.
@@ -412,6 +411,7 @@ function appendWordSegmentPieces(
     const pieceEndsWithClosingQuote = endsWithClosingQuote(pieceText)
     const pieceEndsWithMyanmarMedialGlue = pieceAllAscii ? false : endsWithMyanmarMedialGlue(pieceText)
     const prevIndex = builder.len - 1
+    const prevIsTextRun = builder.len > 0 && builder.kinds[prevIndex] === 'text'
 
     // First-pass keeps: no-space script-specific joins and punctuation glue
     // that depend on the immediately preceding text run. The branches only
@@ -421,8 +421,7 @@ function appendWordSegmentPieces(
     if (
       profile.carryCJKAfterClosingQuote &&
       isText &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       pieceContainsCJK &&
       builder.containsCJK[prevIndex] &&
       builder.endsWithClosingQuote[prevIndex]!
@@ -430,23 +429,20 @@ function appendWordSegmentPieces(
       appendToPrevious = true
     } else if (
       isText &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       isCJKLineStartProhibitedSegment(pieceText) &&
       builder.containsCJK[prevIndex]
     ) {
       appendToPrevious = true
     } else if (
       isText &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       builder.endsWithMyanmarMedialGlue[prevIndex]
     ) {
       appendToPrevious = true
     } else if (
       isText &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       piece.isWordLike &&
       pieceContainsArabicScript &&
       builder.hasArabicNoSpacePunctuation[prevIndex]
@@ -455,16 +451,14 @@ function appendWordSegmentPieces(
       forceWordLikeAfterAppend = true
     } else if (
       repeatableSingleCharRunChar !== null &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       builder.singleCharRunChars[prevIndex] === repeatableSingleCharRunChar
     ) {
       builder.singleCharRunLengths[prevIndex] = (builder.singleCharRunLengths[prevIndex] ?? 1) + 1
     } else if (
       isText &&
       !piece.isWordLike &&
-      builder.len > 0 &&
-      builder.kinds[prevIndex] === 'text' &&
+      prevIsTextRun &&
       !builder.containsCJK[prevIndex] &&
       (
         isLeftStickyPunctuationSegment(pieceText) ||

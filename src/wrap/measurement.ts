@@ -40,56 +40,29 @@ export function getSegmentMetrics(seg: string, cache: Map<string, SegmentMetrics
   return metrics
 }
 
-export function getCorrectedSegmentWidth(
-  _seg: string,
-  metrics: SegmentMetrics,
-  _emojiCorrection: number,
-): number {
-  return metrics.width
-}
-
 export function getSegmentBreakableFitAdvances(
   seg: string,
   metrics: SegmentMetrics,
-  _cache: Map<string, SegmentMetrics>,
-  _emojiCorrection: number,
+  cache: Map<string, SegmentMetrics>,
   mode: BreakableFitMode,
 ): number[] | null {
   if (metrics.breakableFitAdvances !== undefined && metrics.breakableFitMode === mode) {
     return metrics.breakableFitAdvances
   }
   metrics.breakableFitMode = mode
-  metrics.breakableFitAdvances = terminalBreakableFitAdvances(seg, segmentMetricCacheProfiles.get(_cache))
+  metrics.breakableFitAdvances = terminalBreakableFitAdvances(seg, segmentMetricCacheProfiles.get(cache))
   return metrics.breakableFitAdvances
 }
 
 export function getTerminalMeasurementState(input?: TerminalWidthProfileInput): {
   cache: Map<string, SegmentMetrics>
-  emojiCorrection: 0
   profile: TerminalWidthProfile
 } {
   const profile = resolveTerminalWidthProfile(input)
   return {
     cache: getSegmentMetricCache(profile),
-    emojiCorrection: 0,
     profile,
   }
-}
-
-export function getFontMeasurementState(_font: string): {
-  cache: Map<string, SegmentMetrics>
-  fontSize: number
-  emojiCorrection: 0
-} {
-  return {
-    cache: getSegmentMetricCache(),
-    fontSize: 1,
-    emojiCorrection: 0,
-  }
-}
-
-export function textMayContainEmoji(text: string): boolean {
-  return /[\p{Emoji_Presentation}\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u.test(text)
 }
 
 export function clearMeasurementCaches(): void {

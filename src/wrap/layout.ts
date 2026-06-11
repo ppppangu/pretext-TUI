@@ -28,7 +28,6 @@ import {
 import {
   type BreakableFitMode,
   clearMeasurementCaches,
-  getCorrectedSegmentWidth,
   getSegmentBreakableFitAdvances,
   getSegmentMetrics,
   getTerminalMeasurementState,
@@ -406,9 +405,9 @@ function measureAnalysis(
   wordBreak: WordBreakMode,
   letterSpacing: number,
 ): InternalPreparedText | PreparedTextWithSegments {
-  const { cache, emojiCorrection, profile } = getTerminalMeasurementState(widthProfile)
+  const { cache, profile } = getTerminalMeasurementState(widthProfile)
   const discretionaryHyphenWidth =
-    getCorrectedSegmentWidth('-', getSegmentMetrics('-', cache), emojiCorrection) +
+    getSegmentMetrics('-', cache).width +
     (letterSpacing === 0 ? 0 : letterSpacing)
   const tabStopAdvance = normalizeTerminalTabSize(tabSize, profile)
   const hasLetterSpacing = letterSpacing !== 0
@@ -466,7 +465,7 @@ function measureAnalysis(
       ? countRenderedSpacingGraphemes(text, kind)
       : 0
     const width = addInternalLetterSpacing(
-      getCorrectedSegmentWidth(text, textMetrics, emojiCorrection),
+      textMetrics.width,
       spacingGraphemeCount,
       letterSpacing,
     )
@@ -494,7 +493,6 @@ function measureAnalysis(
         text,
         textMetrics,
         cache,
-        emojiCorrection,
         fitMode,
       )
       pushMeasuredSegment(
