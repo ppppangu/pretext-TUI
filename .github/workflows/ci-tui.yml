@@ -1,6 +1,12 @@
 # 补建说明：该 workflow 为后续补建，用于运行 pretext-TUI 的 TUI-only 发布验证门禁；当前进度：覆盖 release-gate:tui 等价验证，并使用完整 git 历史支持 evidence provenance 检查。
 name: TUI validation
 
+# The oracle/corpus/differential nets depend on the host default Intl locale;
+# pin it so the gate runtime is explicitly (bun, en-US).
+env:
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
+
 on:
   push:
     branches:
