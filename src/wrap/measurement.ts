@@ -1,6 +1,5 @@
 import type { TerminalWidthProfileInput } from '../unicode/terminal-width-profile.js'
 import {
-  getTerminalWidthProfileCacheKey,
   resolveTerminalWidthProfile,
   type TerminalWidthProfile,
 } from '../unicode/terminal-width-profile.js'
@@ -21,17 +20,13 @@ export type SegmentMetrics = TerminalSegmentMetrics & {
 const segmentMetricCaches = new Map<string, Map<string, SegmentMetrics>>()
 const segmentMetricCacheProfiles = new WeakMap<Map<string, SegmentMetrics>, TerminalWidthProfile>()
 
-function cacheKeyFor(input?: TerminalWidthProfileInput): string {
-  return getTerminalWidthProfileCacheKey(resolveTerminalWidthProfile(input))
-}
-
 export function getSegmentMetricCache(input?: TerminalWidthProfileInput): Map<string, SegmentMetrics> {
-  const key = cacheKeyFor(input)
-  let cache = segmentMetricCaches.get(key)
+  const profile = resolveTerminalWidthProfile(input)
+  let cache = segmentMetricCaches.get(profile.cacheKey)
   if (!cache) {
     cache = new Map()
-    segmentMetricCaches.set(key, cache)
-    segmentMetricCacheProfiles.set(cache, resolveTerminalWidthProfile(input))
+    segmentMetricCaches.set(profile.cacheKey, cache)
+    segmentMetricCacheProfiles.set(cache, profile)
   }
   return cache
 }

@@ -65,6 +65,15 @@ export function resolveTerminalWidthProfile(
   if (input === undefined || input === 'terminal-unicode-narrow@1') {
     return TERMINAL_UNICODE_NARROW_PROFILE
   }
+  // Resolution must be idempotent: already-resolved profiles are value-complete,
+  // so rebuilding them per call would only churn allocations without changing
+  // any field or the derived cacheKey.
+  if (
+    (input as { kind?: unknown }).kind === 'terminal-width-profile' &&
+    typeof (input as { cacheKey?: unknown }).cacheKey === 'string'
+  ) {
+    return input as TerminalWidthProfile
+  }
   return createProfile(input)
 }
 

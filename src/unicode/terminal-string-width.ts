@@ -206,7 +206,14 @@ export function terminalGraphemeWidth(
   input?: TerminalWidthProfileInput,
 ): number {
   const profile = resolveTerminalWidthProfile(input)
-  const cache = cacheFor(graphemeWidthCaches, profile.cacheKey)
+  return terminalGraphemeWidthCached(grapheme, profile, cacheFor(graphemeWidthCaches, profile.cacheKey))
+}
+
+function terminalGraphemeWidthCached(
+  grapheme: string,
+  profile: TerminalWidthProfile,
+  cache: Map<string, number>,
+): number {
   const cached = cache.get(grapheme)
   if (cached !== undefined) return cached
 
@@ -245,10 +252,12 @@ export function terminalGraphemeWidths(
   text: string,
   input?: TerminalWidthProfileInput,
 ): number[] | null {
+  const profile = resolveTerminalWidthProfile(input)
+  const cache = cacheFor(graphemeWidthCaches, profile.cacheKey)
   const widths: number[] = []
   const segmenter = getGraphemeSegmenter()
   for (const { segment } of segmenter.segment(text)) {
-    widths.push(terminalGraphemeWidth(segment, input))
+    widths.push(terminalGraphemeWidthCached(segment, profile, cache))
   }
   return widths.length > 1 ? widths : null
 }
@@ -257,10 +266,12 @@ export function terminalStringWidth(
   text: string,
   input?: TerminalWidthProfileInput,
 ): number {
+  const profile = resolveTerminalWidthProfile(input)
+  const cache = cacheFor(graphemeWidthCaches, profile.cacheKey)
   let width = 0
   const segmenter = getGraphemeSegmenter()
   for (const { segment } of segmenter.segment(text)) {
-    width += terminalGraphemeWidth(segment, input)
+    width += terminalGraphemeWidthCached(segment, profile, cache)
   }
   return width
 }
