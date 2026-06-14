@@ -1,6 +1,6 @@
 {
   "name": "pretext-tui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Host-neutral terminal-cell text layout primitives for TUIs, CLIs, logs, transcripts, and editor panes",
   "keywords": [
     "tui",
