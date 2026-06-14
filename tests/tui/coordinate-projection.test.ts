@@ -1,6 +1,7 @@
 // 补建说明：该文件为后续补建，用于锁定 coordinate projection public API 的运行时与类型边界；当前进度：Batch 6B.1 在 Task 4 覆盖基础上增加 reader-derived EOF/soft-hyphen/tab projection 回归。
 import { describe, expect, test } from 'bun:test'
 import {
+  createInjectedTerminalWidthProfile,
   createTerminalLineIndex,
   createTerminalSourceOffsetIndex,
   materializeTerminalLineRange,
@@ -139,6 +140,23 @@ function rowSignature(
 }
 
 describe('coordinate projection public API', () => {
+  test('projects past a chosen soft hyphen using the injected hyphen width', () => {
+    const wideHyphen = createInjectedTerminalWidthProfile({
+      id: 'projection/wide-hyphen@1',
+      graphemeWidth: g => (g === '-' ? 3 : 1),
+    })
+    const view = createProjectionView('aaaaa\u00ADbbbbb', 8, { whiteSpace: 'pre-wrap', widthProfile: wideHyphen })
+    // Offset 6 (first 'b') biased 'before' lands at the end of row 0 ('aaaaa-'), whose column
+    // must include the injected hyphen width: 5 + 3 = 8 (the old +1 hardcode produced 6).
+    expect(coordinateSignature(
+      view,
+      projectTerminalSourceOffset(view.prepared, view.sourceIndex, view.lineIndex, 6, 'before'),
+    )).toMatchObject({
+      column: 8,
+      row: 0,
+    })
+  })
+
   test('projects source offsets to terminal row, absolute column, and line range', () => {
     const view = createProjectionView(
       'A\tB界e\u0301\u200Btail',

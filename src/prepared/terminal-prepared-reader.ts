@@ -35,6 +35,7 @@ type PreparedTerminalTextState =
 
 export type PreparedTerminalReader = Readonly<{
   kind: 'prepared-terminal-reader@1'
+  discretionaryHyphenWidth: number
   hasSegmentBreakAfter(segmentIndex: number): boolean
   segmentCount: number
   segmentKind(segmentIndex: number): SegmentBreakKind | undefined
@@ -195,6 +196,9 @@ function createArrayPreparedTerminalReader(
 ): PreparedTerminalReader {
   return Object.freeze({
     kind: 'prepared-terminal-reader@1',
+    get discretionaryHyphenWidth() {
+      return prepared.discretionaryHyphenWidth
+    },
     get segmentCount() {
       return prepared.segments.length
     },

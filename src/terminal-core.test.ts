@@ -16,6 +16,9 @@ import {
   materializeTerminalLineSourceRange,
 } from './core/terminal-line-source.js'
 import {
+  createInjectedTerminalWidthProfile,
+} from './unicode/terminal-width-profile.js'
+import {
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
 } from './telemetry/terminal-performance-counters.js'
@@ -144,6 +147,21 @@ describe('terminal core api', () => {
       text: '   ',
       width: 3,
     })
+  })
+
+  test('internal source-range materialization prices a chosen soft hyphen at the injected width', () => {
+    const wideHyphen = createInjectedTerminalWidthProfile({
+      id: 'core/wide-hyphen@1',
+      graphemeWidth: g => (g === '-' ? 3 : 1),
+    })
+    const prepared = prepareTerminal('aaaaa\u00ADbbbbb', { whiteSpace: 'pre-wrap', widthProfile: wideHyphen })
+    const [line] = collectWalked(prepared, { columns: 8 })
+    expect(line?.break.kind).toBe('soft-hyphen')
+    // Materializing across the chosen soft hyphen renders '-' and must price it at the
+    // injected width (3), not a hardcoded 1: 'aaaaa' (5) + '-' (3) = 8.
+    const materialized = materializeTerminalLineSourceRange(prepared, line!, line!.sourceStart, line!.sourceEnd)
+    expect(materialized.text).toBe('aaaaa-')
+    expect(materialized.width).toBe(8)
   })
 
   test('startColumn and tabs fit against actual terminal columns', () => {

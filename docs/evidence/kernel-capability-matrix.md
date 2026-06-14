@@ -43,6 +43,7 @@ Incubating root and terminal exports:
 
 - `appendTerminalCellFlow`
 - `appendTerminalRanges`
+- `createInjectedTerminalWidthProfile`
 - `createTerminalLineIndex`
 - `createTerminalLayoutBundle`
 - `createTerminalPageCache`
@@ -78,12 +79,14 @@ Incubating root and terminal exports:
 - `materializeTerminalLineRanges`
 - `measureTerminalLayoutBundleRows`
 - `measureTerminalLineIndexRows`
+- `measureTerminalTextWidth`
 - `prepareTerminalCellFlow`
 - `projectTerminalCoordinate`
 - `projectTerminalCursor`
 - `projectTerminalRow`
 - `projectTerminalSourceOffset`
 - `projectTerminalSourceRange`
+- `sanitizePlainTerminalInput`
 
 Incubating rich-inline exports:
 

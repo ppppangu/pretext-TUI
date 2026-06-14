@@ -160,7 +160,7 @@ export function materializePreparedTerminalSourceRange(
           selectedSoftHyphenOffset < absoluteEnd
         ) {
           text += '-'
-          column += 1
+          column += reader.discretionaryHyphenWidth
         }
         continue
       }

@@ -5,6 +5,7 @@ import type { TerminalWidthProfile } from '../unicode/terminal-width-profile.js'
 
 export type PreparedTerminalReaderStore = Readonly<{
   chunks: readonly PreparedTerminalReaderStoreChunk[]
+  discretionaryHyphenWidth: number
   kind: 'prepared-terminal-reader-store@1'
   segmentCount: number
   sourceLength: number
@@ -30,6 +31,7 @@ export function createSingleStorePreparedTerminalReaderStore(
 
   return freezeReaderStore({
     chunks: [chunk],
+    discretionaryHyphenWidth: reader.discretionaryHyphenWidth,
     segmentCount: reader.segmentCount,
     sourceLength: reader.sourceLength,
     tabStopAdvance: reader.tabStopAdvance,
@@ -51,6 +53,7 @@ export function createCompositePreparedTerminalReaderStore(
 
   return freezeReaderStore({
     chunks,
+    discretionaryHyphenWidth: reader.discretionaryHyphenWidth,
     segmentCount: reader.segmentCount,
     sourceLength: reader.sourceLength,
     tabStopAdvance: reader.tabStopAdvance,
@@ -89,6 +92,7 @@ export function createPreparedTerminalReaderStoreFromReaders(
 
   return freezeReaderStore({
     chunks,
+    discretionaryHyphenWidth: firstReader.discretionaryHyphenWidth,
     segmentCount: segmentStartIndex,
     sourceLength: sourceStart,
     tabStopAdvance: firstReader.tabStopAdvance,
@@ -245,6 +249,7 @@ function freezeReaderStore(
   const store = Object.freeze({
     kind: 'prepared-terminal-reader-store@1',
     chunks: Object.freeze([...input.chunks]),
+    discretionaryHyphenWidth: input.discretionaryHyphenWidth,
     segmentCount: input.segmentCount,
     sourceLength: input.sourceLength,
     tabStopAdvance: input.tabStopAdvance,
@@ -290,6 +295,9 @@ export function createPreparedTerminalReaderFromStore(
 ): PreparedTerminalReader {
   return Object.freeze({
     kind: 'prepared-terminal-reader@1',
+    get discretionaryHyphenWidth() {
+      return store.discretionaryHyphenWidth
+    },
     get segmentCount() {
       return store.segmentCount
     },

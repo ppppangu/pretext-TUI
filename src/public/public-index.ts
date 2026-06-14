@@ -71,17 +71,29 @@ import {
   projectTerminalSourceOffset as internalProjectTerminalSourceOffset,
   projectTerminalSourceRange as internalProjectTerminalSourceRange,
 } from '../semantic/terminal-coordinate-projection.js'
+import { createInjectedTerminalWidthProfile as internalCreateInjectedTerminalWidthProfile } from '../unicode/terminal-width-profile.js'
+import { terminalStringWidth as internalTerminalStringWidth } from '../unicode/terminal-string-width.js'
+import { sanitizePlainTerminalInput as internalSanitizePlainTerminalInput } from '../core/terminal-plain-input.js'
 
 export type AmbiguousWidthPolicy = 'narrow' | 'wide'
 export type EmojiWidthPolicy = 'presentation-wide' | 'wide' | 'narrow'
 export type RegionalIndicatorPolicy = 'flag-pair-wide-single-wide' | 'flag-pair-wide-single-narrow'
 export type ControlCharPolicy = 'reject' | 'zero-width' | 'replacement'
 
+export type TerminalGraphemeWidthFn = (grapheme: string) => number
+
+export type InjectedTerminalWidthProfileInput = Readonly<{
+  id: string
+  graphemeWidth: TerminalGraphemeWidthFn
+  controlChars?: ControlCharPolicy
+  defaultTabSize?: number
+}>
+
 export type TerminalWidthProfile = Readonly<{
   kind: 'terminal-width-profile'
-  name: 'terminal-unicode-narrow'
-  version: 1
-  unicodeVersion: '17.0.0'
+  name: string
+  version: number | string
+  unicodeVersion: string
   ambiguousWidth: AmbiguousWidthPolicy
   emojiWidth: EmojiWidthPolicy
   regionalIndicator: RegionalIndicatorPolicy
@@ -89,12 +101,39 @@ export type TerminalWidthProfile = Readonly<{
   ansiMode: 'plain-reject'
   defaultTabSize: number
   cacheKey: string
+  graphemeWidth?: TerminalGraphemeWidthFn
 }>
 
 export type TerminalWidthProfileInput =
   | 'terminal-unicode-narrow@1'
-  | Partial<Omit<TerminalWidthProfile, 'kind' | 'name' | 'version' | 'unicodeVersion' | 'cacheKey'>>
+  | Partial<Omit<TerminalWidthProfile, 'kind' | 'name' | 'version' | 'unicodeVersion' | 'cacheKey' | 'graphemeWidth'>>
+  | TerminalWidthProfile
   | undefined
+
+// Build a host-injected width profile (see createInjectedTerminalWidthProfile in
+// the engine). Pass the result as `widthProfile` so the host's own per-grapheme
+// width truth backs every measure/layout/projection call.
+export function createInjectedTerminalWidthProfile(
+  input: InjectedTerminalWidthProfileInput,
+): TerminalWidthProfile {
+  return internalCreateInjectedTerminalWidthProfile(input) as TerminalWidthProfile
+}
+
+// Grapheme-summed visible width of `text` under a width profile (no tab/newline
+// semantics). The parity-gate primitive and the future width-convergence vehicle.
+export function measureTerminalTextWidth(
+  text: string,
+  widthProfile?: TerminalWidthProfileInput,
+): number {
+  return internalTerminalStringWidth(text, widthProfile as never)
+}
+
+// Remove exactly the code points the plain layout path rejects (C0 controls except
+// \t \n \r \f, DEL + C1, bidi format controls), so host output is safe for prepareTerminal.
+// Does NOT strip ANSI/SGR — strip those first, or use the rich path to keep styling.
+export function sanitizePlainTerminalInput(text: string): string {
+  return internalSanitizePlainTerminalInput(text)
+}
 
 export type TerminalPrepareOptions = {
   whiteSpace?: 'normal' | 'pre-wrap'

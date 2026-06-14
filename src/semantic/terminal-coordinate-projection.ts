@@ -818,7 +818,7 @@ function terminalWidthBetweenCursors(
           endGraphemeIndex,
         )
       ) {
-        width += 1
+        width += reader.discretionaryHyphenWidth
       }
       continue
     }

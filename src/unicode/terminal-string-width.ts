@@ -201,6 +201,16 @@ function handleControlWidth(cp: number, profile: TerminalWidthProfile): number {
   throw new Error(`Control character U+${cp.toString(16).toUpperCase()} is not valid visible terminal text`)
 }
 
+function assertInjectedGraphemeWidth(width: number, grapheme: string): number {
+  if (!Number.isInteger(width) || width < 0) {
+    const cp = (grapheme.codePointAt(0) ?? 0).toString(16).toUpperCase()
+    throw new Error(
+      `Injected width function returned ${width} for grapheme U+${cp}; expected a non-negative integer`,
+    )
+  }
+  return width
+}
+
 export function terminalGraphemeWidth(
   grapheme: string,
   input?: TerminalWidthProfileInput,
@@ -225,6 +235,9 @@ function terminalGraphemeWidthCached(
     width = handleControlWidth(points.find(isControlCodePoint)!, profile)
   } else if (points.some(isTerminalBidiFormatControlCodePoint)) {
     throw new Error('Bidi format control is not valid visible terminal text')
+  } else if (profile.graphemeWidth !== undefined) {
+    // Host-injected width truth overrides all built-in width classification.
+    width = assertInjectedGraphemeWidth(profile.graphemeWidth(grapheme), grapheme)
   } else if (points.every(isCombiningOrZeroWidth)) {
     width = 0
   } else if (points.every(isRegionalIndicator)) {
@@ -285,6 +298,11 @@ export function terminalSegmentMetrics(
   const cached = cache.get(text)
   if (cached !== undefined) return cached
 
+  // NOTE: containsCJK is a SCRIPT / break-classification property (it drives CJK
+  // inter-character break opportunities in wrap/layout). It is intentionally NOT
+  // overridden by an injected profile.graphemeWidth, which governs CELL WIDTH only.
+  // A host that renders CJK narrow still gets CJK break rules; a host that renders
+  // ASCII wide still gets atomic word-wrap rules. Break parity is out of scope.
   let containsCJK = false
   for (const char of text) {
     if (isWideCodePoint(char.codePointAt(0)!)) {

@@ -296,7 +296,10 @@ function computeNextOracleLine(
         position: unit.next,
         text: `${text}-`,
         sourceEnd: unit.sourceEnd,
-        width: width + 1,
+        // Independently re-measure the visible hyphen under the active profile rather
+        // than assuming 1 cell, so the oracle stays correct when a host injects a
+        // non-unit hyphen width (matches discretionaryHyphenWidth in the engine).
+        width: width + terminalStringWidth('-', prepared.widthProfile),
         breakKind: 'soft-hyphen',
       }
       position = unit.next

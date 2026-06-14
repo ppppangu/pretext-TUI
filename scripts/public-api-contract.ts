@@ -76,6 +76,7 @@ const terminalStableRuntimeExportNames = [
 const terminalIncubatingRuntimeExportNames = [
   'appendTerminalCellFlow',
   'appendTerminalRanges',
+  'createInjectedTerminalWidthProfile',
   'createTerminalLineIndex',
   'createTerminalLayoutBundle',
   'createTerminalPageCache',
@@ -111,12 +112,14 @@ const terminalIncubatingRuntimeExportNames = [
   'materializeTerminalLineRanges',
   'measureTerminalLayoutBundleRows',
   'measureTerminalLineIndexRows',
+  'measureTerminalTextWidth',
   'prepareTerminalCellFlow',
   'projectTerminalCoordinate',
   'projectTerminalCursor',
   'projectTerminalRow',
   'projectTerminalSourceOffset',
   'projectTerminalSourceRange',
+  'sanitizePlainTerminalInput',
 ]
 
 const terminalRuntimeExportNames = [
@@ -132,6 +135,7 @@ export const terminalPublicDeclarationExports = Object.freeze([...new Set([
   'AmbiguousWidthPolicy',
   'ControlCharPolicy',
   'EmojiWidthPolicy',
+  'InjectedTerminalWidthProfileInput',
   'MaterializedTerminalLine',
   'PreparedTerminalCellFlow',
   'PreparedTerminalText',
@@ -146,6 +150,7 @@ export const terminalPublicDeclarationExports = Object.freeze([...new Set([
   'TerminalCoordinateProjection',
   'TerminalCursor',
   'TerminalFixedLayoutOptions',
+  'TerminalGraphemeWidthFn',
   'TerminalCellCoordinate',
   'TerminalLayoutOptions',
   'TerminalLayoutBundle',

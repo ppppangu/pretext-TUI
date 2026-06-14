@@ -1,7 +1,9 @@
 // 补建说明：该文件为后续补建，用于验证 package-facing terminal public layout API 的 TUI-only 行为；当前进度：Task 7 首版，覆盖 pipeline 一致性、source offsets、startColumn 与独立 greedy oracle。
 import { describe, expect, test } from 'bun:test'
 import {
+  createInjectedTerminalWidthProfile,
   layoutTerminal,
+  measureTerminalTextWidth,
   prepareTerminal,
 } from '../../src/public/index.js'
 import {
@@ -138,5 +140,48 @@ describe('tui public layout validation', () => {
       const oracle = computePreparedGreedyOracle(prepared, item.layout)
       assertDeepEqual(actual, oracle, `slow greedy oracle for ${item.text}`)
     }
+  })
+})
+
+describe('measureTerminalTextWidth and injected hyphen width', () => {
+  test('sums grapheme widths under the default profile', () => {
+    expect(measureTerminalTextWidth('abc')).toBe(3)
+    expect(measureTerminalTextWidth('中文')).toBe(4)
+    expect(measureTerminalTextWidth('a😀')).toBe(3)
+    expect(measureTerminalTextWidth('e\u0301')).toBe(1) // combining mark stays in its base cell
+  })
+
+  test('honors an injected width profile', () => {
+    const profile = createInjectedTerminalWidthProfile({
+      id: 'public-layout/measure@1',
+      graphemeWidth: g => (g === '中' ? 2 : 1),
+    })
+    expect(measureTerminalTextWidth('A中Z', profile)).toBe(1 + 2 + 1)
+  })
+
+  test('agrees with laid-out line widths (the parity-gate primitive)', () => {
+    const prepared = prepareTerminal('A界 e\u0301 world here', { whiteSpace: 'pre-wrap' })
+    for (const { range, materialized } of collectTerminalLines(prepared, { columns: 6 })) {
+      expect(measureTerminalTextWidth(materialized.text)).toBe(range.width)
+    }
+  })
+
+  test('a chosen soft hyphen is priced at the injected hyphen width, not a hardcoded cell', () => {
+    // Regression: core/terminal.ts and the coordinate projection previously hardcoded the
+    // visible soft-hyphen glyph at 1 cell, bypassing the injected width truth. With width('-')=3
+    // the broken line 'aaaaa-' must report 5 + 3 = 8, and the layout invariants must still hold.
+    const wideHyphen = createInjectedTerminalWidthProfile({
+      id: 'public-layout/wide-hyphen@1',
+      graphemeWidth: g => (g === '-' ? 3 : 1),
+    })
+    const prepared = prepareTerminal('aaaaa\u00ADbbbbb', { whiteSpace: 'pre-wrap', widthProfile: wideHyphen })
+    assertTerminalInvariants(prepared, { columns: 8 })
+    const broken = collectTerminalLines(prepared, { columns: 8 }).find(
+      line => line.range.break.kind === 'soft-hyphen',
+    )
+    expect(broken).toBeDefined()
+    expect(broken!.materialized.text.endsWith('-')).toBe(true)
+    expect(broken!.range.width).toBe(8)
+    expect(measureTerminalTextWidth(broken!.materialized.text, wideHyphen)).toBe(broken!.range.width)
   })
 })

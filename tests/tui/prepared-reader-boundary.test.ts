@@ -165,6 +165,9 @@ describe('prepared reader capability boundary', () => {
     const segmentCount = 1024
     const reader = Object.freeze({
       kind: 'prepared-terminal-reader@1',
+      get discretionaryHyphenWidth() {
+        return baseReader.discretionaryHyphenWidth
+      },
       get segmentCount() {
         return segmentCount
       },
@@ -206,6 +209,9 @@ describe('prepared reader capability boundary', () => {
     const sourceStarts = [0, 1, 2, 3, 4]
     const reader = Object.freeze({
       kind: 'prepared-terminal-reader@1',
+      get discretionaryHyphenWidth() {
+        return baseReader.discretionaryHyphenWidth
+      },
       get segmentCount() {
         return segments.length
       },

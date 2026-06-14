@@ -230,7 +230,7 @@ function terminalWidthForRange(
         visibleSoftHyphenOffset >= segmentStart &&
         visibleSoftHyphenOffset < segmentEnd
       ) {
-        width += 1
+        width += reader.discretionaryHyphenWidth
       }
       continue
     }
@@ -463,8 +463,8 @@ function layoutNextTerminalInternalRange(
     }
 
     if (kind === 'soft-hyphen') {
-      if (hasContent && startColumn + width + 1 <= columns) {
-        lastBreak = { end: next, width: width + 1 }
+      if (hasContent && startColumn + width + reader.discretionaryHyphenWidth <= columns) {
+        lastBreak = { end: next, width: width + reader.discretionaryHyphenWidth }
       }
       position = next
       continue

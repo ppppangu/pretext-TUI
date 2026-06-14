@@ -3,7 +3,9 @@ export type {
   AmbiguousWidthPolicy,
   ControlCharPolicy,
   EmojiWidthPolicy,
+  InjectedTerminalWidthProfileInput,
   RegionalIndicatorPolicy,
+  TerminalGraphemeWidthFn,
   TerminalWidthProfile,
   TerminalWidthProfileInput,
 } from '../unicode/terminal-width-profile.js'
