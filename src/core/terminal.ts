@@ -161,12 +161,19 @@ function breakForRange(
   sourceEnd: number,
   visibleSoftHyphenOffset: number | null,
 ): TerminalLineBreak {
-  const previousKind = reader.segmentKind(range.end.segmentIndex - 1)
-  if (previousKind === 'hard-break') {
-    return { kind: 'hard', sourceOffset: sourceEnd, materializedText: null }
-  }
-  if (previousKind === 'soft-hyphen' && visibleSoftHyphenOffset !== null) {
-    return { kind: 'soft-hyphen', sourceOffset: sourceEnd, materializedText: '-' }
+  // A line that ends MID-segment (graphemeIndex > 0) was force-split inside the current
+  // segment, not at a segment boundary; 'hard'/'soft-hyphen' describe the PREVIOUS segment
+  // and must not apply here. Mirror visibleSourceEndForRange, which guards graphemeIndex > 0
+  // first — otherwise a long word split right after a soft hyphen mislabels the break and
+  // re-materializes a phantom '-' mid-line.
+  if (range.end.graphemeIndex === 0) {
+    const previousKind = reader.segmentKind(range.end.segmentIndex - 1)
+    if (previousKind === 'hard-break') {
+      return { kind: 'hard', sourceOffset: sourceEnd, materializedText: null }
+    }
+    if (previousKind === 'soft-hyphen' && visibleSoftHyphenOffset !== null) {
+      return { kind: 'soft-hyphen', sourceOffset: sourceEnd, materializedText: '-' }
+    }
   }
   if (range.end.segmentIndex >= reader.segmentCount) {
     return { kind: 'end', sourceOffset: sourceEnd, materializedText: null }

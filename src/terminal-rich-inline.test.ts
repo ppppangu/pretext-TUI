@@ -258,19 +258,19 @@ describe('terminal rich inline materialization', () => {
   })
 
   test('selected styled soft hyphen remains visible inside its rich fragment', () => {
-    const prepared = prepareTerminalRichInline('\x1b[31m\u00A0\u00AD\u2060\x1b[0mX', {
+    const prepared = prepareTerminalRichInline('\x1b[31m\u00A0\u00AD\u2060XX\x1b[0m', {
       whiteSpace: 'normal',
     })
-    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 1 })!
+    const line = layoutNextTerminalRichLineRange(prepared, TERMINAL_START_CURSOR, { columns: 2 })!
     const materialized = materializeTerminalRichLineRange(prepared, line)
     expect(line.break.kind).toBe('soft-hyphen')
     expect(materialized.text).toBe('\u00A0-')
     expect(materialized.fragments).toHaveLength(1)
     expect(materialized.fragments[0]).toMatchObject({
       text: '\u00A0-',
-      sourceText: '\u00A0\u00AD\u2060',
+      sourceText: '\u00A0\u00AD',
       sourceStart: 0,
-      sourceEnd: 3,
+      sourceEnd: 2,
       columnStart: 0,
       columnEnd: 2,
     })

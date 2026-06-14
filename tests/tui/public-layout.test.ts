@@ -185,3 +185,43 @@ describe('measureTerminalTextWidth and injected hyphen width', () => {
     expect(measureTerminalTextWidth(broken!.materialized.text, wideHyphen)).toBe(broken!.range.width)
   })
 })
+
+describe('breakForRange mid-segment break kind (regression)', () => {
+  test('default profile: a zero-width joiner after a soft hyphen does not phantom-materialize a hyphen', () => {
+    // 'aa' + soft hyphen + word joiner + 'bb'. At columns 2 the line ends mid-segment inside
+    // the joiner+bb segment, immediately after the soft-hyphen segment — it must wrap cleanly,
+    // not mislabel the break as soft-hyphen and re-materialize a phantom '-'.
+    const prepared = prepareTerminal('aa\u00AD\u2060bb', { whiteSpace: 'normal' })
+    const first = collectTerminalLines(prepared, { columns: 2 })[0]!
+    expect(first.range.end.graphemeIndex).toBeGreaterThan(0) // ends mid-segment
+    expect(first.range.break.kind).toBe('wrap') // was mislabeled 'soft-hyphen'
+    expect(first.range.break.materializedText).toBeNull() // was '-'
+    expect(first.materialized.text).toBe('aa') // was 'aa-'
+    expect(first.range.width).toBe(2) // was 3
+    expect(first.range.overflow).toBeNull() // was { width: 3, columns: 2 }
+    assertTerminalInvariants(prepared, { columns: 2 })
+  })
+
+  test('injected wide hyphen: a long word split right after a soft hyphen wraps with no phantom hyphen', () => {
+    const wideHyphen = createInjectedTerminalWidthProfile({
+      id: 'public-layout/wide-hyphen-midsplit@1',
+      graphemeWidth: g => (g === '-' ? 3 : 1),
+    })
+    const prepared = prepareTerminal('aaaaa\u00ADbbbbb', { whiteSpace: 'normal', widthProfile: wideHyphen })
+    const first = collectTerminalLines(prepared, { columns: 7 })[0]!
+    expect(first.range.break.kind).toBe('wrap') // was 'soft-hyphen'
+    expect(first.materialized.text).toBe('aaaaabb') // was 'aaaaa-bb'
+    expect(first.range.width).toBe(7) // was 10
+    expect(first.range.overflow).toBeNull() // was { width: 10, columns: 7 }
+    assertTerminalInvariants(prepared, { columns: 7 })
+  })
+
+  test('a soft hyphen chosen at a real segment boundary still materializes (unchanged)', () => {
+    const prepared = prepareTerminal('trans\u00ADatlantic', { whiteSpace: 'normal' })
+    const first = collectTerminalLines(prepared, { columns: 6 })[0]!
+    expect(first.range.end.graphemeIndex).toBe(0)
+    expect(first.range.break.kind).toBe('soft-hyphen')
+    expect(first.materialized.text).toBe('trans-')
+    assertTerminalInvariants(prepared, { columns: 6 })
+  })
+})
