@@ -1,6 +1,6 @@
 # Migration Status
 
-This repository has a `0.1.0` `pretext-TUI` terminal-cell text layout package with the core seven terminal APIs promoted to stable `0.1`. Active work keeps the package host-neutral while tightening API boundaries, production/security posture, benchmark evidence, performance telemetry, and append-storage evidence.
+This repository has a `0.2.0` `pretext-TUI` terminal-cell text layout package with the core seven terminal APIs promoted to stable `0.1`. Active work keeps the package host-neutral while tightening API boundaries, production/security posture, benchmark evidence, performance telemetry, and append-storage evidence.
 
 ## Current Snapshot
 
