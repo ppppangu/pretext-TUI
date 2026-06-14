@@ -31,6 +31,11 @@ import {
   getInternalPreparedTerminalReader,
   type PreparedTerminalText as InternalPreparedTerminalText,
 } from '../../src/prepared/terminal-prepared-reader.js'
+import {
+  disableTerminalPerformanceCounters,
+  resetTerminalPerformanceCounters,
+  snapshotTerminalPerformanceCounters,
+} from '../../src/telemetry/terminal-performance-counters.js'
 
 type AppendParityCase = {
   appends: readonly string[]
@@ -41,6 +46,30 @@ type AppendParityCase = {
 }
 
 describe('chunked append parity', () => {
+  test('append store-copy cost is length-independent (O(window), not the O(N^2) rebuild)', () => {
+    const prepare = { whiteSpace: 'pre-wrap' as const }
+    const line = `${'x'.repeat(30)}\n`
+    const maxCopiesPerAppend = (appendCount: number): number => {
+      let flow = prepareTerminalCellFlow('', prepare)
+      let max = 0
+      for (let i = 0; i < appendCount; i++) {
+        resetTerminalPerformanceCounters()
+        flow = appendTerminalCellFlow(flow, line).flow
+        max = Math.max(max, snapshotTerminalPerformanceCounters().terminalReaderStoreCopiedSegments)
+      }
+      disableTerminalPerformanceCounters()
+      return max
+    }
+    // Store-copy work per append must be bounded by the seal window, NOT the stream length.
+    // Under the old rebuild-all-chunks path this grew ~linearly with N (~600 copied segments
+    // by 50 appends, ~2400 by 200); the immutable-append store keeps it flat, so quadrupling
+    // the stream does not grow the worst per-append copy.
+    const max250 = maxCopiesPerAppend(250)
+    const max1000 = maxCopiesPerAppend(1000)
+    expect(max1000).toBeLessThanOrEqual(max250 + 50)
+    expect(max1000).toBeLessThan(600)
+  })
+
   test('1000 small appends match full prepare without full accumulated reprepare per append', () => {
     const prepare = { whiteSpace: 'pre-wrap', tabSize: 4 } satisfies TerminalPrepareOptions
     const layout = { columns: 17 } satisfies TerminalLayoutOptions

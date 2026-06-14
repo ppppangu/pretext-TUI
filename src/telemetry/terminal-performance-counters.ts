@@ -27,6 +27,7 @@ export type TerminalPerformanceCounterName =
   | 'terminalRangeIndexRanges'
   | 'terminalRangeIndexRevalidatedRanges'
   | 'terminalRangeIndexSteps'
+  | 'terminalReaderStoreCopiedSegments'
   | 'terminalSearchMatches'
   | 'terminalSearchProjectionRequests'
   | 'terminalSearchReturnedMatches'
@@ -77,6 +78,7 @@ export const terminalPerformanceCounterNames: readonly TerminalPerformanceCounte
   'terminalRangeIndexRanges',
   'terminalRangeIndexRevalidatedRanges',
   'terminalRangeIndexSteps',
+  'terminalReaderStoreCopiedSegments',
   'terminalSearchMatches',
   'terminalSearchProjectionRequests',
   'terminalSearchReturnedMatches',

@@ -2,6 +2,7 @@
 import type { SegmentBreakKind } from '../analyze/analysis.js'
 import type { PreparedTerminalReader } from './terminal-prepared-reader.js'
 import type { TerminalWidthProfile } from '../unicode/terminal-width-profile.js'
+import { recordTerminalPerformanceCounter } from '../telemetry/terminal-performance-counters.js'
 
 export type PreparedTerminalReaderStore = Readonly<{
   chunks: readonly PreparedTerminalReaderStoreChunk[]
@@ -164,6 +165,79 @@ export function assertPreparedTerminalReaderStoreInvariants(
   }
 }
 
+// Append one reader as a new chunk, sharing every prior chunk by reference. Used by the
+// cell-flow append path so a stream of N appends stays O(N) total instead of O(N^2): the
+// prior store is already validated, so only the newly-copied chunk is materialized and
+// only it is validated (see assertAppendedReaderStoreChunk) — the full O(total-segments)
+// freezeReaderStore walk is deliberately not re-run per append.
+export function appendPreparedTerminalReaderStoreChunk(
+  store: PreparedTerminalReaderStore,
+  reader: PreparedTerminalReader,
+): PreparedTerminalReaderStore {
+  // Profile/tab checks first (matching createPreparedTerminalReaderStoreFromReaders), so an
+  // empty reader with a mismatched profile is rejected, not silently skipped.
+  if (reader.widthProfile.cacheKey !== store.widthProfile.cacheKey) {
+    throw new Error('Prepared terminal reader store chunk readers must share a width profile')
+  }
+  if (reader.tabStopAdvance !== store.tabStopAdvance) {
+    throw new Error('Prepared terminal reader store chunk readers must share a tab stop advance')
+  }
+  if (reader.segmentCount === 0) {
+    if (reader.sourceLength !== 0) {
+      throw new Error('Prepared terminal reader store empty chunk reader cannot have source text')
+    }
+    return store
+  }
+  const chunk = copyReaderStoreChunkWithBase(reader, store.segmentCount, store.sourceLength)
+  assertAppendedReaderStoreChunk(store, chunk)
+  return Object.freeze({
+    kind: 'prepared-terminal-reader-store@1',
+    chunks: Object.freeze([...store.chunks, chunk]),
+    discretionaryHyphenWidth: store.discretionaryHyphenWidth,
+    segmentCount: store.segmentCount + reader.segmentCount,
+    sourceLength: store.sourceLength + reader.sourceLength,
+    tabStopAdvance: store.tabStopAdvance,
+    widthProfile: store.widthProfile,
+  } satisfies PreparedTerminalReaderStore)
+}
+
+// Validate ONE appended chunk against the prior store totals — the per-chunk body of
+// assertPreparedTerminalReaderStoreInvariants, in O(chunk) not O(total). The prior store
+// was validated when it was built, so only seam-contiguity and the new chunk's internal
+// alignment need checking.
+function assertAppendedReaderStoreChunk(
+  store: PreparedTerminalReaderStore,
+  chunk: PreparedTerminalReaderStoreChunk,
+): void {
+  if (chunk.segmentStartIndex !== store.segmentCount) {
+    throw new Error('Prepared terminal reader store chunks must have contiguous segment ranges')
+  }
+  if (
+    chunk.segmentCount !== chunk.segments.length ||
+    chunk.segmentCount !== chunk.kinds.length ||
+    chunk.segmentCount !== chunk.sourceStarts.length ||
+    chunk.segmentCount !== chunk.segmentBreaksAfter.length
+  ) {
+    throw new Error('Prepared terminal reader store chunk arrays must align with segmentCount')
+  }
+  if (chunk.segmentCount <= 0) {
+    throw new Error('Prepared terminal reader store non-empty sources cannot contain empty chunks')
+  }
+  if (chunk.sourceStart !== store.sourceLength) {
+    throw new Error('Prepared terminal reader store chunk sourceStart must match the next global source offset')
+  }
+  let localSourceEnd = chunk.sourceStart
+  for (let i = 0; i < chunk.segmentCount; i++) {
+    if (chunk.sourceStarts[i]! !== localSourceEnd) {
+      throw new Error('Prepared terminal reader store segment sourceStarts must be global and contiguous')
+    }
+    localSourceEnd = chunk.sourceStarts[i]! + chunk.segments[i]!.length
+  }
+  if (chunk.sourceLength !== localSourceEnd - chunk.sourceStart) {
+    throw new Error('Prepared terminal reader store chunk sourceLength must span its global segment range')
+  }
+}
+
 export function createCompositePreparedTerminalReader(
   reader: PreparedTerminalReader,
   segmentChunkSizes: readonly number[],
@@ -200,6 +274,7 @@ function copyReaderStoreChunk(
   const sourceEnd = segmentCount === 0
     ? reader.sourceLength
     : sourceStarts[sourceStarts.length - 1]! + segments[segments.length - 1]!.length
+  recordTerminalPerformanceCounter('terminalReaderStoreCopiedSegments', segments.length)
   return freezeReaderStoreChunk({
     segmentStartIndex,
     segmentCount: segments.length,
@@ -229,6 +304,7 @@ function copyReaderStoreChunkWithBase(
     segmentBreaksAfter.push(reader.hasSegmentBreakAfter(segmentIndex))
   }
 
+  recordTerminalPerformanceCounter('terminalReaderStoreCopiedSegments', segments.length)
   return freezeReaderStoreChunk({
     segmentStartIndex,
     segmentCount: segments.length,

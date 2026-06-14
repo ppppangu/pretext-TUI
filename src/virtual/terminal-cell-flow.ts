@@ -11,8 +11,10 @@ import {
 } from '../prepared/terminal-prepared-reader.js'
 import { getTerminalSegmentGeometry } from '../prepared/terminal-grapheme-geometry.js'
 import {
+  appendPreparedTerminalReaderStoreChunk,
   createPreparedTerminalReaderFromStore,
   createPreparedTerminalReaderStoreFromReaders,
+  type PreparedTerminalReaderStore,
 } from '../prepared/terminal-reader-store.js'
 import {
   createTerminalMemoryBudgetEstimate,
@@ -65,6 +67,11 @@ type TerminalCellFlowState = {
   openSourceStart: number
   prepareOptions: TerminalPrepareOptions
   prepared: PreparedTerminalText
+  // Reader store over `chunks` (the sealed chunks only, NOT the open tail), carried across
+  // generations so each append shares every prior sealed chunk by reference instead of
+  // rebuilding the store over all chunks (the O(N^2) append defect). null when no chunk is
+  // sealed yet (so it is null iff `chunks` is empty).
+  sealedStore: PreparedTerminalReaderStore | null
   sourceLength: number
 }
 
@@ -110,6 +117,7 @@ export function prepareTerminalCellFlow(
     openSource: normalized.sourceDelta,
     openSourceStart: 0,
     prepareOptions,
+    sealedStore: null,
     sourceLength: normalized.normalizer.sourceLength,
   })
 }
@@ -169,6 +177,7 @@ export function appendTerminalCellFlow(
     openSource: previousState.openSource + normalized.sourceDelta,
     openSourceStart: previousState.openSourceStart,
     prepareOptions: previousState.prepareOptions,
+    sealedStore: previousState.sealedStore,
     sourceLength: normalized.normalizer.sourceLength,
   })
   const nextPrepared = internalCellFlow(nextFlow).prepared
@@ -205,8 +214,18 @@ function createCellFlowFromState(
   input: Omit<TerminalCellFlowState, 'prepared'>,
 ): PreparedTerminalCellFlow {
   const sealed = sealTerminalCellFlowOpenSource(input)
+  // Extend the sealed store with the chunk(s) sealed this generation, sharing every prior
+  // sealed chunk by reference (seal produces at most one new chunk, but loop for safety).
+  let sealedStore = input.sealedStore
+  for (let i = input.chunks.length; i < sealed.chunks.length; i++) {
+    const reader = getInternalPreparedTerminalReader(sealed.chunks[i]!.prepared)
+    sealedStore = sealedStore === null
+      ? createPreparedTerminalReaderStoreFromReaders([reader])
+      : appendPreparedTerminalReaderStoreChunk(sealedStore, reader)
+  }
   const prepared = createChunkedPreparedTerminalText(
-    sealed.chunks,
+    sealedStore,
+    sealed.chunks.length,
     sealed.openSource,
     input.prepareOptions,
   )
@@ -221,22 +240,33 @@ function createCellFlowFromState(
     openSourceStart: sealed.openSourceStart,
     prepareOptions: input.prepareOptions,
     prepared,
+    sealedStore,
     sourceLength: input.sourceLength,
   })
   return handle
 }
 
 function createChunkedPreparedTerminalText(
-  chunks: readonly TerminalCellFlowChunk[],
+  sealedStore: PreparedTerminalReaderStore | null,
+  sealedChunkCount: number,
   openSource: string,
   prepareOptions: TerminalPrepareOptions,
 ): PreparedTerminalText {
-  const allChunks = [...chunks]
-  if (openSource.length > 0 || chunks.length === 0) {
-    allChunks.push(createTerminalCellFlowChunk(openSource, prepareOptions))
+  // The open tail is re-prepared each generation (bounded — the ≤512 seal window). It exists
+  // when there is open source, or when nothing has sealed yet (the degenerate empty flow).
+  // sealedStore is null iff sealedChunkCount === 0, so the `sealedStore!` branch is safe.
+  const hasOpenTail = openSource.length > 0 || sealedChunkCount === 0
+  let store: PreparedTerminalReaderStore
+  if (hasOpenTail) {
+    const openReader = getInternalPreparedTerminalReader(
+      createTerminalCellFlowChunk(openSource, prepareOptions).prepared,
+    )
+    store = sealedStore === null
+      ? createPreparedTerminalReaderStoreFromReaders([openReader])
+      : appendPreparedTerminalReaderStoreChunk(sealedStore, openReader)
+  } else {
+    store = sealedStore!
   }
-  const readers = allChunks.map(chunk => getInternalPreparedTerminalReader(chunk.prepared))
-  const store = createPreparedTerminalReaderStoreFromReaders(readers)
   const reader = createPreparedTerminalReaderFromStore(store)
   return createPreparedTerminalTextFromReader(reader)
 }
