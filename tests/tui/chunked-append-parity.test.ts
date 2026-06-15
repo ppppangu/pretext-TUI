@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   appendTerminalCellFlow,
+  createInjectedTerminalWidthProfile,
   createTerminalLayoutBundle,
   createTerminalLineIndex,
   createTerminalPageCache,
@@ -36,6 +37,7 @@ import {
   resetTerminalPerformanceCounters,
   snapshotTerminalPerformanceCounters,
 } from '../../src/telemetry/terminal-performance-counters.js'
+import { serializeLineRanges } from './validation-helpers.js'
 
 type AppendParityCase = {
   appends: readonly string[]
@@ -68,6 +70,30 @@ describe('chunked append parity', () => {
     const max1000 = maxCopiesPerAppend(1000)
     expect(max1000).toBeLessThanOrEqual(max250 + 50)
     expect(max1000).toBeLessThan(600)
+  })
+
+  test('append ≡ reprepare holds under an injected width profile (§8.3 — width × cell-flow)', () => {
+    // The 1000-append test above uses the default profile; the host always injects a width
+    // profile, so re-pin the bisimulation under a non-trivial injected width (the chosen soft
+    // hyphen materializes at 3 cells — the ⚠-class where a layout↔append width bug would hide).
+    const wideHyphen = createInjectedTerminalWidthProfile({
+      id: 'f3/append-wide-hyphen@1',
+      graphemeWidth: g => (g === '-' ? 3 : 1),
+    })
+    const prepare = { whiteSpace: 'pre-wrap', tabSize: 4, widthProfile: wideHyphen } satisfies TerminalPrepareOptions
+    const parts = ['trans\u00AD', 'atlantic ', 'soft\u00ADbreak ', '界界 ', 'a\tb ', 'more text wraps ', 'tail\n', 'next line ', 'final\u00ADword']
+    let flow = prepareTerminalCellFlow('', prepare)
+    let raw = ''
+    for (const part of parts) {
+      flow = appendTerminalCellFlow(flow, part, { invalidationWindowCodeUnits: 16 }).flow
+      raw += part
+      for (const columns of [6, 13, 40]) {
+        // append-path layout (open-tail reprepared each append) must equal a from-scratch prepare,
+        // both under the injected width — the same OracleLine[] shape the greedy oracle uses.
+        expect(serializeLineRanges(getTerminalCellFlowPrepared(flow), { columns }))
+          .toEqual(serializeLineRanges(prepareTerminal(raw, prepare), { columns }))
+      }
+    }
   })
 
   test('1000 small appends match full prepare without full accumulated reprepare per append', () => {

@@ -924,3 +924,51 @@ describe('coordinate projection public API', () => {
     )).toThrow(/different prepared/)
   })
 })
+
+// 补建说明：该 describe 为后续补建，把分散在本文件多处的 offset↔cursor 往返钉点合并为单一承重律
+//（F3 §8.2）：π*∘π 是不动点。projection 是 section/retraction（非双射），故律用「往返复原 π 自己
+// 选定的 offset」而非「复原请求的 offset」；再叠加 in-range 精确请求复原 clamp、幂等，并断言含多
+// UTF-16 码元字素的 fixture 确实走到 section 分支（exact=false），防止律退化成只测 identity。totality
+// 边界（越界 coordinate 返回 null、反转 range 抛错）已由本文件 :383 与 :840 钉住，此处只引不重钉。
+describe('projection round-trip is a fixpoint (π*∘π), bias-parameterized', () => {
+  const fixtures: Array<{ name: string; text: string; columns: number; opts?: TerminalPrepareOptions; expectsSection: boolean }> = [
+    { name: 'plain wrap', text: 'hello world keep packing words', columns: 6, expectsSection: false },
+    { name: 'wide CJK', text: 'A界B界C界tail', columns: 5, opts: { whiteSpace: 'pre-wrap', tabSize: 4 }, expectsSection: false },
+    { name: 'combining + ZWSP + tab', text: 'A\tB界e\u0301\u200Btail', columns: 6, opts: { whiteSpace: 'pre-wrap', tabSize: 4 }, expectsSection: true },
+    { name: 'surrogate-pair emoji', text: 'a😀b界c😀d', columns: 4, opts: { whiteSpace: 'pre-wrap', tabSize: 4 }, expectsSection: true },
+    { name: 'trailing newline', text: 'abc\ndef\n', columns: 8, expectsSection: false },
+  ]
+
+  for (const fx of fixtures) {
+    test(`round-trip recovers π's own offset across offsets × bias — ${fx.name}`, () => {
+      const view = createProjectionView(fx.text, fx.columns, fx.opts ?? { whiteSpace: 'pre-wrap' })
+      const len = fx.text.length
+      let sawSection = false
+      for (let offset = -2; offset <= len + 2; offset++) {
+        for (const bias of ['before', 'after', 'closest'] as const) {
+          const fwd = projectTerminalSourceOffset(view.prepared, view.sourceIndex, view.lineIndex, offset, bias)
+          // Retracting π's cursor recovers exactly the offset π chose (NOT necessarily the requested
+          // offset — interior offsets of a multi-code-unit grapheme snap, making this a section).
+          const back = projectTerminalCursor(view.prepared, view.sourceIndex, view.lineIndex, fwd.cursor)
+          expect(back.sourceOffset).toBe(fwd.sourceOffset)
+          // Idempotent under fixed bias: re-projecting the recovered offset recovers the same offset.
+          // (The cursor REPRESENTATION may differ — segment-boundary offsets have two equivalent
+          // cursors; the offset is the canonical fixpoint, not the cursor.)
+          const again = projectTerminalSourceOffset(view.prepared, view.sourceIndex, view.lineIndex, back.sourceOffset, bias)
+          expect(again.sourceOffset).toBe(fwd.sourceOffset)
+          if (fwd.exact) {
+            // An exact, boundary-aligned request recovers the clamped request itself.
+            expect(fwd.sourceOffset).toBe(Math.max(0, Math.min(len, offset)))
+          } else if (offset >= 0 && offset <= len) {
+            // An in-range request that did NOT land exactly = the section case (interior of a
+            // multi-code-unit grapheme snapped to a boundary). Where π*∘π earns its teeth.
+            sawSection = true
+          }
+        }
+      }
+      // Guard the teeth: a fixture with a multi-code-unit grapheme MUST drive the section branch,
+      // or the law silently degrades to identity-after-clamp and stops testing the retraction.
+      if (fx.expectsSection) expect(sawSection).toBe(true)
+    })
+  }
+})

@@ -89,6 +89,24 @@ export function collectTerminalLines(
   return lines
 }
 
+// Serialize a layout into the canonical OracleLine[] shape (the same 7 fields the greedy oracle
+// emits). The single home for "project laid-out rows to comparable values" — reused by the greedy
+// oracle parity, the width-independence reuse≡fresh law, and the chunked-append injected-width law.
+export function serializeLineRanges(
+  prepared: PreparedTerminalText,
+  options: TerminalLayoutOptions,
+): OracleLine[] {
+  return collectTerminalLines(prepared, options).map(({ range, materialized }) => ({
+    text: materialized.text,
+    sourceText: materialized.sourceText,
+    sourceStart: range.sourceStart,
+    sourceEnd: range.sourceEnd,
+    width: range.width,
+    breakKind: range.break.kind,
+    overflow: range.overflow,
+  }))
+}
+
 export function collectTerminalLinesByNext(
   prepared: PreparedTerminalText,
   options: TerminalLayoutOptions,

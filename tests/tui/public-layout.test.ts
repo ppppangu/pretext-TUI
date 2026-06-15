@@ -12,6 +12,7 @@ import {
   collectTerminalLines,
   collectTerminalLinesByNext,
   computePreparedGreedyOracle,
+  serializeLineRanges,
   readInternalPreparedTerminalText,
 } from './validation-helpers.js'
 
@@ -128,15 +129,7 @@ describe('tui public layout validation', () => {
 
     for (const item of cases) {
       const prepared = prepareTerminal(item.text, item.prepare)
-      const actual = collectTerminalLines(prepared, item.layout).map(line => ({
-        text: line.materialized.text,
-        sourceText: line.materialized.sourceText,
-        sourceStart: line.range.sourceStart,
-        sourceEnd: line.range.sourceEnd,
-        width: line.range.width,
-        breakKind: line.range.break.kind,
-        overflow: line.range.overflow,
-      }))
+      const actual = serializeLineRanges(prepared, item.layout)
       const oracle = computePreparedGreedyOracle(prepared, item.layout)
       assertDeepEqual(actual, oracle, `slow greedy oracle for ${item.text}`)
     }
