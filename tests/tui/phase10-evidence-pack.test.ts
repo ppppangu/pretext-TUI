@@ -10,7 +10,7 @@ import {
 import { readBenchmarkEvidenceReport } from '../../scripts/tui-benchmark-evidence.js'
 
 const repoRoot = path.resolve(import.meta.dir, '../..')
-const cleanReportId = 'competitive-tui-20260614-8bb092d-clean-054adcee'
+const cleanReportId = 'competitive-tui-20260615-05a8d54-clean-ad380eea'
 const cleanReportPath = path.join(
   repoRoot,
   'docs/evidence/benchmark-reports',
@@ -103,7 +103,7 @@ describe('phase 10 adoption evidence pack', () => {
     expect(rawReport.metadata?.note).toContain('补建说明')
     expect(report.reportId).toBe(cleanReportId)
     expect(report.git.dirty).toBe(false)
-    expect(report.git.shortCommit).toBe('8bb092d')
+    expect(report.git.shortCommit).toBe('05a8d54')
     expect(ancestorCheck.exitCode).toBe(0)
     expect(report.claimability).toBe('local-evidence-only')
     expect(report.command.packageScript).toBe('benchmark:evidence:tui')
