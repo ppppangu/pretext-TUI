@@ -7,8 +7,8 @@ Public capability claims should cite evidence IDs, commands, contracts, or tests
 
 | Capability area | Public surface | Evidence anchors | Current status | Adoption boundary |
 | --- | --- | --- | --- | --- |
-| Core terminal-cell layout | `prepareTerminal`, `layoutTerminal`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange` | `src/terminal-core.test.ts`, `tests/tui/public-layout.test.ts`, `bun run tui-oracle-check`, `bun run tui-corpus-check`, `bun run tui-fuzz --seed=ci --cases=2000` | Stable candidate | Produces terminal-row data and materialized text fragments from visible text. |
-| Width profile and Unicode handling | `TerminalWidthProfileInput`, terminal prepare options, string-width backend | `src/terminal-string-width.test.ts`, `src/terminal-core.test.ts`, corpus and fuzz gates | Stable candidate with configurable policy inputs | Exposes deterministic terminal-cell measurement policy; it does not define a visual theme or input system. |
+| Core terminal-cell layout | `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR` | `src/terminal-core.test.ts`, `tests/tui/public-layout.test.ts`, `bun run tui-oracle-check`, `bun run tui-corpus-check`, `bun run tui-fuzz --seed=ci --cases=2000` | Stable core as of `0.1.0` | Produces terminal-row data and materialized text fragments from visible text. |
+| Width profile and Unicode handling | `TerminalWidthProfileInput`, terminal prepare options, string-width backend | `src/terminal-string-width.test.ts`, `src/terminal-core.test.ts`, corpus, fuzz, and conformance gates | Stable core support with configurable policy inputs | Exposes deterministic terminal-cell measurement policy; it does not define a visual theme or input system. |
 | Source offsets and cursor mapping | `TerminalCursor`, `TerminalLineRange`, `createTerminalSourceOffsetIndex`, cursor/source lookup helpers | `tests/tui/coordinate-projection.test.ts`, `tests/tui/public-layout.test.ts`, `tests/tui/prepared-reader-boundary.test.ts` | Incubating around fixed-column indexes | Uses UTF-16 offsets over sanitized visible text; domain record meaning remains host-owned. |
 | Fixed-column large-text helpers | `createTerminalLineIndex`, `createTerminalPageCache`, `createTerminalLayoutBundle`, related page/materialize helpers | `tests/tui/virtual-text.test.ts`, `tests/tui/layout-bundle.test.ts`, `tests/tui/performance-counters.test.ts`, `bun run benchmark-check:tui` | Incubating | Caches range metadata for requested rows; it does not manage panes, scrolling policy, or product state. |
 | Append-only cell flow | `prepareTerminalCellFlow`, `appendTerminalCellFlow`, flow generation/prepared accessors | `tests/tui/chunked-append-parity.test.ts`, `tests/tui/layout-bundle.test.ts`, `bun run benchmark-check:tui`, `bun run memory-budget-check:tui` | Incubating | Supports append-only source growth behind an opaque handle; arbitrary insert/delete/replace and prefix eviction remain outside this package. |
@@ -17,19 +17,21 @@ Public capability claims should cite evidence IDs, commands, contracts, or tests
 | Selection and extraction data | `createTerminalSelectionFromCoordinates`, `extractTerminalSourceRange`, `extractTerminalSelection` | `tests/tui/selection-extraction.test.ts`, `tests/tui/coordinate-projection.test.ts`, `benchmarks/tui-memory-budgets.json` | Incubating | Converts caller-provided coordinates or source ranges into immutable extraction data; active interaction policy remains outside the package. |
 | Rich inline metadata | `pretext-tui/terminal-rich-inline`, rich prepare, rich walk/layout/materialize, rich extraction helpers | `src/terminal-rich-inline.test.ts`, `tests/tui/rich-security-gate.test.ts`, `tests/tui/selection-extraction.test.ts` | Incubating and policy-bound | Keeps style/link metadata separate from core layout; reconstruction of control-decorated text is explicit and policy-bound. |
 | Public package boundary | `pretext-tui`, `pretext-tui/terminal`, `pretext-tui/terminal-rich-inline`, `pretext-tui/package.json` | `tests/tui/public-api-boundary.test.ts`, `tests/tui/prepared-reader-boundary.test.ts`, `bun run api-snapshot-check`, `bun run package-smoke-test` | Current publish boundary | No private subpaths or bundled host adapters are part of the public contract. |
+| Repo-only conformance kit | `fixtures/conformance/manifest.json`, `width-cases.json`, `wrap-cases.json`, `offset-cases.json` | `bun run conformance-kit-check`, `bun run scripts/tui-conformance-kit-generate.ts --check`, `fixtures/conformance/README.md` | Release-gated repository evidence; not an npm export | Pins portable width/wrap/offset cases for review and reimplementation checks without expanding the published package. |
 
 ## Claim Rules
 
 - Cite tests, release gates, contracts, or the clean report id before making adoption claims.
 - Cite report `competitive-tui-20260615-05a8d54-clean-ad380eea` for optional local comparison evidence, and leave timing values in the JSON.
 - Treat incubating APIs as useful but not frozen for the first stable contract.
+- Treat the conformance kit as repo-only evidence unless a separate publish-surface decision changes the tarball.
 - Keep package claims about terminal text data. Host behavior, product lifecycle, and integration layers stay outside this matrix.
 
 ## Runtime Export Coverage
 
 The package smoke test and API snapshot gate verify the same runtime names listed here.
 
-Stable candidate root and terminal exports:
+Stable core root and terminal exports:
 
 - `TERMINAL_START_CURSOR`
 - `layoutNextTerminalLineRange`

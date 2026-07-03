@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于保存只依赖公开 API 的 host-neutral adoption recipes；当前进度：Phase 10 补充 generic agent transcript recipe，并继续覆盖结构化视图、resize、source mapping 与 rich log viewer 通用宿主场景。 -->
+<!-- 补建说明：该目录为后续补建，用于保存只依赖公开 API 的 host-neutral adoption recipes；当前进度：新增 quickstart adoption recipe，并继续覆盖结构化视图、generic transcript、resize、source mapping 与 rich log viewer 通用宿主场景。 -->
 # Host-Neutral Recipes
 
 These recipes show how a host can compose `pretext-TUI` as a terminal text algorithm layer without turning the package into a renderer, pane manager, command runner, or application framework.
@@ -21,6 +21,7 @@ Use these recipes as adoption patterns, not as a promise that every advanced typ
 
 ## Recipes
 
+- [Quickstart Adoption](quickstart-adoption.md): prepare a long transcript once, rebuild width-dependent paging on resize, materialize visible rows, and inspect source-offset metadata.
 - [Structured Transcript Viewport](transcript-viewport.md): concatenate host blocks into a source stream, page visible rows, and map rows back to block ranges.
 - [Generic Agent Transcript](agent-transcript-generic.md): page ordered transcript records, keep record semantics host-owned, and combine rich fragments with generic source ranges.
 - [Terminal Pane Resize](terminal-pane-resize.md): rebuild width-dependent indexes while keeping a semantic source-offset anchor stable.

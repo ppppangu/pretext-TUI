@@ -13,6 +13,8 @@
     "tui-oracle-check": "required",
     "tui-corpus-check": "required",
     "tui-fuzz --seed=ci --cases=2000": "required",
+    "conformance-kit-check": "required",
+    "scripts/tui-conformance-kit-generate.ts --check": "required",
     "benchmark-check:tui": "required",
     "memory-budget-check:tui": "required",
     "terminal-demo-check": "required",
@@ -31,8 +33,9 @@
     "richMetadataHardening": "Phase 7 internal rich span/raw-visible indexes, rich materialize option validation, and benchmark schema guardrails landed without expanding public exports",
     "appendOnlyChunkedStorage": "Phase 8 append-only chunked storage landed behind existing cell-flow/bundle boundaries with documented residual risk",
     "performanceMemoryEvidence": "Phase 9 approved with documented residual risk: benchmark counters, modelled memory budgets, release gate consistency evidence, and claim guardrails are implemented",
+    "publicOnboarding": "Strengthened for 0.2.1 adoption: README and website route tables point TUI/CLI library authors to the stable core, large-text helpers, rich sidecar, source-first data APIs, and repo-only conformance evidence.",
     "releaseStatus": "0.2.1 release: pre-1.0, core seven terminal APIs promoted to stable 0.1 with incubating advanced APIs clearly labelled.",
-    "phase10LaunchReadiness": "Approved with documented residual risk. Evidence anchors include public API boundary, incubating API approval index, adoption evidence pack, kernel capability matrix, correctness matrix, public-only recipes, production notes, benchmark claim guardrails, and report competitive-tui-20260615-05a8d54-clean-ad380eea. No stable 0.1, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claim."
+    "phase10LaunchReadiness": "Approved with documented residual risk. Evidence anchors include public API boundary, incubating API approval index, adoption evidence pack, kernel capability matrix, correctness matrix, public-only recipes, repo-only conformance kit release gate, production notes, benchmark claim guardrails, and report competitive-tui-20260615-05a8d54-clean-ad380eea. No stable 0.1, named-host integration, renderer, PTY, clipboard, filesystem, arbitrary editing, destructive prefix eviction, broad speed, or process-memory claim."
   },
   "phase10": {
     "approvalState": "approve with documented residual risk",

@@ -23,6 +23,14 @@
       "expectedWidth": 2
     },
     {
+      "id": "width-profile/ambiguous-narrow-via-override",
+      "text": "§±",
+      "widthProfile": {
+        "ambiguousWidth": "narrow"
+      },
+      "expectedWidth": 2
+    },
+    {
       "id": "width-profile/ambiguous-wide-via-override",
       "text": "§±",
       "widthProfile": {
@@ -41,6 +49,19 @@
       "expectedWidth": 2
     },
     {
+      "id": "width-profile/emoji-presentation-wide-default",
+      "text": "😀",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/emoji-narrow-via-override",
+      "text": "😀",
+      "widthProfile": {
+        "emojiWidth": "narrow"
+      },
+      "expectedWidth": 1
+    },
+    {
       "id": "width-profile/variation-selector",
       "text": "❤️",
       "expectedWidth": 2
@@ -49,6 +70,19 @@
       "id": "width-profile/zwj-emoji-sequence",
       "text": "👨‍👩‍👧",
       "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/regional-indicator-single-default",
+      "text": "🇺",
+      "expectedWidth": 2
+    },
+    {
+      "id": "width-profile/regional-indicator-single-narrow-via-override",
+      "text": "🇺",
+      "widthProfile": {
+        "regionalIndicator": "flag-pair-wide-single-narrow"
+      },
+      "expectedWidth": 1
     },
     {
       "id": "width-profile/regional-indicator-pair",

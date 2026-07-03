@@ -5,19 +5,22 @@
 
 Key facts:
 
-- Install: `npm install pretext-tui` (current stable release: 0.1.0, MIT license)
+- Install: `npm install pretext-tui` (current package release: 0.2.1, MIT license)
 - Stable core API as of 0.1.0: `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR`
 - Public but incubating surfaces: layout bundles, sparse row indexes, fixed-column page caches, source projection, source-first search sessions, selection/extraction, a generic range sidecar, append-only cell flows, and the rich `SGR`/`OSC8` metadata sidecar at `pretext-tui/terminal-rich-inline`
 - Width model: integer terminal cells through deterministic Unicode width profiles (CJK, emoji, combining marks, tabs, zero-width breaks, soft hyphens)
 - Source mapping: UTF-16 offsets over sanitized visible source text; ranges are grapheme-safe
 - Designed-for workloads: long transcripts, log viewers, multiplexer-like panes, editor-like preview panes, terminal dashboards, rich ANSI transcript viewers
 - Performance claims are evidence-bound: cite report ids and workload ids from the repository's evidence reports instead of copied timing numbers
+- Adoption routes: start with the stable core seven for a small trial; use layout bundles and page caches for long buffers; use `pretext-tui/terminal-rich-inline` for rich ANSI metadata; use source-first data APIs for search, selection, and mapping; use contracts plus the repo-only conformance kit for technical review
 
 ## Docs
 
 - [README](https://github.com/ppppangu/pretext-TUI/blob/main/README.md): package story, quickstart, API examples
+- [Quickstart adoption recipe](https://github.com/ppppangu/pretext-TUI/blob/main/docs/recipes/quickstart-adoption.md): prepare once, page visible rows, resize, materialize, and inspect source metadata
 - [npm package](https://www.npmjs.com/package/pretext-tui): install surface and published files
 - [Terminal contract](https://github.com/ppppangu/pretext-TUI/tree/main/docs/contracts): normative terminal semantics and host boundary
+- [Conformance kit](https://github.com/ppppangu/pretext-TUI/tree/main/fixtures/conformance): repo-only width/wrap/offset fixtures checked by the release gate, not shipped in the npm tarball
 - [Evidence reports](https://github.com/ppppangu/pretext-TUI/tree/main/docs/evidence): reproducible local benchmark evidence with raw samples and environment metadata
 - [Changelog](https://github.com/ppppangu/pretext-TUI/blob/main/CHANGELOG.md): user-facing release notes
 

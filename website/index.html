@@ -44,7 +44,7 @@
           "terminal wrapping",
           "TypeScript"
         ],
-        "softwareVersion": "0.1.0"
+        "softwareVersion": "0.2.1"
       }
     </script>
     <script type="application/ld+json">
@@ -106,6 +106,7 @@
       </a>
       <nav class="nav" aria-label="Primary navigation">
         <a href="#why">Why</a>
+        <a href="#routes">Routes</a>
         <a href="#api">API</a>
         <a href="#evidence">Evidence</a>
         <a href="#deploy">Deploy</a>
@@ -137,24 +138,24 @@
           <p class="eyebrow">Terminal text layout for serious buffers</p>
           <h1 id="hero-title">Long terminal text should not rewrap from scratch just to draw one viewport.</h1>
           <p class="hero-lede">
-            `pretext-tui` is a host-neutral TypeScript kernel for TUI, CLI, log, transcript, editor-pane, and dashboard hosts. Prepare text once, reflow by terminal columns, and materialize only the rows your host needs.
+            `pretext-tui` is a host-neutral TypeScript kernel for TUI, CLI, log, transcript, editor-pane, and dashboard hosts. Prepare once, layout by terminal columns, range rows and source offsets, then materialize only the viewport.
           </p>
           <div class="hero-actions" aria-label="Primary calls to action">
-            <a class="button primary" href="#install">Install 0.1.0</a>
+            <a class="button primary" href="#install">Install 0.2.1</a>
             <a class="button ghost" href="https://github.com/ppppangu/pretext-TUI">View source</a>
           </div>
           <dl class="hero-facts" aria-label="Package facts">
             <div>
               <dt>Current release</dt>
-              <dd>0.1.0</dd>
+              <dd>0.2.1</dd>
             </div>
             <div>
-              <dt>Runtime target</dt>
-              <dd>Terminal cells</dd>
+              <dt>Pipeline</dt>
+              <dd>prepare -> layout/range -> materialize</dd>
             </div>
             <div>
-              <dt>Public package</dt>
-              <dd>pretext-tui</dd>
+              <dt>Boundary</dt>
+              <dd>Not a renderer, emulator, or framework</dd>
             </div>
           </dl>
         </div>
@@ -237,7 +238,7 @@
         <div class="section-inner code-stage">
           <div>
             <p class="eyebrow">Install</p>
-            <h2 id="install-title">Published on npm. The core seven APIs are stable as of 0.1.0.</h2>
+            <h2 id="install-title">Published on npm. Current package release is 0.2.1; the core seven APIs are stable as of 0.1.0.</h2>
             <p>
               The root package exports the terminal API. `pretext-tui/terminal` is the explicit alias, and `pretext-tui/terminal-rich-inline` is the opt-in rich metadata sidecar.
             </p>
@@ -248,6 +249,45 @@
               <button class="copy-button" type="button" data-copy="npm install pretext-tui">Copy</button>
             </div>
             <pre><code>npm install pretext-tui</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="routes" aria-labelledby="routes-title">
+        <div class="section-inner">
+          <div class="section-heading">
+            <p class="eyebrow">Choose your path</p>
+            <h2 id="routes-title">Pick the smallest public surface that answers your adoption question.</h2>
+            <p>
+              Start with the stable core, then opt into incubating data workflows only when your host needs paging, rich metadata, or source-first coordination.
+            </p>
+          </div>
+          <div class="route-grid">
+            <article>
+              <span class="route-tag">15-minute check</span>
+              <h3>Stable core seven</h3>
+              <p>`prepareTerminal`, `layoutTerminal`, range walking, next-line layout, materialization, stats, and `TERMINAL_START_CURSOR`.</p>
+            </article>
+            <article>
+              <span class="route-tag">Long buffers</span>
+              <h3>Layout bundle + page cache</h3>
+              <p>Fixed-column range metadata for deep scroll, visible-window materialization, and resize reflow.</p>
+            </article>
+            <article>
+              <span class="route-tag">ANSI logs</span>
+              <h3>Rich inline sidecar</h3>
+              <p>Opt-in SGR and OSC8 metadata through `pretext-tui/terminal-rich-inline`, with unsupported controls rejected or sanitized by policy.</p>
+            </article>
+            <article>
+              <span class="route-tag">Source-aware UI</span>
+              <h3>Search, selection, mapping</h3>
+              <p>Source-first data APIs for hits, ranges, coordinates, selections, and extraction while UI state stays host-owned.</p>
+            </article>
+            <article>
+              <span class="route-tag">Review evidence</span>
+              <h3>Contracts + conformance</h3>
+              <p>Contracts, release commands, and repo-only conformance fixtures support technical review without changing the npm package surface.</p>
+            </article>
           </div>
         </div>
       </section>

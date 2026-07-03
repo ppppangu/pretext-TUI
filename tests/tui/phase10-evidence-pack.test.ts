@@ -22,6 +22,7 @@ const phase10Files = [
   'docs/evidence/correctness-matrix.md',
   'docs/evidence/adoption-evidence-pack.md',
   'docs/production/security-support-provenance-matrix.md',
+  'docs/recipes/quickstart-adoption.md',
   'docs/recipes/agent-transcript-generic.md',
   'docs/decisions/incubating-api-approval-index.md',
   'docs/decisions/phase-10-adoption-evidence-launch-readiness-approval.md',

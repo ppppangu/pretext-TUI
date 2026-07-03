@@ -10,6 +10,8 @@ const canonicalGateScripts = [
   'tui-oracle-check',
   'tui-corpus-check',
   'tui-fuzz --seed=ci --cases=2000',
+  'conformance-kit-check',
+  'scripts/tui-conformance-kit-generate.ts --check',
   'benchmark-check:tui',
   'memory-budget-check:tui',
   'terminal-demo-check',

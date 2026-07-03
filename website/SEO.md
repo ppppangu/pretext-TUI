@@ -29,6 +29,9 @@
 - Submit the production URL to Google Search Console and Bing Webmaster Tools.
 - Link to the site from the GitHub repository description, npm package homepage field, and README once the domain is live.
 - Use the npm package URL and GitHub repository URL as primary trust anchors.
+- Keep the homepage route table aligned with README: stable core seven, long-buffer paging, rich ANSI sidecar, source-first workflows, and conformance/review evidence.
+- Link first-adopter readers to `docs/recipes/quickstart-adoption.md` before deeper recipes.
+- Mention that the conformance kit is release-gated repository data and is not part of the npm tarball.
 
 ## Expansion pages
 

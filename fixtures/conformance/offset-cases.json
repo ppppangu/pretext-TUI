@@ -21,6 +21,20 @@
       }
     },
     {
+      "id": "source-mapping/inside-cluster-bias-before",
+      "text": "éf",
+      "columns": 8,
+      "sourceOffset": 1,
+      "bias": "before",
+      "expected": {
+        "row": 0,
+        "column": 0,
+        "sourceOffset": 0,
+        "exact": false,
+        "atEnd": false
+      }
+    },
+    {
       "id": "source-mapping/inside-cluster-bias-after",
       "text": "éf",
       "columns": 8,
@@ -43,6 +57,22 @@
         "row": 1,
         "column": 0,
         "sourceOffset": 4,
+        "exact": true,
+        "atEnd": false
+      }
+    },
+    {
+      "id": "source-mapping/hard-break-next-row",
+      "text": "ab\ncd",
+      "prepare": {
+        "whiteSpace": "pre-wrap"
+      },
+      "columns": 8,
+      "sourceOffset": 3,
+      "expected": {
+        "row": 1,
+        "column": 0,
+        "sourceOffset": 3,
         "exact": true,
         "atEnd": false
       }

@@ -1,4 +1,4 @@
-<!-- 补建说明：该目录为后续补建，用于存放 pretext-TUI 终端一致性套件的纯数据用例（package-neutral，任何宿主或非 JS 复刻实现都可运行并逐字段对比）；当前进度：首版覆盖 width/wrap/offset 三域种子用例与从引擎生成的 expecteds，repo-only，未进入 release gate。 -->
+<!-- 补建说明：该目录为后续补建，用于存放 pretext-TUI 终端一致性套件的纯数据用例（package-neutral，任何宿主或非 JS 复刻实现都可运行并逐字段对比）；当前进度：扩展覆盖 width/wrap/offset 三域种子用例与从引擎生成的 expecteds，repo-only，并已纳入 release gate。 -->
 # Terminal Conformance Kit
 
 This directory holds the `pretext-TUI` terminal conformance kit: package-neutral,
@@ -35,11 +35,13 @@ Every file carries a top-level `metadata` object first, including the `schema`,
 
 The JavaScript reference runner is `bun run conformance-kit-check`, which re-evaluates
 every case against the current engine. Regenerate expecteds with
-`bun run scripts/tui-conformance-kit-generate.ts`.
+`bun run scripts/tui-conformance-kit-generate.ts`; the release gate also runs
+`bun run scripts/tui-conformance-kit-generate.ts --check` so seed/fixture drift fails
+before publish.
 
 ## Non-claims
 
 - This kit is not a certification or a compliance badge.
 - It pins exactly `terminal-unicode-narrow@1` at Unicode `17.0.0`; a different profile or Unicode version is out of scope and must get its own kit version.
-- The cases describe text-layout data only and do not imply any renderer, terminal-emulator, or host application behavior; No terminal product or host is named or targeted.
-- The kit is repository-only data and is not part of the published npm tarball; it may be promoted into the release gate later, but it is not a release gate today.
+- The cases describe text-layout data only and do not imply any renderer, terminal-emulator, or host application behavior; no terminal product or host is named or targeted.
+- The kit is repository-only data and is not part of the published npm tarball; shipping it in the package would require a separate publish-surface decision.

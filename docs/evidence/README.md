@@ -7,6 +7,7 @@ Evidence is not the same as a release gate:
 
 - `bun run benchmark-check:tui` is a conservative package regression gate.
 - `bun run memory-budget-check:tui` is a modelled kernel-owned structure budget gate.
+- `bun run conformance-kit-check` and `bun run scripts/tui-conformance-kit-generate.ts --check` gate the repo-only width/wrap/offset conformance fixtures under `fixtures/conformance/`.
 - `bun run benchmark:competitive:tui` is an optional local text-layout comparison.
 - `bun run benchmark:evidence:tui` writes a local JSON evidence report under `docs/evidence/benchmark-reports/`.
 
@@ -19,6 +20,7 @@ Phase 10 evidence entry points are approved with documented residual risk. They 
 - [Adoption Evidence Pack](adoption-evidence-pack.md): reviewer-facing bundle of claim shapes, clean report citation, approved launch-readiness checklist, and residual risks.
 - [Benchmark Claim Guardrails](benchmark-claims.md): wording rules for optional comparison evidence.
 - [Benchmark Reports](benchmark-reports/): JSON reports that remain the numeric source of truth.
+- [Conformance Kit](../../fixtures/conformance/): repo-only portable fixture data; it is release-gated but not part of the npm tarball.
 
 ## Citation Flow
 

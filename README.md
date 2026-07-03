@@ -19,6 +19,16 @@ visible terminal text
   -> materialize only the visible rows     strings on demand, not per frame
 ```
 
+## Choose An API Route
+
+| Scenario | Start with | Public entry point | Stability and evidence |
+| --- | --- | --- | --- |
+| 15-minute adoption check | Stable core seven: `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, `TERMINAL_START_CURSOR` | `pretext-tui` or `pretext-tui/terminal` | Stable as of `0.1.0`; see [Quickstart Adoption](docs/recipes/quickstart-adoption.md). |
+| Long logs and deep scroll | `createTerminalLayoutBundle()`, fixed-column page queries, and `materializeTerminalLinePage()` | `pretext-tui` | Public but incubating; caches range metadata for requested rows. |
+| Rich ANSI transcripts | `prepareTerminalRichInline()` plus rich line materialization | `pretext-tui/terminal-rich-inline` | Public but incubating; SGR/OSC8 metadata is opt-in and policy-bound. |
+| Search, selection, and source mapping | Source-first data APIs: source indexes, coordinate projection, search sessions, range sidecars, selection extraction | `pretext-tui` | Public but incubating; hosts own UI state, highlighting, copy behavior, and domain actions. |
+| Conformance and technical review | Terminal contracts, evidence docs, `bun run conformance-kit-check`, `bun run release-gate:tui` | Repository docs and validation scripts | Repo-only conformance data stays outside the npm tarball unless a separate publish-surface decision lands. |
+
 ## Why
 
 Modern terminal apps behave like text-heavy products again:
@@ -65,7 +75,7 @@ walkTerminalLineRanges(prepared, { columns: 40 }, line => {
 })
 ```
 
-Resize is just another layout pass over the same prepared text — no re-analysis. The package root and `pretext-tui/terminal` export the same terminal API; `pretext-tui/terminal-rich-inline` is the opt-in rich ANSI metadata path.
+Resize is just another layout pass over the same prepared text — no re-analysis. The package root and `pretext-tui/terminal` export the same terminal API; `pretext-tui/terminal-rich-inline` is the opt-in rich ANSI metadata path. For the copyable long-transcript adoption flow, see [docs/recipes/quickstart-adoption.md](docs/recipes/quickstart-adoption.md).
 
 ### See It Run
 
@@ -346,12 +356,14 @@ Skeptical by default — the publish gate is one command:
 bun run prepublishOnly
 ```
 
-It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, deterministic oracle checks, corpus checks, deterministic fuzzing, benchmark guardrails, the modelled memory-budget gate, terminal demo checks, API snapshot checks, and package smoke tests.
+It runs TUI typechecks, validation typechecks, static no-browser gating, type-aware linting, TUI tests, deterministic oracle checks, corpus checks, deterministic fuzzing, conformance kit checks, benchmark guardrails, the modelled memory-budget gate, terminal demo checks, API snapshot checks, and package smoke tests.
 
 Useful focused commands:
 
 ```sh
 bun run test:tui
+bun run conformance-kit-check
+bun run scripts/tui-conformance-kit-generate.ts --check
 bun run benchmark-check:tui
 bun run memory-budget-check:tui
 bun run benchmark:competitive:tui

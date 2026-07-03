@@ -114,6 +114,50 @@ Create these before a loud launch:
 - Boundary diagram: package owns text layout primitives; host owns rendering/input/panes/product behavior.
 - Short source-offset screenshot: show visible rows carrying source ranges for search/copy/debugging.
 
+## Launch Checklist
+
+Hacker News post:
+
+```text
+Show HN: pretext-tui, terminal-cell text layout primitives for long TUI buffers
+
+pretext-tui is a host-neutral TypeScript package for long terminal text. It prepares visible source once, lays out rows by integer terminal cells, and materializes only the requested viewport rows.
+
+It is not a renderer, terminal emulator, or TUI framework. Hosts keep rendering, input, panes, scrolling, clipboard, command execution, and product behavior.
+
+Links to include: npm package, GitHub repository, quickstart adoption recipe, terminal contract, conformance kit, and the clean evidence report id with workload ids.
+```
+
+Short social post:
+
+```text
+Long terminal text is outgrowing string wrapping.
+
+pretext-TUI gives TUI/CLI authors a terminal-cell layout core:
+prepare once, range rows, materialize the viewport.
+
+Not a renderer. Not an emulator. The text engine under your host.
+```
+
+Technical blog outline:
+
+```text
+Title: Terminal UIs need text layout, not just string wrapping
+
+1. Why long logs, transcripts, patches, CJK, emoji, tabs, and ANSI metadata strain naive wrapping.
+2. The package boundary: terminal-cell data below, host rendering and input above.
+3. The core pipeline: prepare -> layout/range -> materialize.
+4. Long-buffer adoption: layout bundles, page caches, and resize reflow as incubating data APIs.
+5. Source-first workflows: search, selection, source offsets, and generic range sidecars.
+6. Evidence: contracts, conformance fixtures, release commands, and clean report ids without pasted timing numbers.
+```
+
+Company pilot paragraph:
+
+```text
+For a low-risk pilot, use pretext-TUI under one read-only transcript, log, or history pane. Keep the existing app shell, renderer, input handling, storage, and copy behavior. Evaluate terminal-cell wrapping, source ranges, fixed-column paging, and rich metadata sidecars against your own fixtures, then run the repository release gate and repo-only conformance kit before broadening usage.
+```
+
 ## Channel Plan
 
 Hacker News:

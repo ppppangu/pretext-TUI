@@ -22,6 +22,8 @@ bun run test:tui
 bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
+bun run conformance-kit-check
+bun run scripts/tui-conformance-kit-generate.ts --check
 bun run benchmark-check:tui
 bun run memory-budget-check:tui
 bun run terminal-demo-check
@@ -43,6 +45,8 @@ oxlint --type-aware src
 bun run tui-oracle-check
 bun run tui-corpus-check
 bun run tui-fuzz --seed=ci --cases=2000
+bun run conformance-kit-check
+bun run scripts/tui-conformance-kit-generate.ts --check
 bun run benchmark-check:tui
 bun run memory-budget-check:tui
 bun run terminal-demo-check
@@ -54,6 +58,8 @@ bun run package-smoke-test
 `terminal-demo-check` gates the deterministic package-level vertical slice. It proves one prepare pass, resize reflow, JSON schema shape, fixture sandboxing, and bounded visible-window materialization without adding an interactive application shell.
 
 `terminal-feel-demo-check` gates the local tactile comparison demo. The demo compares a conventional full-wrap-and-slice viewport loop with a `pretext-TUI` prepared/page-cache loop, but it is a developer feel check rather than public benchmark evidence.
+
+`conformance-kit-check` and `scripts/tui-conformance-kit-generate.ts --check` gate the repo-only terminal conformance fixture kit. The first command re-evaluates stored cases against the current engine; the second keeps the generated JSON byte-synced with the curated seed inputs.
 
 The benchmark thresholds are intentionally conservative because the harness also runs invariants. The virtual text counters cover page hits/misses, source lookups, anchor replay distance, append invalidation size, full reprepare size, and invalidated pages. Explicit, default-off instrumentation also records prepared geometry reuse and remaining materialization-time grapheme/width work plus rich/search/selection lookup behavior; these counters are release-regression telemetry, not public benchmark evidence. `memory-budget-check:tui` separately models kernel-owned structure sizes for layout bundles, range indexes, search sessions, selection extraction, rich sidecars, and append-only cell flows; it is not process heap telemetry.
 

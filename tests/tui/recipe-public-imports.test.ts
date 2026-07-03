@@ -8,6 +8,7 @@ const recipesDir = path.join(repoRoot, 'docs/recipes')
 
 const requiredRecipeFiles = [
   'README.md',
+  'quickstart-adoption.md',
   'transcript-viewport.md',
   'agent-transcript-generic.md',
   'terminal-pane-resize.md',

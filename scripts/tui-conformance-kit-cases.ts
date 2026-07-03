@@ -38,11 +38,16 @@ export const conformanceWidthInputs: readonly ConformanceWidthInput[] = [
   { id: 'width-profile/ascii-printable-narrow', text: 'AB' },
   { id: 'width-profile/cjk-wide', text: '你好' },
   { id: 'width-profile/ambiguous-narrow-default', text: '§±' },
+  { id: 'width-profile/ambiguous-narrow-via-override', text: '§±', widthProfile: { ambiguousWidth: 'narrow' } },
   { id: 'width-profile/ambiguous-wide-via-override', text: '§±', widthProfile: { ambiguousWidth: 'wide' } },
   { id: 'width-profile/fullwidth-form', text: 'ＡＢ' },
   { id: 'width-profile/combining-mark-cluster', text: 'éf' },
+  { id: 'width-profile/emoji-presentation-wide-default', text: '😀' },
+  { id: 'width-profile/emoji-narrow-via-override', text: '😀', widthProfile: { emojiWidth: 'narrow' } },
   { id: 'width-profile/variation-selector', text: '❤️' },
   { id: 'width-profile/zwj-emoji-sequence', text: '\u{1F468}‍\u{1F469}‍\u{1F467}' },
+  { id: 'width-profile/regional-indicator-single-default', text: '\u{1F1FA}' },
+  { id: 'width-profile/regional-indicator-single-narrow-via-override', text: '\u{1F1FA}', widthProfile: { regionalIndicator: 'flag-pair-wide-single-narrow' } },
   { id: 'width-profile/regional-indicator-pair', text: '\u{1F1EF}\u{1F1F5}' },
   { id: 'width-profile/keycap-sequence', text: '1️⃣' },
   { id: 'width-profile/nbsp-narrow', text: 'a b' },
@@ -66,6 +71,8 @@ export const conformanceWrapInputs: readonly ConformanceWrapInput[] = [
   { id: 'break/keep-all-word-break', text: '가나다 라마바', prepare: { wordBreak: 'keep-all' }, layout: { columns: 5 } },
   { id: 'break/emoji-cluster-atomicity', text: 'x\u{1F468}‍\u{1F469}‍\u{1F467}y', layout: { columns: 3 } },
   { id: 'break/single-grapheme-overflow', text: '你', layout: { columns: 1 } },
+  { id: 'break/cjk-emoji-mixed-wrap', text: '你😀好🙂界', layout: { columns: 4 } },
+  { id: 'break/start-column-first-row', text: 'abc def ghi', layout: { columns: 8, startColumn: 5 } },
   { id: 'break/multi-row-source-ranges-paragraph', text: 'one two three four five six', layout: { columns: 9 } },
 ]
 
@@ -73,8 +80,10 @@ export const conformanceWrapInputs: readonly ConformanceWrapInput[] = [
 // delimiters, EOF positions, out-of-range clamp, start column, and CJK.
 export const conformanceOffsetInputs: readonly ConformanceOffsetInput[] = [
   { id: 'source-mapping/exact-visible-boundary', text: 'hello world', columns: 16, sourceOffset: 6 },
+  { id: 'source-mapping/inside-cluster-bias-before', text: 'éf', columns: 8, sourceOffset: 1, bias: 'before' },
   { id: 'source-mapping/inside-cluster-bias-after', text: 'éf', columns: 8, sourceOffset: 1, bias: 'after' },
   { id: 'source-mapping/consumed-wrap-delimiter-next-row', text: 'aaa bbb', columns: 4, sourceOffset: 4 },
+  { id: 'source-mapping/hard-break-next-row', text: 'ab\ncd', prepare: preWrap, columns: 8, sourceOffset: 3 },
   { id: 'source-mapping/eof-ordinary', text: 'hello', columns: 8, sourceOffset: 5 },
   { id: 'source-mapping/eof-after-final-lf', text: 'abc\n', prepare: preWrap, columns: 8, sourceOffset: 4 },
   { id: 'source-mapping/out-of-range-clamp', text: 'hi', columns: 8, sourceOffset: 99 },

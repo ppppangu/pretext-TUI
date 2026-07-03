@@ -581,6 +581,98 @@
       }
     },
     {
+      "id": "break/cjk-emoji-mixed-wrap",
+      "text": "你😀好🙂界",
+      "layout": {
+        "columns": 4
+      },
+      "expected": {
+        "rows": 3,
+        "maxLineWidth": 4,
+        "texts": [
+          "你😀",
+          "好🙂",
+          "界"
+        ],
+        "sourceTexts": [
+          "你😀",
+          "好🙂",
+          "界"
+        ],
+        "widths": [
+          4,
+          4,
+          2
+        ],
+        "breakKinds": [
+          "wrap",
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "overflow": [
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "break/start-column-first-row",
+      "text": "abc def ghi",
+      "layout": {
+        "columns": 8,
+        "startColumn": 5
+      },
+      "expected": {
+        "rows": 2,
+        "maxLineWidth": 7,
+        "texts": [
+          "abc",
+          "def ghi"
+        ],
+        "sourceTexts": [
+          "abc",
+          "def ghi"
+        ],
+        "widths": [
+          3,
+          7
+        ],
+        "breakKinds": [
+          "wrap",
+          "end"
+        ],
+        "sourceRanges": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            11
+          ]
+        ],
+        "overflow": [
+          null,
+          null
+        ]
+      }
+    },
+    {
       "id": "break/multi-row-source-ranges-paragraph",
       "text": "one two three four five six",
       "layout": {

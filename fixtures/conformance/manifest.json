@@ -9,16 +9,21 @@
   "domains": [
     {
       "file": "width-cases.json",
-      "caseCount": 13,
+      "caseCount": 18,
       "clauses": [
         "width-profile/ascii-printable-narrow",
         "width-profile/cjk-wide",
         "width-profile/ambiguous-narrow-default",
+        "width-profile/ambiguous-narrow-via-override",
         "width-profile/ambiguous-wide-via-override",
         "width-profile/fullwidth-form",
         "width-profile/combining-mark-cluster",
+        "width-profile/emoji-presentation-wide-default",
+        "width-profile/emoji-narrow-via-override",
         "width-profile/variation-selector",
         "width-profile/zwj-emoji-sequence",
+        "width-profile/regional-indicator-single-default",
+        "width-profile/regional-indicator-single-narrow-via-override",
         "width-profile/regional-indicator-pair",
         "width-profile/keycap-sequence",
         "width-profile/nbsp-narrow",
@@ -28,7 +33,7 @@
     },
     {
       "file": "wrap-cases.json",
-      "caseCount": 14,
+      "caseCount": 16,
       "clauses": [
         "whitespace/normal-collapse-wrap",
         "whitespace/pre-wrap-preserves-spaces",
@@ -43,16 +48,20 @@
         "break/keep-all-word-break",
         "break/emoji-cluster-atomicity",
         "break/single-grapheme-overflow",
+        "break/cjk-emoji-mixed-wrap",
+        "break/start-column-first-row",
         "break/multi-row-source-ranges-paragraph"
       ]
     },
     {
       "file": "offset-cases.json",
-      "caseCount": 8,
+      "caseCount": 10,
       "clauses": [
         "source-mapping/exact-visible-boundary",
+        "source-mapping/inside-cluster-bias-before",
         "source-mapping/inside-cluster-bias-after",
         "source-mapping/consumed-wrap-delimiter-next-row",
+        "source-mapping/hard-break-next-row",
         "source-mapping/eof-ordinary",
         "source-mapping/eof-after-final-lf",
         "source-mapping/out-of-range-clamp",
