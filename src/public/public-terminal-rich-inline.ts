@@ -110,7 +110,7 @@ export type TerminalRichDiagnostic = Readonly<{
   profile: TerminalRichSecurityProfileName
 }>
 
-export type TerminalRichStyle = {
+export type TerminalRichStyle = Readonly<{
   fg?: string
   bg?: string
   bold?: boolean
@@ -119,25 +119,25 @@ export type TerminalRichStyle = {
   underline?: boolean
   strikethrough?: boolean
   inverse?: boolean
-}
+}>
 
 export type TerminalRichSpan =
-  | {
+  | Readonly<{
       kind: 'style'
       rawStart: number
       rawEnd: number
       sourceStart: number
       sourceEnd: number
       style: TerminalRichStyle
-    }
-  | {
+    }>
+  | Readonly<{
       kind: 'link'
       rawStart: number
       rawEnd: number
       sourceStart: number
       sourceEnd: number
       uri: string
-    }
+    }>
 
 export type TerminalRichPrepareOptions = TerminalPrepareOptions & TerminalRichSecurityPolicyInput
 
@@ -147,18 +147,18 @@ export type PreparedTerminalRichInline = Readonly<{
   prepared: PreparedTerminalText
   spans: readonly TerminalRichSpan[]
   diagnostics: readonly TerminalRichDiagnostic[]
-  rawVisibleMap: readonly {
+  rawVisibleMap: readonly Readonly<{
     rawStart: number
     rawEnd: number
     sourceStart: number
     sourceEnd: number
-  }[]
+  }>[]
   raw?: TerminalRichRawSummary
   policy: TerminalRichPolicySummary
   completeness: TerminalRichCompleteness
 }>
 
-export type TerminalRichFragment = {
+export type TerminalRichFragment = Readonly<{
   text: string
   sourceText: string
   sourceStart: number
@@ -167,7 +167,7 @@ export type TerminalRichFragment = {
   columnEnd: number
   style: TerminalRichStyle | null
   link: string | null
-}
+}>
 
 export type MaterializedTerminalRichLine = MaterializedTerminalLine & {
   fragments: TerminalRichFragment[]

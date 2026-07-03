@@ -68,7 +68,7 @@
     "benchmark:competitive:tui": "bun run scripts/competitive-tui-benchmark.ts",
     "benchmark:evidence:tui": "bun run scripts/competitive-tui-benchmark.ts --report-dir docs/evidence/benchmark-reports --package-script benchmark:evidence:tui",
     "benchmark:evidence-summary:tui": "bun run scripts/tui-benchmark-evidence-summary.ts",
-    "check": "bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && oxlint --type-aware src",
+    "check": "bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && bun node_modules/.bin/oxlint --type-aware src",
     "conformance-kit-check": "bun run scripts/tui-conformance-kit-check.ts",
     "demo:compare:tui": "bun run scripts/terminal-feel-demo.ts",
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",

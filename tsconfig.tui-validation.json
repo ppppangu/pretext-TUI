@@ -1,4 +1,4 @@
-// 补建说明：该配置为后续补建，用于 typecheck TUI validation scripts/tests；当前进度：Task 10 覆盖 package build/smoke、terminal-demo、scripts/tui-*.ts 与 tests/tui/**/*.ts，不引入 DOM lib。
+// 补建说明：该配置为后续补建，用于 typecheck TUI validation scripts/tests；当前进度：覆盖 package build/smoke、terminal-demo、bidi-data generator、src/*.test.ts、scripts/tui-*.ts 与 tests/tui/**/*.ts，不引入 DOM lib。
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -11,12 +11,14 @@
     "scripts/build-package.ts",
     "scripts/api-snapshot-check.ts",
     "scripts/competitive-tui-benchmark.ts",
+    "scripts/generate-bidi-data.ts",
     "scripts/package-smoke-test.ts",
     "scripts/terminal-demo.ts",
     "scripts/terminal-demo-check.ts",
     "scripts/terminal-feel-demo.ts",
     "scripts/terminal-feel-demo-check.ts",
     "scripts/tui-*.ts",
+    "src/*.test.ts",
     "tests/tui/**/*.ts"
   ],
   "exclude": [

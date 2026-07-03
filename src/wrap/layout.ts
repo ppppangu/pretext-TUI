@@ -127,7 +127,6 @@ export type WordBreakMode = AnalysisWordBreakMode
 export type PrepareOptions = {
   whiteSpace?: WhiteSpaceMode
   wordBreak?: WordBreakMode
-  letterSpacing?: number
   widthProfile?: TerminalWidthProfileInput
   tabSize?: number
 }
@@ -661,7 +660,7 @@ function prepareInternal(
   options?: PrepareOptions,
 ): InternalPreparedText | PreparedTextWithSegments {
   const wordBreak = options?.wordBreak ?? 'normal'
-  const letterSpacing = options?.letterSpacing ?? 0
+  const letterSpacing = 0
   const analysisProfile = DEFAULT_TERMINAL_ANALYSIS_PROFILE
   const analysis = analyzeText(text, analysisProfile, options?.whiteSpace, wordBreak)
   return measureAnalysis(
@@ -682,7 +681,7 @@ function prepareNormalizedInternal(
   options?: PrepareOptions,
 ): InternalPreparedText | PreparedTextWithSegments {
   const wordBreak = options?.wordBreak ?? 'normal'
-  const letterSpacing = options?.letterSpacing ?? 0
+  const letterSpacing = 0
   const analysisProfile = DEFAULT_TERMINAL_ANALYSIS_PROFILE
   const analysis = analyzeNormalizedText(text, analysisProfile, options?.whiteSpace, wordBreak)
   return measureAnalysis(

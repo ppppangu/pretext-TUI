@@ -20,6 +20,7 @@ import {
   createTerminalMemoryBudgetEstimate,
   type TerminalMemoryBudgetEstimate,
 } from '../telemetry/terminal-memory-budget.js'
+import { resolveTerminalWidthProfile } from '../unicode/terminal-width-profile.js'
 
 export type TerminalAppendStrategy =
   | 'full-reprepare-bounded-invalidation'
@@ -420,9 +421,7 @@ function clonePrepareOptions(options: TerminalPrepareOptions): TerminalPrepareOp
   if (options.whiteSpace !== undefined) clone.whiteSpace = options.whiteSpace
   if (options.wordBreak !== undefined) clone.wordBreak = options.wordBreak
   if (options.widthProfile !== undefined) {
-    clone.widthProfile = typeof options.widthProfile === 'object'
-      ? { ...options.widthProfile }
-      : options.widthProfile
+    clone.widthProfile = resolveTerminalWidthProfile(options.widthProfile)
   }
   if (options.tabSize !== undefined) clone.tabSize = options.tabSize
   return clone

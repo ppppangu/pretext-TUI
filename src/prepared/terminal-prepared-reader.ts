@@ -186,7 +186,7 @@ function copyPreparedTerminalTextDebugSnapshot(
     sourceText: prepared.sourceText,
     spacingGraphemeCounts: [...prepared.spacingGraphemeCounts],
     tabStopAdvance: prepared.tabStopAdvance,
-    widthProfile: { ...prepared.widthProfile },
+    widthProfile: prepared.widthProfile,
     widths: [...prepared.widths],
   }
 }

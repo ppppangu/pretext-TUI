@@ -108,6 +108,7 @@ describe('phase 10 adoption evidence pack', () => {
     expect(report.claimability).toBe('local-evidence-only')
     expect(report.command.packageScript).toBe('benchmark:evidence:tui')
     await expectReportSourceHashesToMatchCurrentFiles(report)
+    await expectBenchmarkPackageSurfaceToRemainEquivalent(report)
     expect(report.workloads.some(workload => workload.id === 'large-page-seek')).toBe(true)
     expect(report.semanticMatrix.length).toBeGreaterThan(0)
   })
@@ -122,9 +123,31 @@ async function expectReportSourceHashesToMatchCurrentFiles(report: Awaited<Retur
     await expectFileHash(scriptPath, expectedHash)
   }
   await expectFileHash(report.sources.configPath, report.sources.configHash)
-  await expectFileHash('package.json', report.sources.packageJsonHash)
   if (report.sources.lockfileHash !== null) {
     await expectFileHash('bun.lock', report.sources.lockfileHash)
+  }
+}
+
+async function expectBenchmarkPackageSurfaceToRemainEquivalent(report: Awaited<ReturnType<typeof readBenchmarkEvidenceReport>>): Promise<void> {
+  const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8')) as {
+    version: string
+    scripts: Record<string, string>
+  }
+  const reportedPackageJsonHash = report.sources.packageJsonHash
+  const reportedPackageVersion = report.dependencies['pretext-tui']
+  assertString(reportedPackageJsonHash, 'report.sources.packageJsonHash')
+  assertString(reportedPackageVersion, 'report.dependencies.pretext-tui')
+  expect(reportedPackageJsonHash).toMatch(/^[0-9a-f]{64}$/)
+  expect(packageJson.version).toBe(reportedPackageVersion)
+  expect(packageJson.scripts['benchmark:competitive:tui']).toBe('bun run scripts/competitive-tui-benchmark.ts')
+  expect(packageJson.scripts['benchmark:evidence:tui']).toBe(
+    'bun run scripts/competitive-tui-benchmark.ts --report-dir docs/evidence/benchmark-reports --package-script benchmark:evidence:tui',
+  )
+}
+
+function assertString(value: unknown, label: string): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be present`)
   }
 }
 

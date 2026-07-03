@@ -17,7 +17,7 @@ const canonicalGateScripts = [
   'api-snapshot-check',
   'package-smoke-test',
 ]
-const canonicalCheckScript = 'bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && oxlint --type-aware src'
+const canonicalCheckScript = 'bun run typecheck:tui && bun run typecheck:tui-validation && bun run tui-static-gate && bun node_modules/.bin/oxlint --type-aware src'
 
 describe('tui release gate consistency', () => {
   test('package prepublish delegates to the canonical release gate', async () => {

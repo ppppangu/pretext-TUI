@@ -37,7 +37,7 @@ The usual answer is to rewrap the whole string whenever the terminal resizes or 
 ## Quickstart
 
 ```sh
-npm install pretext-tui@0.1.0
+npm install pretext-tui@0.2.1
 ```
 
 ```ts
@@ -126,7 +126,7 @@ const visibleRows = materializeTerminalLinePage(prepared, page)
 
 These helpers cache range metadata, not rendered strings. The handles are opaque and bound to the prepared text that created them, so hosts can use them without depending on anchor or page internals. Lower-level line-index and page-cache primitives remain available for custom choreography. The paging helpers are public but incubating (see [Stability](#stability)); the stable core remains `prepare -> layout/range -> materialize`.
 
-For growing transcripts there is incubating append support: append-only chunked storage behind the opaque `PreparedTerminalCellFlow` handle, plus tail-follow helpers (`getTerminalLayoutBundleTailPage`, `getTerminalLineIndexTailRanges`, `measureTerminalLayoutBundleRows`) so follow-mode viewports can fetch the last rows of a growing buffer without re-deriving totals after every append. The release benchmark gate includes 1,000-small-append workloads that assert no full-reprepare fallback and bounded analyzed source units per append. Arbitrary insert/delete/replace editing, destructive prefix eviction, host retention policy, and UI lifecycle stay outside this package.
+For growing transcripts there is incubating append support: append-only chunked storage behind the opaque `PreparedTerminalCellFlow` handle, plus tail-follow helpers (`getTerminalLayoutBundleTailPage`, `getTerminalLineIndexTailRanges`, `measureTerminalLayoutBundleRows`) so follow-mode viewports can fetch the last rows of a growing buffer with bounded replay from retained anchors instead of replaying from row zero after every append. The release benchmark gate includes 1,000-small-append workloads that assert no full-reprepare fallback and bounded analyzed source units per append. Arbitrary insert/delete/replace editing, destructive prefix eviction, host retention policy, and UI lifecycle stay outside this package.
 
 ## What Makes It Different
 
@@ -165,7 +165,7 @@ bun run benchmark:competitive:tui   # local text-layout comparison with full env
 bun run benchmark:evidence:tui      # report-shaped evidence JSON with raw samples and statistics
 ```
 
-In local optional text-layout evidence report `competitive-tui-20260610-306debd-clean-fd7b8b9f`, workload `large-page-seek` shows hot fixed-column large-page seeking with prepared text, sparse row index, and page cache reused. The JSON report under [`docs/evidence/benchmark-reports/`](https://github.com/ppppangu/pretext-TUI/tree/main/docs/evidence/benchmark-reports) carries raw samples, timing statistics, OS/CPU/runtime/dependency metadata, and comparator semantic caveats. Treat report ids, not copied numbers, as the durable citation target.
+In local optional text-layout evidence report `competitive-tui-20260615-05a8d54-clean-ad380eea`, workload `large-page-seek` shows hot fixed-column large-page seeking with prepared text, sparse row index, and page cache reused. The JSON report under [`docs/evidence/benchmark-reports/`](https://github.com/ppppangu/pretext-TUI/tree/main/docs/evidence/benchmark-reports) carries raw samples, timing statistics, OS/CPU/runtime/dependency metadata, and comparator semantic caveats. Treat report ids, not copied numbers, as the durable citation target.
 
 The honest read: `pretext-TUI` does more semantic work than a tiny greedy one-shot wrapper, so simple one-shot wrapping can favor smaller semantics-lite baselines, and rich SGR wrapping is about metadata structure, not headline timing. These are local, workload-specific text-layout comparisons — not renderer or event-loop benchmarks, and not a release guarantee.
 
@@ -330,7 +330,7 @@ The full terminal contract, host boundary, and public/private API boundary live 
 
 ## Stability
 
-Current package version: `0.1.0` (pre-1.0).
+Current package version: `0.2.1` (pre-1.0).
 
 The stable core seven — `prepareTerminal`, `layoutTerminal`, `measureTerminalLineStats`, `walkTerminalLineRanges`, `layoutNextTerminalLineRange`, `materializeTerminalLineRange`, and `TERMINAL_START_CURSOR` — are stable as of `0.1.0`: breaking changes to them before `1.0` require a minor version bump.
 

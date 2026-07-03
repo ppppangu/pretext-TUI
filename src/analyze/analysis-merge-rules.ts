@@ -69,7 +69,6 @@ export function mergeUrlLikeRuns(segmentation: MergedSegmentation): MergedSegmen
       mergedParts.push(texts[j]!)
       isWordLike[i] = true
       const endsQueryPrefix = texts[j]!.includes('?')
-      kinds[j] = 'text'
       texts[j] = ''
       j++
       if (endsQueryPrefix) break

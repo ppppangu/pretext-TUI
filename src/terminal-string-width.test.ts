@@ -21,6 +21,17 @@ describe('terminal width profile', () => {
     const wide = resolveTerminalWidthProfile({ ambiguousWidth: 'wide' })
     expect(wide.cacheKey).not.toBe(TERMINAL_UNICODE_NARROW_PROFILE.cacheKey)
   })
+
+  test('does not trust structural copies with stale cache identity', () => {
+    const narrow = resolveTerminalWidthProfile({ ambiguousWidth: 'narrow' })
+    const forged = {
+      ...narrow,
+      ambiguousWidth: 'wide' as const,
+    }
+
+    expect(resolveTerminalWidthProfile(forged as never)).not.toBe(forged)
+    expect(terminalStringWidth('Ω', forged as never)).toBe(2)
+  })
 })
 
 describe('terminal string width', () => {

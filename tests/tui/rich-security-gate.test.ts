@@ -84,6 +84,23 @@ describe('terminal rich security gate', () => {
     ).toThrow('Terminal OSC8 URI violates security policy')
   })
 
+  test('audit-strict disables ANSI re-emission by default but honors explicit override', () => {
+    const defaultStrict = prepareTerminalRichInline('\x1b[31mred\x1b[0m', {
+      profile: 'audit-strict',
+    })
+    const defaultLine = layoutNextTerminalRichLineRange(defaultStrict, TERMINAL_START_CURSOR, { columns: 20 })
+    assert(defaultLine !== null, 'expected rich line')
+    expect(materializeTerminalRichLineRange(defaultStrict, defaultLine, { ansiText: 'sgr' }).ansiText).toBeUndefined()
+
+    const explicitStrict = prepareTerminalRichInline('\x1b[31mred\x1b[0m', {
+      profile: 'audit-strict',
+      ansiReemit: 'sgr',
+    })
+    const explicitLine = layoutNextTerminalRichLineRange(explicitStrict, TERMINAL_START_CURSOR, { columns: 20 })
+    assert(explicitLine !== null, 'expected rich line')
+    expect(materializeTerminalRichLineRange(explicitStrict, explicitLine, { ansiText: 'sgr' }).ansiText).toContain('\x1b[31m')
+  })
+
   test('unsupported string controls sanitize or reject by policy', () => {
     const raw = 'a\x1b]52;c;secret\x07b\x1bPpayload\x1b\\c\x1b^pm\x1b\\d\x1b_apc\x1b\\e\x1bXsos\x1b\\f'
     const sanitized = prepareTerminalRichInline(raw, { whiteSpace: 'pre-wrap' })

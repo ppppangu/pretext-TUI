@@ -114,7 +114,8 @@ describe('prepared reader capability boundary', () => {
     expect(snapshot.chunks).toEqual(live.chunks)
     expect(snapshot.chunks).not.toBe(live.chunks)
     expect(snapshot.widthProfile).toEqual(live.widthProfile)
-    expect(snapshot.widthProfile).not.toBe(live.widthProfile)
+    expect(snapshot.widthProfile).toBe(live.widthProfile)
+    expect(Object.isFrozen(snapshot.widthProfile)).toBe(true)
 
     if (snapshot.chunks[0] !== undefined && live.chunks[0] !== undefined) {
       expect(snapshot.chunks[0]).not.toBe(live.chunks[0])
@@ -139,12 +140,11 @@ describe('prepared reader capability boundary', () => {
     const originalFirstSourceStart = snapshot.sourceStarts[0]
     ;(snapshot.segments as string[])[0] = 'mutated outside state'
     ;(snapshot.sourceStarts as number[])[0] = 999
-    ;(snapshot.widthProfile as { defaultTabSize: number }).defaultTabSize = 99
 
     const nextSnapshot = getInternalPreparedTerminalTextDebugSnapshot(prepared)
     expect(nextSnapshot.segments[0]).toBe(originalFirstSegment)
     expect(nextSnapshot.sourceStarts[0]).toBe(originalFirstSourceStart)
-    expect(nextSnapshot.widthProfile.defaultTabSize).toBe(live.widthProfile.defaultTabSize)
+    expect(nextSnapshot.widthProfile).toBe(live.widthProfile)
   })
 
   test('empty prepared text snapshots still expose a real terminal width profile', () => {

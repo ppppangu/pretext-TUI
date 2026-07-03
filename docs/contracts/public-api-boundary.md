@@ -83,9 +83,10 @@ These surfaces are useful but need more evidence before they become stable:
 - selection and extraction helpers
 - append/cell-flow invalidation metadata
 - rich diagnostics and ANSI re-emission
+- plain input sanitizer and text-width helper utilities
 - custom terminal width profiles
 
-Incubating APIs may change before `0.1`. They still must stay host-neutral and data-only.
+Incubating APIs may change before an explicit promotion record freezes that surface. They still must stay host-neutral and data-only.
 
 Unified terminal layout bundles are public but incubating convenience handles. They compose a fixed-column line index, a source-offset index, and a page cache behind one opaque handle while preserving the existing prepared-text, projection, and materialization contracts. They do not create a renderer, viewport controller, selection state, or host integration layer.
 

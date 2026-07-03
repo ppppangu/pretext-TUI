@@ -47,6 +47,13 @@ export type TerminalWidthProfileInput =
   | TerminalWidthProfile
   | undefined
 
+const resolvedTerminalWidthProfiles = new WeakSet<TerminalWidthProfile>()
+
+function markResolvedTerminalWidthProfile(profile: TerminalWidthProfile): TerminalWidthProfile {
+  resolvedTerminalWidthProfiles.add(profile)
+  return profile
+}
+
 function createProfile(
   overrides: Partial<Omit<TerminalWidthProfile, 'kind' | 'name' | 'version' | 'unicodeVersion' | 'cacheKey'>> = {},
 ): TerminalWidthProfile {
@@ -63,7 +70,7 @@ function createProfile(
     defaultTabSize: overrides.defaultTabSize ?? 8,
   } as const
 
-  return Object.freeze({
+  return markResolvedTerminalWidthProfile(Object.freeze({
     ...profile,
     cacheKey: [
       'terminal-width-profile',
@@ -76,7 +83,7 @@ function createProfile(
       `ansi=${profile.ansiMode}`,
       `tabDefault=${profile.defaultTabSize}`,
     ].join(';'),
-  })
+  }))
 }
 
 export const TERMINAL_UNICODE_NARROW_PROFILE: TerminalWidthProfile = createProfile()
@@ -132,7 +139,7 @@ export function createInjectedTerminalWidthProfile(
     graphemeWidth: input.graphemeWidth,
   } as const
 
-  return Object.freeze({
+  return markResolvedTerminalWidthProfile(Object.freeze({
     ...profile,
     cacheKey: [
       'terminal-width-profile',
@@ -143,7 +150,7 @@ export function createInjectedTerminalWidthProfile(
       `ansi=${profile.ansiMode}`,
       `tabDefault=${profile.defaultTabSize}`,
     ].join(';'),
-  })
+  }))
 }
 
 export function resolveTerminalWidthProfile(
@@ -152,22 +159,16 @@ export function resolveTerminalWidthProfile(
   if (input === undefined || input === 'terminal-unicode-narrow@1') {
     return TERMINAL_UNICODE_NARROW_PROFILE
   }
-  // Resolution must be idempotent: already-resolved profiles are value-complete,
-  // so rebuilding them per call would only churn allocations without changing
-  // any field or the derived cacheKey.
+  // Resolution is idempotent only for profiles produced by this module. A
+  // structural clone can carry a stale cacheKey after mutation, so normalize it.
   if (
-    (input as { kind?: unknown }).kind === 'terminal-width-profile' &&
-    typeof (input as { cacheKey?: unknown }).cacheKey === 'string'
+    input !== null &&
+    typeof input === 'object' &&
+    resolvedTerminalWidthProfiles.has(input as TerminalWidthProfile)
   ) {
     return input as TerminalWidthProfile
   }
   return createProfile(input)
-}
-
-export function getTerminalWidthProfileCacheKey(
-  profile: TerminalWidthProfile,
-): string {
-  return profile.cacheKey
 }
 
 export function normalizeTerminalTabSize(

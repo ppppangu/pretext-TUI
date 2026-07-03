@@ -65,7 +65,7 @@ materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr' })
 materializeTerminalRichLineRange(prepared, line, { ansiText: 'sgr-osc8' })
 ```
 
-The prepared policy can cap or disable re-emission. `audit-strict` disables it by default.
+The prepared policy can cap or disable re-emission. `audit-strict` disables it by default; callers that intentionally need audit-only reconstruction can still opt back in through explicit `ansiReemit` policy plus an explicit materialization request.
 
 ## Bidi Format Controls
 

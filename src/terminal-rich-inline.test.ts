@@ -13,7 +13,7 @@ import {
   getTerminalRichRawVisibleRangesForSourceRange,
   getTerminalRichSpansForSourceRange,
 } from './rich/terminal-rich-span-index.js'
-import { TERMINAL_START_CURSOR } from './core/terminal.js'
+import { TERMINAL_START_CURSOR, type TerminalLineRange } from './core/terminal.js'
 import { getInternalPreparedTerminalText } from './prepared/terminal-prepared-reader.js'
 import {
   resetTerminalPerformanceCounters,
@@ -144,7 +144,7 @@ describe('terminal rich inline tokenizer', () => {
 describe('terminal rich inline materialization', () => {
   test('rebuilds ANSI per wrapped line for style spans', () => {
     const prepared = prepareTerminalRichInline('\x1b[31mabcdef\x1b[0m', { whiteSpace: 'pre-wrap' })
-    const lines = []
+    const lines: TerminalLineRange[] = []
     walkTerminalRichLineRanges(prepared, { columns: 3 }, line => lines.push(line))
     expect(materializeTerminalRichLineRange(prepared, lines[0]!).ansiText).toBeUndefined()
     const line0 = materializeTerminalRichLineRange(prepared, lines[0]!, { ansiText: 'sgr' })
@@ -161,7 +161,7 @@ describe('terminal rich inline materialization', () => {
     const prepared = prepareTerminalRichInline('\x1b]8;;https://x.test\x1b\\abcdef\x1b]8;;\x1b\\', {
       whiteSpace: 'pre-wrap',
     })
-    const lines = []
+    const lines: TerminalLineRange[] = []
     walkTerminalRichLineRanges(prepared, { columns: 3 }, line => lines.push(line))
     const line0 = materializeTerminalRichLineRange(prepared, lines[0]!, { ansiText: 'sgr-osc8' })
     const line1 = materializeTerminalRichLineRange(prepared, lines[1]!, { ansiText: 'sgr-osc8' })
@@ -300,7 +300,7 @@ describe('terminal rich inline materialization', () => {
 
   test('does not reintroduce wrap-hidden space into fragments', () => {
     const prepared = prepareTerminalRichInline('A\x1b[31m \x1b[0mBB', { whiteSpace: 'normal' })
-    const lines = []
+    const lines: TerminalLineRange[] = []
     walkTerminalRichLineRanges(prepared, { columns: 1 }, line => lines.push(line))
     const materialized = materializeTerminalRichLineRange(prepared, lines[1]!)
     expect(materialized.text).toBe('B')
@@ -318,7 +318,7 @@ describe('terminal rich inline materialization', () => {
 
   test('zero-width-only pre-wrap chunks stay line-safe in rich path', () => {
     const prepared = prepareTerminalRichInline('\u200B\n\u200B\n\u200B', { whiteSpace: 'pre-wrap' })
-    const lines = []
+    const lines: TerminalLineRange[] = []
     walkTerminalRichLineRanges(prepared, { columns: 5 }, line => lines.push(line))
     expect(lines).toHaveLength(3)
     const materialized = lines.map(line => materializeTerminalRichLineRange(prepared, line))
